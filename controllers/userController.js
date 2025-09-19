@@ -62,6 +62,23 @@ class UserController {
     const result = await UserService.getUserStats();
     return ApiResponse.success(res, result, 'User statistics retrieved successfully');
   });
+
+  // Import users from Excel
+  static importUsers = ErrorMiddleware.asyncHandler(async (req, res) => {
+    if (!req.file) {
+      return ApiResponse.error(res, 'No file uploaded', 400);
+    }
+
+    try {
+      console.log(`📁 Processing file: ${req.file.originalname}, size: ${req.file.size} bytes`);
+      const result = await UserService.importUsersFromExcel(req.file);
+      console.log(`✅ Import completed: ${result.success.length} success, ${result.errors.length} errors`);
+      return ApiResponse.success(res, result, 'Users imported successfully');
+    } catch (error) {
+      console.error('❌ Import error:', error.message);
+      return ApiResponse.error(res, `Import failed: ${error.message}`, 500);
+    }
+  });
 }
 
 module.exports = UserController;

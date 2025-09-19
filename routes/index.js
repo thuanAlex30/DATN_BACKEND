@@ -12,7 +12,14 @@ router.get('/health', (req, res) => {
     success: true,
     message: 'Safety Management System API is running',
     timestamp: new Date().toISOString(),
-    version: '1.0.0'
+    version: '1.0.0',
+    endpoints: {
+      auth: '/api/auth',
+      users: '/api/users',
+      roles: '/api/roles',
+      departments: '/api/departments',
+      positions: '/api/positions'
+    }
   });
 });
 
