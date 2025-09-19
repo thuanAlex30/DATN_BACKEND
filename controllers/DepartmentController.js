@@ -323,22 +323,97 @@ class DepartmentController {
       return ApiResponse.notFound(res, 'Department not found');
     }
 
+    // Get employee count using aggregation
+    const User = require('../models/User');
+    const employeeCount = await User.countDocuments({ 
+      department_id: department._id,
+      is_active: true 
+    });
+
+    // Convert to JSON to include virtual fields
+    const departmentJson = department.toJSON();
+
     const summary = {
-      id: department.id,
-      name: department.department_name,
-      description: department.description,
-      manager: department.manager_id ? {
-        id: department.manager_id.id || department.manager_id._id,
-        name: department.manager_id.full_name || department.manager_id.username,
-        email: department.manager_id.email
+      id: departmentJson.id,
+      name: departmentJson.department_name,
+      description: departmentJson.description,
+      manager: departmentJson.manager_id ? {
+        id: departmentJson.manager_id.id || departmentJson.manager_id._id,
+        name: departmentJson.manager_id.full_name || departmentJson.manager_id.username,
+        email: departmentJson.manager_id.email
       } : null,
-      employee_count: department.employees_count || 0,
-      is_active: department.is_active,
-      created_at: department.created_at,
-      updated_at: department.updated_at
+      employee_count: employeeCount,
+      is_active: departmentJson.is_active,
+      created_at: departmentJson.created_at,
+      updated_at: departmentJson.updated_at
     };
 
     return ApiResponse.success(res, summary, 'Department summary retrieved successfully');
+  });
+
+  // Get all employees in a department
+  static getDepartmentEmployees = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { 
+      is_active = 'true', 
+      sort_by = 'full_name', 
+      sort_order = 'asc',
+      include_inactive = 'false'
+    } = req.query;
+
+    console.log('getDepartmentEmployees called with:', { id, is_active, sort_by, sort_order, include_inactive });
+
+    // Check if department exists
+    const department = await DepartmentRepository.findById(id);
+    if (!department) {
+      console.log('Department not found:', id);
+      return ApiResponse.notFound(res, 'Department not found');
+    }
+
+    console.log('Department found:', department.department_name);
+
+    // Prepare options for UserRepository
+    const options = {
+      is_active: include_inactive === 'true' ? undefined : (is_active === 'true'),
+      sort_by,
+      sort_order
+    };
+
+    console.log('UserRepository options:', options);
+
+    // Get employees from the department
+    const employees = await UserRepository.findByDepartment(id, options);
+    console.log('Found employees:', employees.length);
+
+    // Format employee data
+    const formattedEmployees = employees.map(employee => ({
+      id: employee._id,
+      username: employee.username,
+      full_name: employee.full_name,
+      email: employee.email,
+      phone: employee.phone,
+      position: employee.position_id ? {
+        id: employee.position_id._id,
+        name: employee.position_id.position_name,
+        level: employee.position_id.level
+      } : null,
+      role: employee.role_id ? {
+        id: employee.role_id._id,
+        name: employee.role_id.role_name
+      } : null,
+      is_active: employee.is_active,
+      created_at: employee.created_at,
+      updated_at: employee.updated_at
+    }));
+
+    return ApiResponse.success(res, {
+      department: {
+        id: department._id,
+        name: department.department_name
+      },
+      employees: formattedEmployees,
+      total: formattedEmployees.length
+    }, 'Department employees retrieved successfully');
   });
 }
 

@@ -93,6 +93,20 @@ router.get('/:id/summary',
   DepartmentController.getDepartmentSummary
 );
 
+// Get all employees in a department
+router.get('/:id/employees',
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(PERMISSIONS.DEPARTMENT_READ),
+  ValidationMiddleware.validateParams(commonValidation.id),
+  ValidationMiddleware.validateQuery(Joi.object({
+    is_active: Joi.string().valid('true', 'false').optional().default('true'),
+    sort_by: Joi.string().valid('full_name', 'email', 'created_at', 'position_name').optional().default('full_name'),
+    sort_order: Joi.string().valid('asc', 'desc').optional().default('asc'),
+    include_inactive: Joi.string().valid('true', 'false').optional().default('false')
+  })),
+  DepartmentController.getDepartmentEmployees
+);
+
 // Create new department
 router.post('/',
   AuthMiddleware.authenticate,

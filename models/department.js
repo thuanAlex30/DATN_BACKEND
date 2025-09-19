@@ -31,7 +31,7 @@ departmentSchema.index({ is_active: 1 });
 
 // Virtual for employee count
 departmentSchema.virtual('employees_count', {
-  ref: 'Employee',
+  ref: 'User',
   localField: '_id',
   foreignField: 'department_id',
   count: true

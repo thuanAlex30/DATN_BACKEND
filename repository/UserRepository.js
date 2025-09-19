@@ -70,10 +70,19 @@ class UserRepository {
         User.countDocuments(filter)
       ]);
 
+      // Transform users to include virtual fields
+      const transformedUsers = users.map(user => {
+        const userObj = user.toObject();
+        return {
+          ...userObj,
+          employee_count: userObj.role_id?.role_name === 'employee' ? 1 : 0
+        };
+      });
+
       const totalPages = Math.ceil(total / limit);
 
       return {
-        users,
+        users: transformedUsers,
         pagination: {
           page,
           limit,
@@ -190,15 +199,22 @@ class UserRepository {
       const filter = { department_id: departmentId };
       if (typeof is_active === 'boolean') filter.is_active = is_active;
 
+      console.log('UserRepository.findByDepartment - filter:', filter);
+      console.log('UserRepository.findByDepartment - departmentId:', departmentId);
+
       const sortOrder = sort_order === 'asc' ? 1 : -1;
       const sortObj = { [sort_by]: sortOrder };
 
-      return await User.find(filter)
+      const result = await User.find(filter)
         .populate('role_id', 'role_name permissions is_active')
         .populate('position_id', 'position_name level is_active')
         .sort(sortObj)
         .exec();
+      
+      console.log('UserRepository.findByDepartment - result count:', result.length);
+      return result;
     } catch (error) {
+      console.error('UserRepository.findByDepartment - error:', error);
       throw error;
     }
   }

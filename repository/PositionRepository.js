@@ -207,10 +207,13 @@ class PositionRepository {
 
     pipeline.push({
       $lookup: {
-        from: 'employees',
+        from: 'users',
         localField: '_id',
         foreignField: 'position_id',
-        as: 'employees'
+        as: 'employees',
+        pipeline: [
+          { $match: { is_active: true } }
+        ]
       }
     });
 

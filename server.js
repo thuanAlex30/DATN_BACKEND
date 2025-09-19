@@ -19,19 +19,65 @@ console.log('🌍 MONGODB_URI:', process.env.MONGODB_URI ? '[loaded]' : '[missin
 // Security
 app.use(helmet());
 
-// CORS
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? ['https://yourdomain.com']
-    : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'],
+// CORS - 更宽松的配置用于开发环境
+const corsOptions = {
+  origin: function (origin, callback) {
+    // 允许所有本地开发端口
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3001', 
+      'http://localhost:5173',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001',
+      'http://127.0.0.1:5173'
+    ];
+    
+    // 在生产环境中添加生产域名
+    if (process.env.NODE_ENV === 'production') {
+      allowedOrigins.push('https://yourdomain.com');
+    }
+    
+    // 允许没有 origin 的请求（如移动应用）
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  optionsSuccessStatus: 200
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With', 
+    'Accept', 
+    'Origin',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers'
+  ],
+  exposedHeaders: ['Authorization'],
+  optionsSuccessStatus: 200,
+  preflightContinue: false
+};
+
+app.use(cors(corsOptions));
+
+// 明确处理预检请求
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);
+});
 
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: process.env.NODE_ENV === 'production' ? 100 : 1000,
+  max: process.env.NODE_ENV === 'production' ? 100 : 10000,
   message: {
     success: false,
     message: 'Too many requests. Try again later.',
@@ -89,6 +135,9 @@ app.use(ErrorMiddleware.handle);
 ⏰ Started at: ${new Date().toLocaleString()}
       `);
     });
+
+    // Set server timeout to 5 minutes for file uploads
+    server.timeout = 300000; // 5 minutes
 
     // Graceful shutdown
     process.on('SIGTERM', () => {

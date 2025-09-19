@@ -198,6 +198,13 @@ class AuthService {
         throw new Error('User not found');
       }
 
+      // Populate role data
+      let roleData = null;
+      if (user.role_id) {
+        const RoleRepository = require('../repository/RoleRepository');
+        roleData = await RoleRepository.findById(user.role_id);
+      }
+
       return {
         id: user._id,
         username: user.username,
@@ -206,7 +213,15 @@ class AuthService {
         phone: user.phone,
         birth_date: user.birth_date,
         address: user.address,
-        role: user.role_id,
+        role: roleData ? {
+          _id: roleData._id,
+          role_name: roleData.role_name,
+          description: roleData.description,
+          permissions: roleData.permissions,
+          is_active: roleData.is_active,
+          created_at: roleData.created_at,
+          updated_at: roleData.updated_at
+        } : null,
         department: user.department_id,
         position: user.position_id,
         is_active: user.is_active,

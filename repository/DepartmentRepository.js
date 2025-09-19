@@ -9,8 +9,7 @@ class DepartmentRepository {
 
   static async findById(id) {
     return await Department.findById(id)
-      .populate('manager_id', 'username full_name email')
-      .populate('employees_count');
+      .populate('manager_id', 'username full_name email');
   }
 
   static async findAll(options = {}) {
@@ -44,7 +43,6 @@ class DepartmentRepository {
     const [departments, total] = await Promise.all([
       Department.find(filter)
         .populate('manager_id', 'username full_name email')
-        .populate('employees_count')
         .sort(sortObj)
         .skip(skip)
         .limit(limit),

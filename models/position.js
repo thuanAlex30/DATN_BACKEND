@@ -32,14 +32,15 @@ positionSchema.index({ level: 1 });
 positionSchema.index({ is_active: 1 });
 
 positionSchema.virtual('employees_count', {
-  ref: 'Employee',
+  ref: 'User',
   localField: '_id',
   foreignField: 'position_id',
-  count: true
+  count: true,
+  match: { is_active: true }
 });
 
 positionSchema.pre('deleteOne', { document: true, query: false }, async function() {
-  await mongoose.model('Employee').updateMany(
+  await mongoose.model('User').updateMany(
     { position_id: this._id },
     { $unset: { position_id: 1 } }
   );

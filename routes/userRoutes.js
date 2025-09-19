@@ -1,9 +1,26 @@
 const express = require('express');
+const multer = require('multer');
 const UserController = require('../controllers/userController');
 const AuthMiddleware = require('../middlewares/AuthMiddleware');
 const ValidationMiddleware = require('../middlewares/ValidationMiddleware');
 const userValidation = require('../validations/uservalidation');
 const { PERMISSIONS } = require('../utils/permissions');
+
+// Configure multer for file upload
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit (increased from 5MB)
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+        file.mimetype === 'application/vnd.ms-excel') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only Excel files are allowed'), false);
+    }
+  }
+});
 
 const router = express.Router();
 
@@ -34,6 +51,18 @@ router.post('/',
   ValidationMiddleware.validateBody(userValidation.create),
   AuthMiddleware.authorize(PERMISSIONS.USER_CREATE),
   UserController.createUser
+);
+
+// Import users from Excel
+router.post('/import', 
+  upload.single('file'),
+  AuthMiddleware.authorize(PERMISSIONS.USER_CREATE),
+  (req, res, next) => {
+    // Set timeout for this specific route
+    req.setTimeout(300000); // 5 minutes
+    next();
+  },
+  UserController.importUsers
 );
 
 // Get user by ID
