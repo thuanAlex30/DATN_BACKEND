@@ -1,0 +1,478 @@
+const PPECategory = require('../models/ppeCategory');
+const PPEItem = require('../models/ppeItem');
+const PPEIssuance = require('../models/ppeIssuance');
+const User = require('../models/user');
+
+class PPERepository {
+  // PPE Categories
+  async getAllCategories() {
+    return await PPECategory.find().sort({ category_name: 1 });
+  }
+
+  async getCategoryById(id) {
+    return await PPECategory.findById(id);
+  }
+
+  async createCategory(categoryData) {
+    const category = new PPECategory(categoryData);
+    return await category.save();
+  }
+
+  async updateCategory(id, categoryData) {
+    return await PPECategory.findByIdAndUpdate(id, categoryData, { new: true });
+  }
+
+  async deleteCategory(id) {
+    const result = await PPECategory.findByIdAndDelete(id);
+    return !!result;
+  }
+
+  async importItems(file) {
+    const XLSX = require('xlsx');
+    
+    try {
+      // Read the uploaded file from buffer (multer.memoryStorage())
+      const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      
+      // Convert to JSON
+      const data = XLSX.utils.sheet_to_json(worksheet);
+      
+      console.log('Excel data parsed:', data);
+      
+      if (!data || data.length === 0) {
+        throw new Error('File Excel không có dữ liệu');
+      }
+
+      const results = {
+        success: [],
+        errors: [],
+        totalRows: data.length,
+        validRows: 0
+      };
+
+      // Get all categories for validation
+      const categories = await PPECategory.find();
+      const categoryMap = {};
+      categories.forEach(cat => {
+        categoryMap[cat.category_name.toLowerCase()] = cat._id;
+      });
+      
+      console.log('Available categories:', categories.map(cat => cat.category_name));
+      console.log('Category map:', categoryMap);
+
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        const rowNumber = i + 2; // Excel row number (accounting for header)
+
+        try {
+          // Validate required fields
+          if (!row['Tên thiết bị'] || !row['Mã thiết bị'] || !row['Danh mục']) {
+            results.errors.push(`Dòng ${rowNumber}: Thiếu thông tin bắt buộc (Tên thiết bị, Mã thiết bị, Danh mục)`);
+            continue;
+          }
+
+          // Validate category exists
+          const categoryName = row['Danh mục'].toString().trim();
+          const categoryId = categoryMap[categoryName.toLowerCase()];
+          if (!categoryId) {
+            results.errors.push(`Dòng ${rowNumber}: Danh mục "${categoryName}" không tồn tại`);
+            continue;
+          }
+
+          // Check for duplicate item code
+          const existingItem = await PPEItem.findOne({ item_code: row['Mã thiết bị'].toString().trim().toUpperCase() });
+          if (existingItem) {
+            results.errors.push(`Dòng ${rowNumber}: Mã thiết bị "${row['Mã thiết bị']}" đã tồn tại`);
+            continue;
+          }
+
+          // Prepare item data
+          const itemData = {
+            category_id: categoryId,
+            item_code: row['Mã thiết bị'].toString().trim().toUpperCase(),
+            item_name: row['Tên thiết bị'].toString().trim(),
+            brand: row['Thương hiệu'] ? row['Thương hiệu'].toString().trim() : '',
+            model: row['Model'] ? row['Model'].toString().trim() : '',
+            reorder_level: parseInt(row['Mức tái đặt hàng']) || 10,
+            quantity_available: parseInt(row['Số lượng có sẵn']) || 0,
+            quantity_allocated: parseInt(row['Số lượng đã phân phối']) || 0
+          };
+
+          // Validate numeric fields
+          if (isNaN(itemData.reorder_level) || itemData.reorder_level < 0) {
+            results.errors.push(`Dòng ${rowNumber}: Mức tái đặt hàng phải là số >= 0`);
+            continue;
+          }
+
+          if (isNaN(itemData.quantity_available) || itemData.quantity_available < 0) {
+            results.errors.push(`Dòng ${rowNumber}: Số lượng có sẵn phải là số >= 0`);
+            continue;
+          }
+
+          if (isNaN(itemData.quantity_allocated) || itemData.quantity_allocated < 0) {
+            results.errors.push(`Dòng ${rowNumber}: Số lượng đã phân phối phải là số >= 0`);
+            continue;
+          }
+
+          // Create the item
+          const newItem = await PPEItem.create(itemData);
+          results.success.push(newItem);
+          results.validRows++;
+
+        } catch (error) {
+          results.errors.push(`Dòng ${rowNumber}: ${error.message}`);
+        }
+      }
+
+      return results;
+
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // PPE Items
+  async getAllItems(filters = {}) {
+    const query = {};
+    
+    if (filters.category_id) {
+      query.category_id = filters.category_id;
+    }
+    
+    if (filters.search) {
+      query.$or = [
+        { item_name: { $regex: filters.search, $options: 'i' } },
+        { item_code: { $regex: filters.search, $options: 'i' } },
+        { brand: { $regex: filters.search, $options: 'i' } }
+      ];
+    }
+
+    const items = await PPEItem.find(query)
+      .populate('category_id', 'category_name description')
+      .sort({ item_name: 1 });
+
+    // Calculate total quantities for each item
+    const itemsWithTotals = await Promise.all(items.map(async (item) => {
+      // Calculate total quantity (available + allocated)
+      const total_quantity = item.quantity_available + item.quantity_allocated;
+      
+      // Get actual allocated quantity from issuances (for verification)
+      const actualAllocated = await PPEIssuance.aggregate([
+        {
+          $match: {
+            item_id: item._id,
+            status: 'issued'
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total_allocated: { $sum: '$quantity' }
+          }
+        }
+      ]);
+
+      const actual_allocated_quantity = actualAllocated.length > 0 ? actualAllocated[0].total_allocated : 0;
+      
+      // Calculate remaining quantity
+      const remaining_quantity = total_quantity - actual_allocated_quantity;
+
+      return {
+        ...item.toObject(),
+        total_quantity,
+        remaining_quantity,
+        actual_allocated_quantity
+      };
+    }));
+
+    return itemsWithTotals;
+  }
+
+  async getItemById(id) {
+    const item = await PPEItem.findById(id)
+      .populate('category_id', 'category_name description');
+
+    if (!item) {
+      return null;
+    }
+
+    // Calculate total quantities for the item
+    const total_quantity = item.quantity_available + item.quantity_allocated;
+    
+    // Get actual allocated quantity from issuances (for verification)
+    const actualAllocated = await PPEIssuance.aggregate([
+      {
+        $match: {
+          item_id: item._id,
+          status: 'issued'
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total_allocated: { $sum: '$quantity' }
+        }
+      }
+    ]);
+
+    const actual_allocated_quantity = actualAllocated.length > 0 ? actualAllocated[0].total_allocated : 0;
+    
+    // Calculate remaining quantity
+    const remaining_quantity = total_quantity - actual_allocated_quantity;
+
+    return {
+      ...item.toObject(),
+      total_quantity,
+      remaining_quantity,
+      actual_allocated_quantity
+    };
+  }
+
+  async createItem(itemData) {
+    const item = new PPEItem(itemData);
+    return await item.save();
+  }
+
+  async updateItem(id, itemData) {
+    return await PPEItem.findByIdAndUpdate(id, itemData, { new: true });
+  }
+
+  async deleteItem(id) {
+    const result = await PPEItem.findByIdAndDelete(id);
+    return !!result;
+  }
+
+  // PPE Items with quantity management
+  async updateItemQuantity(id, quantityData) {
+    return await PPEItem.findByIdAndUpdate(id, {
+      quantity_available: quantityData.quantity_available,
+      quantity_allocated: quantityData.quantity_allocated
+    }, { new: true });
+  }
+
+  // PPE Issuances
+  async getAllIssuances(filters = {}) {
+    const query = {};
+    
+    if (filters.user_id) {
+      query.user_id = filters.user_id;
+    }
+    
+    if (filters.status) {
+      query.status = filters.status;
+    }
+    
+    if (filters.item_id) {
+      query.item_id = filters.item_id;
+    }
+
+    return await PPEIssuance.find(query)
+      .populate({
+        path: 'user_id',
+        select: 'full_name email',
+        populate: {
+          path: 'department_id',
+          select: 'department_name'
+        }
+      })
+      .populate({
+        path: 'item_id',
+        populate: {
+          path: 'category_id',
+          select: 'category_name description'
+        }
+      })
+      .populate('issued_by', 'full_name')
+      .sort({ issued_date: -1 });
+  }
+
+  async getIssuanceById(id) {
+    return await PPEIssuance.findById(id)
+      .populate({
+        path: 'user_id',
+        select: 'full_name email',
+        populate: {
+          path: 'department_id',
+          select: 'department_name'
+        }
+      })
+      .populate({
+        path: 'item_id',
+        populate: {
+          path: 'category_id',
+          select: 'category_name description'
+        }
+      })
+      .populate('issued_by', 'full_name');
+  }
+
+  async createIssuance(issuanceData) {
+    const issuance = new PPEIssuance(issuanceData);
+    return await issuance.save();
+  }
+
+  async updateIssuance(id, issuanceData) {
+    return await PPEIssuance.findByIdAndUpdate(id, issuanceData, { new: true });
+  }
+
+  async deleteIssuance(id) {
+    const result = await PPEIssuance.findByIdAndDelete(id);
+    return !!result;
+  }
+
+  // Statistics
+  async getStockStatus() {
+    const items = await PPEItem.find()
+      .populate('category_id', 'category_name description')
+      .sort({ item_name: 1 });
+
+    const itemsWithTotals = await Promise.all(items.map(async (item) => {
+      // Calculate total quantity (available + allocated)
+      const total_quantity = item.quantity_available + item.quantity_allocated;
+      
+      // Get actual allocated quantity from issuances (for verification)
+      const actualAllocated = await PPEIssuance.aggregate([
+        {
+          $match: {
+            item_id: item._id,
+            status: 'issued'
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total_allocated: { $sum: '$quantity' }
+          }
+        }
+      ]);
+
+      const actual_allocated_quantity = actualAllocated.length > 0 ? actualAllocated[0].total_allocated : 0;
+      
+      // Calculate remaining quantity
+      const remaining_quantity = total_quantity - actual_allocated_quantity;
+
+      return {
+        item: {
+          ...item.toObject(),
+          total_quantity,
+          remaining_quantity,
+          actual_allocated_quantity
+        },
+        total_available: item.quantity_available,
+        total_allocated: item.quantity_allocated,
+        total_quantity,
+        remaining_quantity,
+        actual_allocated_quantity
+      };
+    }));
+
+    return itemsWithTotals;
+  }
+
+  async getOverdueIssuances() {
+    const today = new Date();
+    return await PPEIssuance.find({
+      status: 'issued',
+      expected_return_date: { $lt: today }
+    })
+    .populate('user_id', 'full_name email')
+    .populate('item_id', 'item_name item_code');
+  }
+
+  async getLowStockItems() {
+    return await PPEItem.find({
+      quantity_available: { $lte: { $expr: "$reorder_level" } }
+    })
+      .populate('category_id', 'category_name description');
+  }
+
+  async getIssuanceStats() {
+    const stats = await PPEIssuance.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const result = {
+      total_issuances: 0,
+      issued: 0,
+      returned: 0,
+      overdue: 0
+    };
+
+    stats.forEach(stat => {
+      result.total_issuances += stat.count;
+      result[stat._id] = stat.count;
+    });
+
+    return result;
+  }
+
+  // Get comprehensive quantity statistics
+  async getQuantityStatistics() {
+    const items = await PPEItem.find()
+      .populate('category_id', 'category_name description');
+
+    const statistics = await Promise.all(items.map(async (item) => {
+      // Calculate total quantity (available + allocated)
+      const total_quantity = item.quantity_available + item.quantity_allocated;
+      
+      // Get actual allocated quantity from issuances
+      const actualAllocated = await PPEIssuance.aggregate([
+        {
+          $match: {
+            item_id: item._id,
+            status: 'issued'
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total_allocated: { $sum: '$quantity' }
+          }
+        }
+      ]);
+
+      const actual_allocated_quantity = actualAllocated.length > 0 ? actualAllocated[0].total_allocated : 0;
+      
+      // Calculate remaining quantity
+      const remaining_quantity = total_quantity - actual_allocated_quantity;
+
+      return {
+        item_id: item._id,
+        item_name: item.item_name,
+        item_code: item.item_code,
+        category_name: item.category_id.category_name,
+        total_quantity,
+        remaining_quantity,
+        actual_allocated_quantity,
+        quantity_available: item.quantity_available,
+        quantity_allocated: item.quantity_allocated,
+        reorder_level: item.reorder_level,
+        stock_status: remaining_quantity <= item.reorder_level ? 'low' : 'good'
+      };
+    }));
+
+    // Calculate overall statistics
+    const overallStats = {
+      total_items: statistics.length,
+      total_quantity: statistics.reduce((sum, item) => sum + item.total_quantity, 0),
+      total_remaining: statistics.reduce((sum, item) => sum + item.remaining_quantity, 0),
+      total_allocated: statistics.reduce((sum, item) => sum + item.actual_allocated_quantity, 0),
+      low_stock_items: statistics.filter(item => item.stock_status === 'low').length,
+      out_of_stock_items: statistics.filter(item => item.remaining_quantity === 0).length
+    };
+
+    return {
+      items: statistics,
+      overall: overallStats
+    };
+  }
+}
+
+module.exports = new PPERepository();

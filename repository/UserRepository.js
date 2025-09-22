@@ -1,4 +1,4 @@
-const User = require('../models/User');
+const User = require('../models/user');
 
 class UserRepository {
   // Find user by ID with full population
@@ -70,19 +70,10 @@ class UserRepository {
         User.countDocuments(filter)
       ]);
 
-      // Transform users to include virtual fields
-      const transformedUsers = users.map(user => {
-        const userObj = user.toObject();
-        return {
-          ...userObj,
-          employee_count: userObj.role_id?.role_name === 'employee' ? 1 : 0
-        };
-      });
-
       const totalPages = Math.ceil(total / limit);
 
       return {
-        users: transformedUsers,
+        users,
         pagination: {
           page,
           limit,

@@ -1,7 +1,10 @@
 const ROLES = {
   ADMIN: 'admin',
   LEADER: 'leader', 
-  EMPLOYEE: 'employee'
+  MANAGER: 'manager',
+  EMPLOYEE: 'employee',
+  TRAINER: 'trainer',
+  SAFETY_OFFICER: 'safety_officer'
 };
 
 const PERMISSIONS = {
@@ -63,9 +66,14 @@ const ROLE_PERMISSIONS = {
   
   [ROLES.LEADER]: [
     // User management for their department
+    PERMISSIONS.USER_CREATE,
     PERMISSIONS.USER_READ,
     PERMISSIONS.USER_LIST,
     PERMISSIONS.USER_UPDATE, // Limited to their department
+    
+    // Role read access for user management
+    PERMISSIONS.ROLE_READ,
+    PERMISSIONS.ROLE_LIST, // Needed for user management dropdowns
     
     // Department read access
     PERMISSIONS.DEPARTMENT_READ,
@@ -75,6 +83,55 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.SAFETY_REPORT_CREATE,
     PERMISSIONS.SAFETY_REPORT_READ,
     PERMISSIONS.SAFETY_REPORT_UPDATE,
+    PERMISSIONS.SAFETY_REPORT_LIST,
+    PERMISSIONS.SAFETY_REPORT_APPROVE
+  ],
+  
+  [ROLES.MANAGER]: [
+    // User management for their department
+    PERMISSIONS.USER_CREATE,
+    PERMISSIONS.USER_READ,
+    PERMISSIONS.USER_LIST,
+    PERMISSIONS.USER_UPDATE, // Limited to their department
+    
+    // Role read access for user management
+    PERMISSIONS.ROLE_READ,
+    PERMISSIONS.ROLE_LIST,
+    
+    // Department read access
+    PERMISSIONS.DEPARTMENT_READ,
+    PERMISSIONS.DEPARTMENT_LIST,
+    
+    // Safety reports - can approve and manage
+    PERMISSIONS.SAFETY_REPORT_CREATE,
+    PERMISSIONS.SAFETY_REPORT_READ,
+    PERMISSIONS.SAFETY_REPORT_UPDATE,
+    PERMISSIONS.SAFETY_REPORT_LIST,
+    PERMISSIONS.SAFETY_REPORT_APPROVE
+  ],
+  
+  [ROLES.TRAINER]: [
+    // Basic user access
+    PERMISSIONS.USER_READ,
+    PERMISSIONS.USER_LIST,
+    
+    // Safety reports - can create and manage training-related reports
+    PERMISSIONS.SAFETY_REPORT_CREATE,
+    PERMISSIONS.SAFETY_REPORT_READ,
+    PERMISSIONS.SAFETY_REPORT_UPDATE,
+    PERMISSIONS.SAFETY_REPORT_LIST
+  ],
+  
+  [ROLES.SAFETY_OFFICER]: [
+    // User read access for safety management
+    PERMISSIONS.USER_READ,
+    PERMISSIONS.USER_LIST,
+    
+    // Safety reports - full access
+    PERMISSIONS.SAFETY_REPORT_CREATE,
+    PERMISSIONS.SAFETY_REPORT_READ,
+    PERMISSIONS.SAFETY_REPORT_UPDATE,
+    PERMISSIONS.SAFETY_REPORT_DELETE,
     PERMISSIONS.SAFETY_REPORT_LIST,
     PERMISSIONS.SAFETY_REPORT_APPROVE
   ],
@@ -92,6 +149,56 @@ const ROLE_PERMISSIONS = {
 
 class PermissionUtils {
   static hasPermission(userRole, permission) {
+    // If userRole is an object with permissions property, use it
+    if (userRole && typeof userRole === 'object' && userRole.permissions) {
+      const permissions = userRole.permissions;
+      
+      // Check boolean format (e.g., 'user:read': true)
+      if (permissions[permission] === true) {
+        return true;
+      }
+      
+      // Check array format (e.g., user_management: ['create_user', 'read_user'])
+      // Map permission to array format
+      const permissionMapping = {
+        'user:create': 'create_user',
+        'user:read': 'read_user', 
+        'user:update': 'update_user',
+        'user:delete': 'delete_user',
+        'user:list': 'read_user', // list is same as read for array format
+        'role:create': 'create_role',
+        'role:read': 'read_role',
+        'role:update': 'update_role', 
+        'role:delete': 'delete_role',
+        'role:list': 'read_role', // list is same as read for array format
+        'department:create': 'create_department',
+        'department:read': 'read_department',
+        'department:update': 'update_department',
+        'department:delete': 'delete_department',
+        'department:list': 'read_department',
+        'safety_report:create': 'create_safety',
+        'safety_report:read': 'read_safety',
+        'safety_report:update': 'update_safety',
+        'safety_report:delete': 'delete_safety',
+        'safety_report:list': 'read_safety',
+        'safety_report:approve': 'update_safety' // approve is same as update
+      };
+      
+      const arrayPermission = permissionMapping[permission];
+      if (arrayPermission) {
+        // Check in relevant management arrays
+        const managementKeys = ['user_management', 'role_management', 'department_management', 'safety_management'];
+        for (const key of managementKeys) {
+          if (permissions[key] && Array.isArray(permissions[key]) && permissions[key].includes(arrayPermission)) {
+            return true;
+          }
+        }
+      }
+      
+      return false;
+    }
+    
+    // Fallback to role-based permissions for backward compatibility
     const rolePermissions = ROLE_PERMISSIONS[userRole] || [];
     return rolePermissions.includes(permission);
   }
@@ -109,14 +216,23 @@ class PermissionUtils {
   }
 
   static isAdmin(userRole) {
+    if (userRole && typeof userRole === 'object') {
+      return userRole.role_name === ROLES.ADMIN;
+    }
     return userRole === ROLES.ADMIN;
   }
 
   static isLeader(userRole) {
+    if (userRole && typeof userRole === 'object') {
+      return userRole.role_name === ROLES.LEADER;
+    }
     return userRole === ROLES.LEADER;
   }
 
   static isEmployee(userRole) {
+    if (userRole && typeof userRole === 'object') {
+      return userRole.role_name === ROLES.EMPLOYEE;
+    }
     return userRole === ROLES.EMPLOYEE;
   }
 }

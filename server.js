@@ -1,4 +1,5 @@
-require('dotenv').config(); // Load .env
+// Load .env with fallback values
+require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
@@ -8,9 +9,10 @@ const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/database');
 const routes = require('./routes');
 const ErrorMiddleware = require('./middlewares/ErrorMiddleware');
+const LoggingMiddleware = require('./middlewares/LoggingMiddleware');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
 // Debugging startup environment
 console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
@@ -74,10 +76,10 @@ app.options('*', (req, res) => {
   res.sendStatus(200);
 });
 
-// Rate limiting
+// Rate limiting - More flexible configuration
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: process.env.NODE_ENV === 'production' ? 100 : 10000,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'production' ? 200 : 5000, // Increased limits
   message: {
     success: false,
     message: 'Too many requests. Try again later.',
@@ -85,6 +87,15 @@ const limiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  // Skip successful requests
+  skipSuccessfulRequests: true,
+  // Skip failed requests
+  skipFailedRequests: false,
+  // Custom key generator to group by user
+  keyGenerator: (req) => {
+    // Use user ID if available, otherwise use IP
+    return req.user?.id || req.ip;
+  }
 });
 app.use(limiter);
 
@@ -92,11 +103,32 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Express-validator middleware
+const { validationResult } = require('express-validator');
+app.use((req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({
+            success: false,
+            message: 'Validation failed',
+            errors: errors.array().map(error => ({
+                field: error.path || error.param,
+                message: error.msg,
+                value: error.value
+            }))
+        });
+    }
+    next();
+});
+
 // Request logger
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl} - IP: ${req.ip}`);
   next();
 });
+
+// System logging middleware - ghi log tất cả các hoạt động
+app.use(LoggingMiddleware.logAllRequests);
 
 // Routes
 app.use('/api/v1', routes);
@@ -136,8 +168,10 @@ app.use(ErrorMiddleware.handle);
       `);
     });
 
-    // Set server timeout to 5 minutes for file uploads
-    server.timeout = 300000; // 5 minutes
+    // Set server timeout to 2 minutes for better performance
+    server.timeout = 120000; // 2 minutes
+    server.keepAliveTimeout = 65000; // 65 seconds
+    server.headersTimeout = 66000; // 66 seconds
 
     // Graceful shutdown
     process.on('SIGTERM', () => {

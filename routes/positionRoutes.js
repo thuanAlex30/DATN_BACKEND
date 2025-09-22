@@ -26,8 +26,8 @@ router.get('/hierarchy',
 
 // Position Options for dropdowns
 router.get('/options',
-  // AuthMiddleware.authenticate, // Temporarily disabled for testing
-  // AuthMiddleware.authorize(PERMISSIONS.DEPARTMENT_READ), // Temporarily disabled for testing
+  AuthMiddleware.authenticate, // Temporarily disabled for testing
+  AuthMiddleware.authorize(PERMISSIONS.DEPARTMENT_READ), // Temporarily disabled for testing
   PositionController.getPositionOptions
 );
 
