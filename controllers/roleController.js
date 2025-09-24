@@ -60,6 +60,20 @@ class RoleController {
     const result = await RoleService.getRoleStats();
     return ApiResponse.success(res, result, 'Role statistics retrieved successfully');
   });
+
+  // Get user count for each role
+  static getRoleUserCounts = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const result = await RoleService.getRoleUserCounts();
+    return ApiResponse.success(res, result, 'Role user counts retrieved successfully');
+  });
+
+  // Update role permissions
+  static updateRolePermissions = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { permissions } = req.body;
+    const result = await RoleService.updateRolePermissions(id, permissions);
+    return ApiResponse.success(res, result, 'Role permissions updated successfully');
+  });
 }
 
 module.exports = RoleController;

@@ -61,7 +61,11 @@ class AuthService {
           email: user.email,
           full_name: user.full_name,
           phone: user.phone,
-          role: user.role_id.role_name,
+          role: {
+            _id: user.role_id._id,
+            role_name: user.role_id.role_name,
+            permissions: user.role_id.permissions || {}
+          },
           is_active: user.is_active,
           created_at: user.created_at
         },
@@ -110,7 +114,11 @@ class AuthService {
           email: user.email,
           full_name: user.full_name,
           phone: user.phone,
-          role: user.role_id.role_name,
+          role: {
+            _id: user.role_id._id,
+            role_name: user.role_id.role_name,
+            permissions: user.role_id.permissions || {}
+          },
           is_active: user.is_active,
           last_login: new Date()
         },
@@ -159,7 +167,11 @@ class AuthService {
           username: user.username,
           email: user.email,
           full_name: user.full_name,
-          role: user.role_id.role_name
+          role: {
+            _id: user.role_id._id,
+            role_name: user.role_id.role_name,
+            permissions: user.role_id.permissions || {}
+          }
         },
         tokens
       };

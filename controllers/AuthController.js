@@ -26,7 +26,7 @@ class AuthController {
   // Change password
   static changePassword = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { currentPassword, newPassword } = req.body;
-    const userId = req.user.id;
+    const userId = req.user._id || req.user.id;
     
     const result = await AuthService.changePassword(userId, currentPassword, newPassword);
     return ApiResponse.success(res, result, 'Password changed successfully');
@@ -34,36 +34,30 @@ class AuthController {
 
   // Get user profile
   static getProfile = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const userId = req.user.id;
+    const userId = req.user._id || req.user.id;
     const result = await AuthService.getProfile(userId);
     return ApiResponse.success(res, result, 'Profile retrieved successfully');
   });
 
   // Update user profile
   static updateProfile = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const userId = req.user.id;
+    const userId = req.user._id || req.user.id;
     const result = await AuthService.updateProfile(userId, req.body);
     return ApiResponse.success(res, result, 'Profile updated successfully');
   });
 
   // Logout user
   static logout = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const userId = req.user.id;
+    const userId = req.user._id || req.user.id;
     const result = await AuthService.logout(userId);
     return ApiResponse.success(res, result, 'Logout successful');
   });
 
   // Get current user info
   static me = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const user = {
-      id: req.user.id,
-      username: req.user.username,
-      email: req.user.email,
-      full_name: req.user.full_name,
-      role: req.user.role,
-      permissions: req.user.permissions
-    };
-    return ApiResponse.success(res, user, 'Current user info retrieved successfully');
+    const userId = req.user._id || req.user.id;
+    const result = await AuthService.getProfile(userId);
+    return ApiResponse.success(res, result, 'Current user info retrieved successfully');
   });
 }
 

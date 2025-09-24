@@ -17,5 +17,7 @@ router.put('/progress/:id', AuthMiddleware.authenticate, IncidentController.upda
 router.put('/close/:id', AuthMiddleware.authenticate, IncidentController.closeIncident);
 // Lấy danh sách sự cố
 router.get('/', AuthMiddleware.authenticate, IncidentController.getIncidents);
+// Lấy chi tiết sự cố
+router.get('/:id', AuthMiddleware.authenticate, IncidentController.getIncidentById);
 
 module.exports = router;

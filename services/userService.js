@@ -166,7 +166,7 @@ class UserService {
   // Get users with pagination and filters
   static async getUsers(options = {}) {
     try {
-      const result = await UserRepository.findWithPagination(options);
+      const result = await UserRepository.findAll(options);
       
       return {
         users: result.users.map(user => ({
@@ -201,7 +201,6 @@ class UserService {
       if (!result || !result.users || !Array.isArray(result.users)) {
         return [];
       }
-      
       return result.users.map(user => ({
         id: user._id,
         username: user.username,

@@ -123,3 +123,17 @@ exports.getIncidents = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// 8. Lấy chi tiết sự cố
+exports.getIncidentById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const incident = await Incident.findById(id).populate('createdBy assignedTo histories.performedBy');
+    if (!incident) {
+      return res.status(404).json({ error: 'Không tìm thấy sự cố' });
+    }
+    res.json(incident);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

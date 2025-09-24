@@ -18,6 +18,7 @@ class DepartmentRepository {
       limit = 10,
       search = '',
       is_active,
+      manager_id,
       sort_by = 'created_at',
       sort_order = 'desc'
     } = options;
@@ -33,6 +34,10 @@ class DepartmentRepository {
 
     if (typeof is_active === 'boolean') {
       filter.is_active = is_active;
+    }
+
+    if (manager_id) {
+      filter.manager_id = manager_id;
     }
 
     const sortOrder = sort_order === 'asc' ? 1 : -1;
@@ -155,7 +160,6 @@ class DepartmentRepository {
   static async getAllActive() {
     return await Department.find({ is_active: true })
       .populate('manager_id', 'username full_name email')
-      .populate('employees_count')
       .sort({ department_name: 1 });
   }
 
@@ -170,7 +174,6 @@ class DepartmentRepository {
 
     return await Department.find(filter)
       .populate('manager_id', 'username full_name email')
-      .populate('employees_count')
       .limit(limit)
       .sort({ department_name: 1 });
   }

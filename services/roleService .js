@@ -105,16 +105,25 @@ class RoleService {
     try {
       const result = await RoleRepository.findWithPagination(options);
       
+      // Get user counts for each role
+      const rolesWithUserCount = await Promise.all(
+        result.roles.map(async (role) => {
+          const userCount = await UserRepository.countByRole(role._id);
+          return {
+            id: role._id,
+            role_name: role.role_name,
+            description: role.description,
+            permissions: role.permissions,
+            is_active: role.is_active,
+            user_count: userCount,
+            created_at: role.created_at,
+            updated_at: role.updated_at
+          };
+        })
+      );
+      
       return {
-        roles: result.roles.map(role => ({
-          id: role._id,
-          role_name: role.role_name,
-          description: role.description,
-          permissions: role.permissions,
-          is_active: role.is_active,
-          created_at: role.created_at,
-          updated_at: role.updated_at
-        })),
+        roles: rolesWithUserCount,
         pagination: result.pagination
       };
     } catch (error) {
@@ -127,14 +136,23 @@ class RoleService {
     try {
       const roles = await RoleRepository.findAllActive();
       
-      return roles.map(role => ({
-        id: role._id,
-        role_name: role.role_name,
-        description: role.description,
-        permissions: role.permissions,
-        is_active: role.is_active,
-        created_at: role.created_at
-      }));
+      // Get user counts for each role
+      const rolesWithUserCount = await Promise.all(
+        roles.map(async (role) => {
+          const userCount = await UserRepository.countByRole(role._id);
+          return {
+            id: role._id,
+            role_name: role.role_name,
+            description: role.description,
+            permissions: role.permissions,
+            is_active: role.is_active,
+            user_count: userCount,
+            created_at: role.created_at
+          };
+        })
+      );
+      
+      return rolesWithUserCount;
     } catch (error) {
       throw error;
     }
@@ -145,15 +163,24 @@ class RoleService {
     try {
       const roles = await RoleRepository.findAll();
       
-      return roles.map(role => ({
-        id: role._id,
-        role_name: role.role_name,
-        description: role.description,
-        permissions: role.permissions,
-        is_active: role.is_active,
-        created_at: role.created_at,
-        updated_at: role.updated_at
-      }));
+      // Get user counts for each role
+      const rolesWithUserCount = await Promise.all(
+        roles.map(async (role) => {
+          const userCount = await UserRepository.countByRole(role._id);
+          return {
+            id: role._id,
+            role_name: role.role_name,
+            description: role.description,
+            permissions: role.permissions,
+            is_active: role.is_active,
+            user_count: userCount,
+            created_at: role.created_at,
+            updated_at: role.updated_at
+          };
+        })
+      );
+      
+      return rolesWithUserCount;
     } catch (error) {
       throw error;
     }
@@ -168,21 +195,24 @@ class RoleService {
         throw new Error('Role not found');
       }
 
-      // If deactivating, check if role is being used
-      if (role.is_active) {
-        const userCount = await UserRepository.countByRole(id);
-        if (userCount > 0) {
-          throw new Error(`Cannot deactivate role. It is currently assigned to ${userCount} user(s)`);
-        }
-      }
-
+      // Check if role is being used (for warning purposes)
+      const userCount = await UserRepository.countByRole(id);
+      
       const updatedRole = await RoleRepository.updateById(id, { is_active: !role.is_active });
+
+      let message = `Role ${updatedRole.is_active ? 'activated' : 'deactivated'} successfully`;
+      
+      // Add warning if deactivating a role that's in use
+      if (!updatedRole.is_active && userCount > 0) {
+        message += `. Warning: This role is currently assigned to ${userCount} user(s)`;
+      }
 
       return {
         id: updatedRole._id,
         role_name: updatedRole.role_name,
         is_active: updatedRole.is_active,
-        message: `Role ${updatedRole.is_active ? 'activated' : 'deactivated'} successfully`
+        user_count: userCount,
+        message: message
       };
     } catch (error) {
       throw error;
@@ -202,6 +232,47 @@ class RoleService {
         total: totalRoles.length,
         active: activeRoles.length,
         inactive: inactiveRoles.length
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Get user count for each role
+  static async getRoleUserCounts() {
+    try {
+      const roles = await RoleRepository.findAll();
+      const roleUserCounts = await Promise.all(
+        roles.map(async (role) => {
+          const userCount = await UserRepository.countByRole(role._id);
+          return {
+            role_id: role._id,
+            role_name: role.role_name,
+            user_count: userCount
+          };
+        })
+      );
+
+      return roleUserCounts;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Update role permissions
+  static async updateRolePermissions(id, permissions) {
+    try {
+      const updatedRole = await RoleRepository.updateById(id, { permissions });
+      
+      if (!updatedRole) {
+        throw new Error('Role not found');
+      }
+
+      return {
+        id: updatedRole._id,
+        role_name: updatedRole.role_name,
+        permissions: updatedRole.permissions,
+        updated_at: updatedRole.updated_at
       };
     } catch (error) {
       throw error;
