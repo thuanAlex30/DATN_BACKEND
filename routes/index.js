@@ -8,6 +8,7 @@ const systemLogRoutes = require('./systemLogRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const ppeRoutes = require('./ppeRoutes');
 const projectRoutes = require('./projectRoutes');
+const incidentRoutes = require('./incidentRoutes');
 
 const router = express.Router();
 
@@ -42,6 +43,7 @@ router.use('/system-logs', systemLogRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/ppe', ppeRoutes);
 router.use('/projects', projectRoutes);
+router.use('/incidents', incidentRoutes);
 
 // Global 404 handler for API routes
 router.use('*', (req, res) => {
@@ -69,6 +71,28 @@ router.use('*', (req, res) => {
         'GET /api/projects',
         'GET /api/projects/stats',
         'GET /api/projects/sites'
+      ]
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Global 404 handler for API routes
+router.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'API endpoint not found',
+    error: {
+      code: 'ENDPOINT_NOT_FOUND',
+      details: `The requested endpoint ${req.method} ${req.originalUrl} does not exist`,
+      available_endpoints: [
+        'GET /api/health',
+        'POST /api/auth/login',
+        'POST /api/auth/logout',
+        'GET /api/users',
+        'GET /api/roles',
+        'GET /api/departments',
+        'GET /api/positions'
       ]
     },
     timestamp: new Date().toISOString()
