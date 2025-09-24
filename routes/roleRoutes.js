@@ -146,4 +146,22 @@ router.patch('/:id/toggle-status',
   RoleController.toggleRoleStatus
 );
 
+// Get user count for each role
+router.get('/user-counts', 
+  AuthMiddleware.authorize(PERMISSIONS.ROLE_LIST),
+  RoleController.getRoleUserCounts
+);
+
+// Update role permissions
+router.patch('/:id/permissions', 
+  ValidationMiddleware.validate({
+    params: roleValidation.id,
+    body: Joi.object({
+      permissions: Joi.object().optional().default({})
+    })
+  }),
+  AuthMiddleware.authorize(PERMISSIONS.ROLE_UPDATE),
+  RoleController.updateRolePermissions
+);
+
 module.exports = router;

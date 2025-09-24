@@ -42,11 +42,16 @@ class AuthMiddleware {
 
       // Attach user info to request
       req.user = {
+        _id: user._id,
         id: user._id,
         username: user.username,
         email: user.email,
         full_name: user.full_name,
-        role: user.role_id.role_name,
+        role: {
+          _id: user.role_id._id,
+          role_name: user.role_id.role_name,
+          permissions: user.role_id.permissions || {}
+        },
         role_id: user.role_id._id,
         department_id: user.department_id,
         position_id: user.position_id,
@@ -140,7 +145,8 @@ class AuthMiddleware {
           return ApiResponse.unauthorized(res, 'Authentication required');
         }
 
-        if (!allowedRoles.includes(req.user.role)) {
+        const userRoleName = req.user.role?.role_name || req.user.role;
+        if (!allowedRoles.includes(userRoleName)) {
           return ApiResponse.forbidden(res, 'Insufficient role permissions');
         }
 
