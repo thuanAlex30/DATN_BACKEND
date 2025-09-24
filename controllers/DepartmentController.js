@@ -324,7 +324,7 @@ class DepartmentController {
     }
 
     // Get employee count using aggregation
-    const User = require('../models/User');
+    const User = require('../models/user');
     const employeeCount = await User.countDocuments({ 
       department_id: department._id,
       is_active: true 

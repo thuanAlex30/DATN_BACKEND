@@ -1,4 +1,4 @@
-const User = require('../models/User');
+const User = require('../models/user');
 
 class UserRepository {
   // Find user by ID with full population
