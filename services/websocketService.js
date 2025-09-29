@@ -464,6 +464,29 @@ class WebSocketService {
         this.emitToRoom('admin_room', 'incident_closed', eventData);
     }
 
+    /**
+     * Emit incident investigated event
+     */
+    emitIncidentInvestigated(incident, investigator) {
+        console.log('🔍 emitIncidentInvestigated called with:', { incident: incident._id, investigator: investigator._id });
+        
+        const eventData = {
+            incident,
+            investigator: {
+                id: investigator._id,
+                name: investigator.full_name || investigator.name
+            },
+            timestamp: new Date()
+        };
+
+        this.emitToRoom(`incident_${incident._id}`, 'incident_investigated', eventData);
+        this.emitToRole('safety_officer', 'incident_investigated', eventData);
+        this.emitToRole('manager', 'incident_investigated', eventData);
+        this.emitToRoom('admin_room', 'incident_investigated', eventData);
+        
+        console.log('✅ emitIncidentInvestigated completed');
+    }
+
     // ==================== TRAINING EVENTS ====================
 
     /**
@@ -862,6 +885,29 @@ class WebSocketService {
                 console.log('✅ Test notification broadcasted to all users');
             });
         });
+    }
+
+    /**
+     * Emit incident investigated event (backup method)
+     */
+    emitIncidentInvestigated(incident, investigator) {
+        console.log('🔍 emitIncidentInvestigated (backup) called with:', { incident: incident._id, investigator: investigator._id });
+        
+        const eventData = {
+            incident,
+            investigator: {
+                id: investigator._id,
+                name: investigator.full_name || investigator.name
+            },
+            timestamp: new Date()
+        };
+
+        this.emitToRoom(`incident_${incident._id}`, 'incident_investigated', eventData);
+        this.emitToRole('safety_officer', 'incident_investigated', eventData);
+        this.emitToRole('manager', 'incident_investigated', eventData);
+        this.emitToRoom('admin_room', 'incident_investigated', eventData);
+        
+        console.log('✅ emitIncidentInvestigated (backup) completed');
     }
 }
 
