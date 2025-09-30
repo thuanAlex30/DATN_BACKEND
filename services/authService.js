@@ -2,6 +2,8 @@ const UserRepository = require('../repository/UserRepository');
 const RoleRepository = require('../repository/RoleRepository');
 const JWTConfig = require('../config/jwt');
 const HashUtils = require('../utils/hash');
+const { transformDocumentId, POPULATED_FIELDS } = require('../utils/transformId');
+const { createResponse } = require('../utils/response');
 
 class AuthService {
   // User registration
@@ -10,19 +12,19 @@ class AuthService {
       // Check if username already exists
       const existingUsername = await UserRepository.usernameExists(userData.username);
       if (existingUsername) {
-        throw new Error('Username already exists');
+        return createResponse(400, 'Username already exists');
       }
 
       // Check if email already exists
       const existingEmail = await UserRepository.emailExists(userData.email);
       if (existingEmail) {
-        throw new Error('Email already exists');
+        return createResponse(400, 'Email already exists');
       }
 
       // Verify role exists and is active
       const role = await RoleRepository.findById(userData.role_id);
       if (!role || !role.is_active) {
-        throw new Error('Invalid or inactive role');
+        return createResponse(400, 'Invalid or inactive role');
       }
 
       // Hash password
@@ -54,7 +56,7 @@ class AuthService {
       // Update last login
       await UserRepository.updateLastLogin(user._id);
 
-      return {
+      return createResponse(201, 'Đăng ký thành công', {
         user: {
           id: user._id,
           username: user.username,
@@ -70,9 +72,10 @@ class AuthService {
           created_at: user.created_at
         },
         tokens
-      };
+      });
     } catch (error) {
-      throw error;
+      console.error('Error registering user:', error);
+      return createResponse(500, 'Lỗi khi đăng ký', null, error.message);
     }
   }
 
@@ -81,20 +84,20 @@ class AuthService {
     try {
       const user = await UserRepository.findByUsernameOrEmail(identifier, ['role_id']);
       if (!user) {
-        throw new Error('Invalid credentials');
+        return createResponse(401, 'Thông tin đăng nhập không hợp lệ');
       }
 
       if (!user.is_active) {
-        throw new Error('Account is deactivated');
+        return createResponse(403, 'Tài khoản đã bị vô hiệu hóa');
       }
 
       if (!user.role_id || !user.role_id.is_active) {
-        throw new Error('Invalid or inactive role');
+        return createResponse(403, 'Vai trò không hợp lệ hoặc đã bị vô hiệu hóa');
       }
 
       const isPasswordValid = await user.comparePassword(password);
       if (!isPasswordValid) {
-        throw new Error('Invalid credentials');
+        return createResponse(401, 'Thông tin đăng nhập không hợp lệ');
       }
 
       const tokenPayload = {
@@ -107,7 +110,7 @@ class AuthService {
 
       await UserRepository.updateLastLogin(user._id);
 
-      return {
+      return createResponse(200, 'Đăng nhập thành công', {
         user: {
           id: user._id,
           username: user.username,
@@ -123,9 +126,10 @@ class AuthService {
           last_login: new Date()
         },
         tokens
-      };
+      });
     } catch (error) {
-      throw error;
+      console.error('Error logging in user:', error);
+      return createResponse(500, 'Lỗi khi đăng nhập', null, error.message);
     }
   }
 
@@ -133,9 +137,10 @@ class AuthService {
   static async logout(userId) {
     try {
       // Just returning success for now
-      return { message: 'Logged out successfully' };
+      return createResponse(200, 'Đăng xuất thành công');
     } catch (error) {
-      throw error;
+      console.error('Error logging out user:', error);
+      return createResponse(500, 'Lỗi khi đăng xuất', null, error.message);
     }
   }
 
@@ -146,11 +151,11 @@ class AuthService {
       const user = await UserRepository.findById(decoded.userId, ['role_id']);
 
       if (!user || !user.is_active) {
-        throw new Error('User not found or inactive');
+        return createResponse(401, 'User not found or inactive');
       }
 
       if (!user.role_id || !user.role_id.is_active) {
-        throw new Error('Invalid or inactive role');
+        return createResponse(403, 'Invalid or inactive role');
       }
 
       const tokenPayload = {
@@ -161,7 +166,7 @@ class AuthService {
       };
       const tokens = JWTConfig.generateTokens(tokenPayload);
 
-      return {
+      return createResponse(200, 'Refresh token thành công', {
         user: {
           id: user._id,
           username: user.username,
@@ -174,9 +179,10 @@ class AuthService {
           }
         },
         tokens
-      };
+      });
     } catch (error) {
-      throw new Error('Invalid refresh token');
+      console.error('Error refreshing token:', error);
+      return createResponse(401, 'Invalid refresh token');
     }
   }
 
@@ -185,20 +191,21 @@ class AuthService {
     try {
       const user = await UserRepository.findById(userId);
       if (!user) {
-        throw new Error('User not found');
+        return createResponse(404, 'User not found');
       }
 
       const isCurrentPasswordValid = await user.comparePassword(currentPassword);
       if (!isCurrentPasswordValid) {
-        throw new Error('Current password is incorrect');
+        return createResponse(400, 'Current password is incorrect');
       }
 
       const password_hash = await HashUtils.hashPassword(newPassword);
       await UserRepository.updateById(userId, { password_hash });
 
-      return { message: 'Password changed successfully' };
+      return createResponse(200, 'Password changed successfully');
     } catch (error) {
-      throw error;
+      console.error('Error changing password:', error);
+      return createResponse(500, 'Lỗi khi đổi mật khẩu', null, error.message);
     }
   }
 
@@ -207,7 +214,7 @@ class AuthService {
     try {
       const user = await UserRepository.findById(userId, ['role_id', 'department_id', 'position_id']);
       if (!user) {
-        throw new Error('User not found');
+        return createResponse(404, 'User not found');
       }
 
       // Populate role data
@@ -217,7 +224,7 @@ class AuthService {
         roleData = await RoleRepository.findById(user.role_id);
       }
 
-      return {
+      return createResponse(200, 'Lấy thông tin profile thành công', {
         id: user._id,
         username: user.username,
         email: user.email,
@@ -240,9 +247,10 @@ class AuthService {
         last_login: user.last_login,
         created_at: user.created_at,
         updated_at: user.updated_at
-      };
+      });
     } catch (error) {
-      throw error;
+      console.error('Error getting profile:', error);
+      return createResponse(500, 'Lỗi khi lấy thông tin profile', null, error.message);
     }
   }
 
@@ -253,7 +261,7 @@ class AuthService {
       if (updateData.username) {
         const usernameExists = await UserRepository.usernameExists(updateData.username, userId);
         if (usernameExists) {
-          throw new Error('Username already exists');
+          return createResponse(400, 'Username already exists');
         }
       }
 
@@ -261,18 +269,18 @@ class AuthService {
       if (updateData.email) {
         const emailExists = await UserRepository.emailExists(updateData.email, userId);
         if (emailExists) {
-          throw new Error('Email already exists');
+          return createResponse(400, 'Email already exists');
         }
       }
 
       const updatedUser = await UserRepository.updateById(userId, updateData);
       if (!updatedUser) {
-        throw new Error('User not found');
+        return createResponse(404, 'User not found');
       }
 
       await updatedUser.populate(['role_id', 'department_id', 'position_id']);
 
-      return {
+      return createResponse(200, 'Cập nhật profile thành công', {
         id: updatedUser._id,
         username: updatedUser.username,
         email: updatedUser.email,
@@ -285,9 +293,10 @@ class AuthService {
         position: updatedUser.position_id,
         is_active: updatedUser.is_active,
         updated_at: updatedUser.updated_at
-      };
+      });
     } catch (error) {
-      throw error;
+      console.error('Error updating profile:', error);
+      return createResponse(500, 'Lỗi khi cập nhật profile', null, error.message);
     }
   }
 }

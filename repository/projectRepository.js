@@ -2,6 +2,7 @@ const Project = require('../models/project');
 const Site = require('../models/site');
 const ProjectAssignment = require('../models/projectAssignment');
 const User = require('../models/user');
+const { transformDocumentId, transformDocumentsId, POPULATED_FIELDS } = require('../utils/transformId');
 
 class ProjectRepository {
   // ========== PROJECT CRUD ==========
@@ -32,13 +33,7 @@ class ProjectRepository {
       .populate('site_id', 'site_name address')
       .sort({ created_at: -1 });
 
-    // Transform _id to id for frontend compatibility
-    return projects.map(project => {
-      const projectObj = project.toObject();
-      projectObj.id = projectObj._id;
-      delete projectObj._id;
-      return projectObj;
-    });
+    return projects;
   }
 
   async getProjectById(id) {
@@ -48,11 +43,7 @@ class ProjectRepository {
     
     if (!project) return null;
     
-    // Transform _id to id for frontend compatibility
-    const projectObj = project.toObject();
-    projectObj.id = projectObj._id;
-    delete projectObj._id;
-    return projectObj;
+    return project;
   }
 
   async createProject(projectData) {
@@ -71,11 +62,7 @@ class ProjectRepository {
     
     if (!project) return null;
     
-    // Transform _id to id for frontend compatibility
-    const projectObj = project.toObject();
-    projectObj.id = projectObj._id;
-    delete projectObj._id;
-    return projectObj;
+    return project;
   }
 
   async deleteProject(id) {
@@ -116,13 +103,7 @@ class ProjectRepository {
       .populate('user_id', 'full_name email phone')
       .sort({ created_at: -1 });
 
-    // Transform _id to id for frontend compatibility
-    return assignments.map(assignment => {
-      const assignmentObj = assignment.toObject();
-      assignmentObj.id = assignmentObj._id;
-      delete assignmentObj._id;
-      return assignmentObj;
-    });
+    return assignments;
   }
 
   async addProjectAssignment(assignmentData) {
@@ -261,11 +242,7 @@ class ProjectRepository {
     
     if (!project) return null;
     
-    // Transform _id to id for frontend compatibility
-    const projectObj = project.toObject();
-    projectObj.id = projectObj._id;
-    delete projectObj._id;
-    return projectObj;
+    return project;
   }
 
   // ========== PROJECT SEARCH ==========
@@ -290,13 +267,7 @@ class ProjectRepository {
       .populate('site_id', 'site_name address')
       .sort({ created_at: -1 });
 
-    // Transform _id to id for frontend compatibility
-    return projects.map(project => {
-      const projectObj = project.toObject();
-      projectObj.id = projectObj._id;
-      delete projectObj._id;
-      return projectObj;
-    });
+    return projects;
   }
 
   // ========== PROJECT TIMELINE ==========

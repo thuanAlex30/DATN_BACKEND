@@ -11,6 +11,19 @@ const projectRoutes = require('./projectRoutes');
 const incidentRoutes = require('./incidentRoutes');
 const trainingRoutes = require('./trainingRoutes');
 
+// Advanced Project Management Routes
+const projectPhaseRoutes = require('./projectPhaseRoutes');
+const projectTaskRoutes = require('./projectTaskRoutes');
+const projectMilestoneRoutes = require('./projectMilestoneRoutes');
+const siteRoutes = require('./siteRoutes');
+const siteAreaRoutes = require('./siteAreaRoutes');
+const workLocationRoutes = require('./workLocationRoutes');
+const projectResourceRoutes = require('./projectResourceRoutes');
+const projectRiskRoutes = require('./projectRiskRoutes');
+const projectChangeRequestRoutes = require('./projectChangeRequestRoutes');
+const projectStatusReportRoutes = require('./projectStatusReportRoutes');
+const qualityCheckpointRoutes = require('./qualityCheckpointRoutes');
+
 const router = express.Router();
 
 // Health check endpoint
@@ -30,7 +43,18 @@ router.get('/health', (req, res) => {
       notifications: '/api/notifications',
       ppe: '/api/ppe',
       projects: '/api/projects',
-      training: '/api/training'
+      training: '/api/training',
+      sites: '/api/sites',
+      siteAreas: '/api/site-areas',
+      workLocations: '/api/work-locations',
+      projectPhases: '/api/project-phases',
+      projectTasks: '/api/project-tasks',
+      projectMilestones: '/api/project-milestones',
+      projectResources: '/api/project-resources',
+      projectRisks: '/api/project-risks',
+      projectChangeRequests: '/api/project-change-requests',
+      projectStatusReports: '/api/project-status-reports',
+      qualityCheckpoints: '/api/quality-checkpoints'
     }
   });
 });
@@ -47,6 +71,19 @@ router.use('/ppe', ppeRoutes);
 router.use('/projects', projectRoutes);
 router.use('/incidents', incidentRoutes);
 router.use('/training', trainingRoutes);
+
+// Advanced Project Management Routes
+router.use('/project-phases', projectPhaseRoutes);
+router.use('/project-tasks', projectTaskRoutes);
+router.use('/project-milestones', projectMilestoneRoutes);
+router.use('/sites', siteRoutes);
+router.use('/site-areas', siteAreaRoutes);
+router.use('/work-locations', workLocationRoutes);
+router.use('/project-resources', projectResourceRoutes);
+router.use('/project-risks', projectRiskRoutes);
+router.use('/project-change-requests', projectChangeRequestRoutes);
+router.use('/project-status-reports', projectStatusReportRoutes);
+router.use('/quality-checkpoints', qualityCheckpointRoutes);
 
 // Global 404 handler for API routes
 router.use('*', (req, res) => {
@@ -79,7 +116,27 @@ router.use('*', (req, res) => {
         'GET /api/training/enrollments',
         'POST /api/training/enrollments',
         'GET /api/training/question-banks',
-        'GET /api/training/dashboard/stats'
+        'GET /api/training/dashboard/stats',
+        'GET /api/sites',
+        'POST /api/sites',
+        'GET /api/sites/:id',
+        'PUT /api/sites/:id',
+        'DELETE /api/sites/:id',
+        'GET /api/site-areas/site/:siteId/areas',
+        'GET /api/site-areas/areas',
+        'POST /api/site-areas/areas',
+        'GET /api/site-areas/areas/:id',
+        'PUT /api/site-areas/areas/:id',
+        'DELETE /api/site-areas/areas/:id',
+        'GET /api/work-locations',
+        'GET /api/project-phases',
+        'GET /api/project-tasks',
+        'GET /api/project-milestones',
+        'GET /api/project-resources',
+        'GET /api/project-risks',
+        'GET /api/project-change-requests',
+        'GET /api/project-status-reports',
+        'GET /api/quality-checkpoints'
       ]
     },
     timestamp: new Date().toISOString()

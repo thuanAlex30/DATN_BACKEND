@@ -135,101 +135,118 @@ class PPERepository {
 
   // PPE Items
   async getAllItems(filters = {}) {
-    const query = {};
-    
-    if (filters.category_id) {
-      query.category_id = filters.category_id;
-    }
-    
-    if (filters.search) {
-      query.$or = [
-        { item_name: { $regex: filters.search, $options: 'i' } },
-        { item_code: { $regex: filters.search, $options: 'i' } },
-        { brand: { $regex: filters.search, $options: 'i' } }
-      ];
-    }
+    try {
+      const query = {};
+      
+      if (filters.category_id) {
+        query.category_id = filters.category_id;
+      }
+      
+      if (filters.search) {
+        query.$or = [
+          { item_name: { $regex: filters.search, $options: 'i' } },
+          { item_code: { $regex: filters.search, $options: 'i' } },
+          { brand: { $regex: filters.search, $options: 'i' } }
+        ];
+      }
 
-    // Use aggregation pipeline for better performance
-    const pipeline = [
-      { $match: query },
-      {
-        $lookup: {
-          from: 'ppecategories',
-          localField: 'category_id',
-          foreignField: '_id',
-          as: 'category'
-        }
-      },
-      {
-        $unwind: {
-          path: '$category',
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      {
-        $lookup: {
-          from: 'ppeissuances',
-          let: { itemId: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$item_id', '$$itemId'] },
-                    { $eq: ['$status', 'issued'] }
-                  ]
+      // Use aggregation pipeline for better performance
+      const pipeline = [
+        { $match: query },
+        {
+          $lookup: {
+            from: 'ppecategories',
+            localField: 'category_id',
+            foreignField: '_id',
+            as: 'category'
+          }
+        },
+        {
+          $unwind: {
+            path: '$category',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $lookup: {
+            from: 'ppeissuances',
+            let: { itemId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$item_id', '$$itemId'] },
+                      { $eq: ['$status', 'issued'] }
+                    ]
+                  }
+                }
+              },
+              {
+                $group: {
+                  _id: null,
+                  total_allocated: { $sum: '$quantity' }
                 }
               }
-            },
-            {
-              $group: {
-                _id: null,
-                total_allocated: { $sum: '$quantity' }
-              }
-            }
-          ],
-          as: 'allocations'
-        }
-      },
-      {
-        $addFields: {
-          total_quantity: { $add: ['$quantity_available', '$quantity_allocated'] },
-          actual_allocated_quantity: {
-            $ifNull: [{ $arrayElemAt: ['$allocations.total_allocated', 0] }, 0]
+            ],
+            as: 'allocations'
           }
-        }
-      },
-      {
-        $addFields: {
-          remaining_quantity: { $subtract: ['$total_quantity', '$actual_allocated_quantity'] }
-        }
-      },
-      {
-        $project: {
-          category_id: 1,
-          item_name: 1,
-          item_code: 1,
-          brand: 1,
-          model: 1,
-          quantity_available: 1,
-          quantity_allocated: 1,
-          minimum_stock: 1,
-          unit: 1,
-          description: 1,
-          is_active: 1,
-          created_at: 1,
-          updated_at: 1,
-          'category.category_name': 1,
-          'category.description': 1,
-          total_quantity: 1,
-          remaining_quantity: 1,
-          actual_allocated_quantity: 1
-        }
-      },
-      { $sort: { item_name: 1 } }
-    ];
+        },
+        {
+          $addFields: {
+            total_quantity: { $add: ['$quantity_available', '$quantity_allocated'] },
+            actual_allocated_quantity: {
+              $ifNull: [{ $arrayElemAt: ['$allocations.total_allocated', 0] }, 0]
+            }
+          }
+        },
+        {
+          $addFields: {
+            remaining_quantity: { $subtract: ['$total_quantity', '$actual_allocated_quantity'] }
+          }
+        },
+        {
+          $project: {
+            _id: 1,
+            category_id: 1,
+            item_name: 1,
+            item_code: 1,
+            brand: 1,
+            model: 1,
+            reorder_level: 1,
+            quantity_available: 1,
+            quantity_allocated: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            'category.category_name': 1,
+            'category.description': 1,
+            total_quantity: 1,
+            remaining_quantity: 1,
+            actual_allocated_quantity: 1
+          }
+        },
+        { $sort: { item_name: 1 } }
+      ];
 
-    return await PPEItem.aggregate(pipeline);
+      const result = await PPEItem.aggregate(pipeline);
+      
+      // Filter out any documents with invalid ObjectIds
+      return result.filter(doc => {
+        try {
+          // Test if _id can be converted to string
+          if (doc._id) {
+            doc._id.toString();
+          }
+          return true;
+        } catch (error) {
+          console.error('Invalid ObjectId found in document:', doc._id, error);
+          return false;
+        }
+      });
+    } catch (error) {
+      console.error('Error in getAllItems:', error);
+      throw error;
+    }
   }
 
   async getItemById(id) {
@@ -366,51 +383,67 @@ class PPERepository {
 
   // Statistics
   async getStockStatus() {
-    const items = await PPEItem.find()
-      .populate('category_id', 'category_name description')
-      .sort({ item_name: 1 });
+    try {
+      const items = await PPEItem.find()
+        .populate('category_id', 'category_name description')
+        .sort({ item_name: 1 });
 
-    const itemsWithTotals = await Promise.all(items.map(async (item) => {
-      // Calculate total quantity (available + allocated)
-      const total_quantity = item.quantity_available + item.quantity_allocated;
-      
-      // Get actual allocated quantity from issuances (for verification)
-      const actualAllocated = await PPEIssuance.aggregate([
-        {
-          $match: {
-            item_id: item._id,
-            status: 'issued'
+      const itemsWithTotals = await Promise.all(items.map(async (item) => {
+        try {
+          // Test if item._id is valid
+          if (item._id) {
+            item._id.toString();
           }
-        },
-        {
-          $group: {
-            _id: null,
-            total_allocated: { $sum: '$quantity' }
-          }
+          
+          // Calculate total quantity (available + allocated)
+          const total_quantity = item.quantity_available + item.quantity_allocated;
+          
+          // Get actual allocated quantity from issuances (for verification)
+          const actualAllocated = await PPEIssuance.aggregate([
+            {
+              $match: {
+                item_id: item._id,
+                status: 'issued'
+              }
+            },
+            {
+              $group: {
+                _id: null,
+                total_allocated: { $sum: '$quantity' }
+              }
+            }
+          ]);
+
+          const actual_allocated_quantity = actualAllocated.length > 0 ? actualAllocated[0].total_allocated : 0;
+          
+          // Calculate remaining quantity
+          const remaining_quantity = total_quantity - actual_allocated_quantity;
+
+          return {
+            item: {
+              ...item.toObject(),
+              total_quantity,
+              remaining_quantity,
+              actual_allocated_quantity
+            },
+            total_available: item.quantity_available,
+            total_allocated: item.quantity_allocated,
+            total_quantity,
+            remaining_quantity,
+            actual_allocated_quantity
+          };
+        } catch (error) {
+          console.error('Error processing item in getStockStatus:', item._id, error);
+          return null; // Skip invalid items
         }
-      ]);
+      }));
 
-      const actual_allocated_quantity = actualAllocated.length > 0 ? actualAllocated[0].total_allocated : 0;
-      
-      // Calculate remaining quantity
-      const remaining_quantity = total_quantity - actual_allocated_quantity;
-
-      return {
-        item: {
-          ...item.toObject(),
-          total_quantity,
-          remaining_quantity,
-          actual_allocated_quantity
-        },
-        total_available: item.quantity_available,
-        total_allocated: item.quantity_allocated,
-        total_quantity,
-        remaining_quantity,
-        actual_allocated_quantity
-      };
-    }));
-
-    return itemsWithTotals;
+      // Filter out null values (invalid items)
+      return itemsWithTotals.filter(item => item !== null);
+    } catch (error) {
+      console.error('Error in getStockStatus:', error);
+      throw error;
+    }
   }
 
   async getOverdueIssuances() {
@@ -425,7 +458,7 @@ class PPERepository {
 
   async getLowStockItems() {
     return await PPEItem.find({
-      quantity_available: { $lte: { $expr: "$reorder_level" } }
+      $expr: { $lte: ["$quantity_available", "$reorder_level"] }
     })
       .populate('category_id', 'category_name description');
   }
@@ -514,6 +547,61 @@ class PPERepository {
       items: statistics,
       overall: overallStats
     };
+  }
+
+  // PPE Assignments
+  async getAllAssignments(filters = {}) {
+    const query = {};
+    
+    if (filters.user_id) {
+      query.user_id = filters.user_id;
+    }
+    if (filters.item_id) {
+      query.item_id = filters.item_id;
+    }
+    if (filters.status) {
+      query.status = filters.status;
+    }
+    if (filters.search) {
+      query.$or = [
+        { 'user_id.full_name': { $regex: filters.search, $options: 'i' } },
+        { 'item_id.item_name': { $regex: filters.search, $options: 'i' } }
+      ];
+    }
+
+    return await PPEIssuance.find(query)
+      .populate('user_id', 'full_name email employee_id')
+      .populate('item_id', 'item_name category_id')
+      .sort({ issued_date: -1 });
+  }
+
+  async getAssignmentById(id) {
+    return await PPEIssuance.findById(id)
+      .populate('user_id', 'full_name email employee_id')
+      .populate('item_id', 'item_name category_id');
+  }
+
+  async createAssignment(assignmentData) {
+    const assignment = new PPEIssuance(assignmentData);
+    return await assignment.save();
+  }
+
+  async updateAssignment(id, assignmentData) {
+    return await PPEIssuance.findByIdAndUpdate(id, assignmentData, { new: true })
+      .populate('user_id', 'full_name email employee_id')
+      .populate('item_id', 'item_name category_id');
+  }
+
+  async deleteAssignment(id) {
+    const result = await PPEIssuance.findByIdAndDelete(id);
+    return !!result;
+  }
+
+  async getUserAssignments(userId) {
+    return await PPEIssuance.find({ user_id: userId })
+      .populate('user_id', 'full_name email employee_id')
+      .populate('item_id', 'item_name category_id')
+      .sort({ issued_date: -1 });
   }
 }
 

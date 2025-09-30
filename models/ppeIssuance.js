@@ -31,15 +31,44 @@ const ppeIssuanceSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['issued', 'returned', 'overdue'],
+    enum: ['issued', 'returned', 'overdue', 'damaged', 'replacement_needed'],
     default: 'issued'
   },
   actual_return_date: {
+    type: Date
+  },
+  return_condition: {
+    type: String,
+    enum: ['good', 'damaged', 'worn']
+  },
+  notes: {
+    type: String,
+    maxlength: 500
+  },
+  report_type: {
+    type: String,
+    enum: ['damage', 'replacement', 'lost']
+  },
+  report_description: {
+    type: String,
+    maxlength: 1000
+  },
+  report_severity: {
+    type: String,
+    enum: ['low', 'medium', 'high']
+  },
+  reported_date: {
     type: Date
   }
 }, {
   timestamps: true
 });
+
+// Add indexes for better performance
+ppeIssuanceSchema.index({ user_id: 1, status: 1 });
+ppeIssuanceSchema.index({ item_id: 1, status: 1 });
+ppeIssuanceSchema.index({ status: 1, expected_return_date: 1 });
+ppeIssuanceSchema.index({ issued_date: -1 });
 
 const PPEIssuance = mongoose.model('PPEIssuance', ppeIssuanceSchema);
 

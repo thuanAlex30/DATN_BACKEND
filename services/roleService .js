@@ -1,5 +1,7 @@
 const RoleRepository = require('../repository/RoleRepository');
 const UserRepository = require('../repository/UserRepository');
+const { transformDocumentId, transformDocumentsId, POPULATED_FIELDS } = require('../utils/transformId');
+const { createResponse } = require('../utils/response');
 
 class RoleService {
   // Create new role
@@ -8,21 +10,22 @@ class RoleService {
       // Check if role name already exists
       const existingRole = await RoleRepository.nameExists(roleData.role_name);
       if (existingRole) {
-        throw new Error('Role name already exists');
+        return createResponse(400, 'Role name already exists');
       }
 
       const role = await RoleRepository.create(roleData);
 
-      return {
+      return createResponse(201, 'Tạo vai trò thành công', {
         id: role._id,
         role_name: role.role_name,
         description: role.description,
         permissions: role.permissions,
         is_active: role.is_active,
         created_at: role.created_at
-      };
+      });
     } catch (error) {
-      throw error;
+      console.error('Error creating role:', error);
+      return createResponse(500, 'Lỗi khi tạo vai trò', null, error.message);
     }
   }
 
@@ -32,10 +35,10 @@ class RoleService {
       const role = await RoleRepository.findById(id);
       
       if (!role) {
-        throw new Error('Role not found');
+        return createResponse(404, 'Role not found');
       }
 
-      return {
+      return createResponse(200, 'Lấy thông tin vai trò thành công', {
         id: role._id,
         role_name: role.role_name,
         description: role.description,
@@ -43,9 +46,10 @@ class RoleService {
         is_active: role.is_active,
         created_at: role.created_at,
         updated_at: role.updated_at
-      };
+      });
     } catch (error) {
-      throw error;
+      console.error('Error getting role:', error);
+      return createResponse(500, 'Lỗi khi lấy thông tin vai trò', null, error.message);
     }
   }
 
@@ -56,26 +60,27 @@ class RoleService {
       if (updateData.role_name) {
         const nameExists = await RoleRepository.nameExists(updateData.role_name, id);
         if (nameExists) {
-          throw new Error('Role name already exists');
+          return createResponse(400, 'Role name already exists');
         }
       }
 
       const updatedRole = await RoleRepository.updateById(id, updateData);
       
       if (!updatedRole) {
-        throw new Error('Role not found');
+        return createResponse(404, 'Role not found');
       }
 
-      return {
+      return createResponse(200, 'Cập nhật vai trò thành công', {
         id: updatedRole._id,
         role_name: updatedRole.role_name,
         description: updatedRole.description,
         permissions: updatedRole.permissions,
         is_active: updatedRole.is_active,
         updated_at: updatedRole.updated_at
-      };
+      });
     } catch (error) {
-      throw error;
+      console.error('Error updating role:', error);
+      return createResponse(500, 'Lỗi khi cập nhật vai trò', null, error.message);
     }
   }
 
@@ -85,18 +90,19 @@ class RoleService {
       // Check if role is being used by any users
       const userCount = await UserRepository.countByRole(id);
       if (userCount > 0) {
-        throw new Error(`Cannot delete role. It is currently assigned to ${userCount} user(s)`);
+        return createResponse(400, `Cannot delete role. It is currently assigned to ${userCount} user(s)`);
       }
 
       const deletedRole = await RoleRepository.deleteById(id);
       
       if (!deletedRole) {
-        throw new Error('Role not found');
+        return createResponse(404, 'Role not found');
       }
 
-      return { message: 'Role deactivated successfully' };
+      return createResponse(200, 'Role deactivated successfully');
     } catch (error) {
-      throw error;
+      console.error('Error deleting role:', error);
+      return createResponse(500, 'Lỗi khi xóa vai trò', null, error.message);
     }
   }
 
@@ -122,12 +128,13 @@ class RoleService {
         })
       );
       
-      return {
+      return createResponse(200, 'Lấy danh sách vai trò thành công', {
         roles: rolesWithUserCount,
         pagination: result.pagination
-      };
+      });
     } catch (error) {
-      throw error;
+      console.error('Error getting roles:', error);
+      return createResponse(500, 'Lỗi khi lấy danh sách vai trò', null, error.message);
     }
   }
 
@@ -152,9 +159,10 @@ class RoleService {
         })
       );
       
-      return rolesWithUserCount;
+      return createResponse(200, 'Lấy danh sách vai trò đang hoạt động thành công', rolesWithUserCount);
     } catch (error) {
-      throw error;
+      console.error('Error getting active roles:', error);
+      return createResponse(500, 'Lỗi khi lấy danh sách vai trò đang hoạt động', null, error.message);
     }
   }
 
@@ -180,9 +188,10 @@ class RoleService {
         })
       );
       
-      return rolesWithUserCount;
+      return createResponse(200, 'Lấy danh sách tất cả vai trò thành công', rolesWithUserCount);
     } catch (error) {
-      throw error;
+      console.error('Error getting all roles:', error);
+      return createResponse(500, 'Lỗi khi lấy danh sách tất cả vai trò', null, error.message);
     }
   }
 
@@ -192,7 +201,7 @@ class RoleService {
       const role = await RoleRepository.findById(id);
       
       if (!role) {
-        throw new Error('Role not found');
+        return createResponse(404, 'Role not found');
       }
 
       // Check if role is being used (for warning purposes)
@@ -207,15 +216,15 @@ class RoleService {
         message += `. Warning: This role is currently assigned to ${userCount} user(s)`;
       }
 
-      return {
+      return createResponse(200, message, {
         id: updatedRole._id,
         role_name: updatedRole.role_name,
         is_active: updatedRole.is_active,
-        user_count: userCount,
-        message: message
-      };
+        user_count: userCount
+      });
     } catch (error) {
-      throw error;
+      console.error('Error toggling role status:', error);
+      return createResponse(500, 'Lỗi khi thay đổi trạng thái vai trò', null, error.message);
     }
   }
 
@@ -228,13 +237,14 @@ class RoleService {
         RoleRepository.findAll().then(roles => roles.filter(r => !r.is_active))
       ]);
 
-      return {
+      return createResponse(200, 'Lấy thống kê vai trò thành công', {
         total: totalRoles.length,
         active: activeRoles.length,
         inactive: inactiveRoles.length
-      };
+      });
     } catch (error) {
-      throw error;
+      console.error('Error getting role stats:', error);
+      return createResponse(500, 'Lỗi khi lấy thống kê vai trò', null, error.message);
     }
   }
 
@@ -253,9 +263,10 @@ class RoleService {
         })
       );
 
-      return roleUserCounts;
+      return createResponse(200, 'Lấy số lượng người dùng theo vai trò thành công', roleUserCounts);
     } catch (error) {
-      throw error;
+      console.error('Error getting role user counts:', error);
+      return createResponse(500, 'Lỗi khi lấy số lượng người dùng theo vai trò', null, error.message);
     }
   }
 
@@ -265,17 +276,18 @@ class RoleService {
       const updatedRole = await RoleRepository.updateById(id, { permissions });
       
       if (!updatedRole) {
-        throw new Error('Role not found');
+        return createResponse(404, 'Role not found');
       }
 
-      return {
+      return createResponse(200, 'Cập nhật quyền vai trò thành công', {
         id: updatedRole._id,
         role_name: updatedRole.role_name,
         permissions: updatedRole.permissions,
         updated_at: updatedRole.updated_at
-      };
+      });
     } catch (error) {
-      throw error;
+      console.error('Error updating role permissions:', error);
+      return createResponse(500, 'Lỗi khi cập nhật quyền vai trò', null, error.message);
     }
   }
 }

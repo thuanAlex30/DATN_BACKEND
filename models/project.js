@@ -19,10 +19,16 @@ const projectSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
+  actual_start_date: {
+    type: Date
+  },
+  actual_end_date: {
+    type: Date
+  },
   status: {
     type: String,
-    enum: ['pending', 'active', 'completed', 'cancelled'],
-    default: 'pending'
+    enum: ['PLANNING', 'ACTIVE', 'COMPLETED', 'CANCELLED', 'ON_HOLD'],
+    default: 'PLANNING'
   },
   leader_id: {
     type: mongoose.Schema.Types.ObjectId,
@@ -45,10 +51,29 @@ const projectSchema = new mongoose.Schema({
     min: 0,
     default: 0
   },
+  actual_cost: {
+    type: Number,
+    min: 0,
+    default: 0
+  },
   priority: {
     type: String,
-    enum: ['low', 'medium', 'high', 'urgent'],
-    default: 'medium'
+    enum: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'],
+    default: 'MEDIUM'
+  },
+  project_type: {
+    type: String,
+    enum: ['CONSTRUCTION', 'MAINTENANCE', 'RENOVATION', 'INSPECTION', 'SAFETY', 'TRAINING'],
+    default: 'CONSTRUCTION'
+  },
+  client_name: {
+    type: String,
+    trim: true
+  },
+  client_contact: {
+    name: String,
+    email: String,
+    phone: String
   },
   created_at: {
     type: Date,

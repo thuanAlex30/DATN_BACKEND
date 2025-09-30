@@ -77,6 +77,56 @@ const issuanceValidation = {
         'string.pattern.base': 'ID người phát không hợp lệ',
         'any.required': 'Người phát là bắt buộc'
       })
+  }),
+  return: Joi.object({
+    actual_return_date: Joi.date()
+      .iso()
+      .optional()
+      .messages({
+        'date.base': 'Ngày trả thực tế không hợp lệ',
+        'date.format': 'Ngày trả thực tế phải là định dạng ISO8601'
+      }),
+    return_condition: Joi.string()
+      .valid('good', 'damaged', 'worn')
+      .optional()
+      .messages({
+        'any.only': 'Tình trạng trả phải là good, damaged hoặc worn'
+      }),
+    notes: Joi.string()
+      .max(500)
+      .optional()
+      .messages({
+        'string.max': 'Ghi chú không được quá 500 ký tự'
+      })
+  }),
+  report: Joi.object({
+    report_type: Joi.string()
+      .valid('damage', 'replacement', 'lost')
+      .required()
+      .messages({
+        'any.only': 'Loại báo cáo phải là damage, replacement hoặc lost',
+        'any.required': 'Loại báo cáo là bắt buộc'
+      }),
+    description: Joi.string()
+      .max(1000)
+      .required()
+      .messages({
+        'string.max': 'Mô tả không được quá 1000 ký tự',
+        'any.required': 'Mô tả là bắt buộc'
+      }),
+    severity: Joi.string()
+      .valid('low', 'medium', 'high')
+      .optional()
+      .messages({
+        'any.only': 'Mức độ nghiêm trọng phải là low, medium hoặc high'
+      }),
+    reported_date: Joi.date()
+      .iso()
+      .optional()
+      .messages({
+        'date.base': 'Ngày báo cáo không hợp lệ',
+        'date.format': 'Ngày báo cáo phải là định dạng ISO8601'
+      })
   })
 };
 
@@ -151,6 +201,7 @@ router.put('/issuances/:id',
 );
 router.post('/issuances/:id/return', 
   authMiddleware.authorizeRole(['admin', 'manager', 'safety_officer']),
+  validationMiddleware.validateBody(issuanceValidation.return),
   ppeController.returnIssuance
 );
 
@@ -158,6 +209,7 @@ router.post('/issuances/:id/return',
 router.post('/issuances/:id/return-employee', 
   authMiddleware.authenticate,
   authMiddleware.authorizeRole(['employee']),
+  validationMiddleware.validateBody(issuanceValidation.return),
   ppeController.returnIssuanceEmployee
 );
 
@@ -165,6 +217,7 @@ router.post('/issuances/:id/return-employee',
 router.post('/issuances/:id/report-employee', 
   authMiddleware.authenticate,
   authMiddleware.authorizeRole(['employee']),
+  validationMiddleware.validateBody(issuanceValidation.report),
   ppeController.reportIssuanceEmployee
 );
 router.delete('/issuances/:id', 
@@ -184,5 +237,71 @@ router.get('/dashboard', ppeController.getDashboardData);
 
 // User management for PPE assignment
 router.get('/users', ppeController.getAllUsers);
+
+// PPE Items Statistics Routes
+router.get('/items/:id/stats', ppeController.getItemStats);
+
+// PPE Inventory Routes
+router.get('/inventory', ppeController.getAllInventory);
+router.get('/inventory/:id', ppeController.getInventoryById);
+router.post('/inventory', 
+  authMiddleware.authorizeRole(['admin', 'manager', 'warehouse_staff']),
+  ppeController.createInventory
+);
+router.put('/inventory/:id', 
+  authMiddleware.authorizeRole(['admin', 'manager', 'warehouse_staff']),
+  ppeController.updateInventory
+);
+router.delete('/inventory/:id', 
+  authMiddleware.authorizeRole(['admin', 'manager']),
+  ppeController.deleteInventory
+);
+router.get('/inventory/stats', ppeController.getInventoryStats);
+
+// PPE Assignments Routes
+router.get('/assignments', ppeController.getAllAssignments);
+router.get('/assignments/:id', ppeController.getAssignmentById);
+router.post('/assignments', 
+  authMiddleware.authorizeRole(['admin', 'manager', 'safety_officer']),
+  ppeController.createAssignment
+);
+router.put('/assignments/:id', 
+  authMiddleware.authorizeRole(['admin', 'manager', 'safety_officer']),
+  ppeController.updateAssignment
+);
+router.delete('/assignments/:id', 
+  authMiddleware.authorizeRole(['admin', 'manager']),
+  ppeController.deleteAssignment
+);
+router.get('/assignments/user/:userId', ppeController.getUserAssignments);
+router.post('/assignments/:id/return', 
+  authMiddleware.authorizeRole(['admin', 'manager', 'safety_officer']),
+  ppeController.returnAssignment
+);
+
+// PPE Maintenance Routes
+router.get('/maintenance', ppeController.getAllMaintenance);
+router.get('/maintenance/:id', ppeController.getMaintenanceById);
+router.post('/maintenance', 
+  authMiddleware.authorizeRole(['admin', 'manager', 'maintenance_staff']),
+  ppeController.createMaintenance
+);
+router.put('/maintenance/:id', 
+  authMiddleware.authorizeRole(['admin', 'manager', 'maintenance_staff']),
+  ppeController.updateMaintenance
+);
+router.delete('/maintenance/:id', 
+  authMiddleware.authorizeRole(['admin', 'manager']),
+  ppeController.deleteMaintenance
+);
+router.get('/maintenance/stats', ppeController.getMaintenanceStats);
+
+// PPE Reports Routes
+router.get('/reports/inventory', ppeController.getInventoryReport);
+router.get('/reports/assignments', ppeController.getAssignmentReport);
+router.get('/reports/maintenance', ppeController.getMaintenanceReport);
+
+// Dashboard Statistics Routes
+router.get('/dashboard-stats', ppeController.getDashboardStats);
 
 module.exports = router;

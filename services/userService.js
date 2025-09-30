@@ -4,6 +4,8 @@ const DepartmentRepository = require('../repository/DepartmentRepository');
 const PositionRepository = require('../repository/PositionRepository');
 const HashUtils = require('../utils/hash');
 const XLSX = require('xlsx');
+const { transformDocumentId, transformDocumentsId, POPULATED_FIELDS } = require('../utils/transformId');
+const { createResponse } = require('../utils/response');
 
 class UserService {
   // Create new user
@@ -12,19 +14,19 @@ class UserService {
       // Check if username already exists
       const existingUsername = await UserRepository.usernameExists(userData.username);
       if (existingUsername) {
-        throw new Error('Username already exists');
+        return createResponse(400, 'Username already exists');
       }
 
       // Check if email already exists
       const existingEmail = await UserRepository.emailExists(userData.email);
       if (existingEmail) {
-        throw new Error('Email already exists');
+        return createResponse(400, 'Email already exists');
       }
 
       // Verify role exists and is active
       const role = await RoleRepository.findById(userData.role_id);
       if (!role || !role.is_active) {
-        throw new Error('Invalid or inactive role');
+        return createResponse(400, 'Invalid or inactive role');
       }
 
       // Hash password
@@ -43,7 +45,7 @@ class UserService {
       // Populate related data
       await user.populate(['role_id', 'department_id', 'position_id']);
 
-      return {
+      return createResponse(201, 'Tạo người dùng thành công', {
         id: user._id,
         username: user.username,
         email: user.email,
@@ -56,9 +58,10 @@ class UserService {
         position: user.position_id,
         is_active: user.is_active,
         created_at: user.created_at
-      };
+      });
     } catch (error) {
-      throw error;
+      console.error('Error creating user:', error);
+      return createResponse(500, 'Lỗi khi tạo người dùng', null, error.message);
     }
   }
 
@@ -68,10 +71,10 @@ class UserService {
       const user = await UserRepository.findById(id, ['role_id', 'department_id', 'position_id']);
       
       if (!user) {
-        throw new Error('User not found');
+        return createResponse(404, 'Không tìm thấy người dùng');
       }
 
-      return {
+      return createResponse(200, 'Lấy thông tin người dùng thành công', {
         id: user._id,
         username: user.username,
         email: user.email,
@@ -86,9 +89,10 @@ class UserService {
         last_login: user.last_login,
         created_at: user.created_at,
         updated_at: user.updated_at
-      };
+      });
     } catch (error) {
-      throw error;
+      console.error('Error getting user:', error);
+      return createResponse(500, 'Lỗi khi lấy thông tin người dùng', null, error.message);
     }
   }
 
@@ -99,7 +103,7 @@ class UserService {
       if (updateData.username) {
         const usernameExists = await UserRepository.usernameExists(updateData.username, id);
         if (usernameExists) {
-          throw new Error('Username already exists');
+          return createResponse(400, 'Username already exists');
         }
       }
 
@@ -107,7 +111,7 @@ class UserService {
       if (updateData.email) {
         const emailExists = await UserRepository.emailExists(updateData.email, id);
         if (emailExists) {
-          throw new Error('Email already exists');
+          return createResponse(400, 'Email already exists');
         }
       }
 
@@ -115,7 +119,7 @@ class UserService {
       if (updateData.role_id) {
         const role = await RoleRepository.findById(updateData.role_id);
         if (!role || !role.is_active) {
-          throw new Error('Invalid or inactive role');
+          return createResponse(400, 'Invalid or inactive role');
         }
       }
 
@@ -123,13 +127,13 @@ class UserService {
       const updatedUser = await UserRepository.updateById(id, updateData);
       
       if (!updatedUser) {
-        throw new Error('User not found');
+        return createResponse(404, 'Không tìm thấy người dùng');
       }
 
       // Populate related data
       await updatedUser.populate(['role_id', 'department_id', 'position_id']);
 
-      return {
+      return createResponse(200, 'Cập nhật người dùng thành công', {
         id: updatedUser._id,
         username: updatedUser.username,
         email: updatedUser.email,
@@ -142,9 +146,10 @@ class UserService {
         position: updatedUser.position_id,
         is_active: updatedUser.is_active,
         updated_at: updatedUser.updated_at
-      };
+      });
     } catch (error) {
-      throw error;
+      console.error('Error updating user:', error);
+      return createResponse(500, 'Lỗi khi cập nhật người dùng', null, error.message);
     }
   }
 
@@ -154,12 +159,13 @@ class UserService {
       const deletedUser = await UserRepository.deleteById(id);
       
       if (!deletedUser) {
-        throw new Error('User not found');
+        return createResponse(404, 'Không tìm thấy người dùng');
       }
 
-      return { message: 'User deactivated successfully' };
+      return createResponse(200, 'Người dùng đã được vô hiệu hóa thành công');
     } catch (error) {
-      throw error;
+      console.error('Error deleting user:', error);
+      return createResponse(500, 'Lỗi khi xóa người dùng', null, error.message);
     }
   }
 
@@ -168,7 +174,7 @@ class UserService {
     try {
       const result = await UserRepository.findAll(options);
       
-      return {
+      return createResponse(200, 'Lấy danh sách người dùng thành công', {
         users: result.users.map(user => ({
           id: user._id,
           username: user.username,
@@ -183,9 +189,10 @@ class UserService {
           created_at: user.created_at
         })),
         pagination: result.pagination
-      };
+      });
     } catch (error) {
-      throw error;
+      console.error('Error getting users:', error);
+      return createResponse(500, 'Lỗi khi lấy danh sách người dùng', null, error.message);
     }
   }
 
@@ -199,8 +206,9 @@ class UserService {
       
       // Check if result has users array
       if (!result || !result.users || !Array.isArray(result.users)) {
-        return [];
+        return result.users || [];
       }
+      
       return result.users.map(user => ({
         id: user._id,
         username: user.username,
@@ -213,6 +221,7 @@ class UserService {
         created_at: user.created_at
       }));
     } catch (error) {
+      console.error('Error getting all users:', error);
       throw error;
     }
   }
@@ -223,7 +232,7 @@ class UserService {
       const user = await UserRepository.findById(id);
       
       if (!user) {
-        throw new Error('User not found');
+        return createResponse(404, 'Không tìm thấy người dùng');
       }
 
       // Hash new password
@@ -232,9 +241,10 @@ class UserService {
       // Update password
       await UserRepository.updateById(id, { password_hash });
 
-      return { message: 'Password reset successfully' };
+      return createResponse(200, 'Đặt lại mật khẩu thành công');
     } catch (error) {
-      throw error;
+      console.error('Error resetting password:', error);
+      return createResponse(500, 'Lỗi khi đặt lại mật khẩu', null, error.message);
     }
   }
 
@@ -244,19 +254,19 @@ class UserService {
       const user = await UserRepository.findById(id);
       
       if (!user) {
-        throw new Error('User not found');
+        return createResponse(404, 'Không tìm thấy người dùng');
       }
 
       const updatedUser = await UserRepository.updateById(id, { is_active: !user.is_active });
 
-      return {
+      return createResponse(200, `Người dùng đã được ${updatedUser.is_active ? 'kích hoạt' : 'vô hiệu hóa'} thành công`, {
         id: updatedUser._id,
         username: updatedUser.username,
-        is_active: updatedUser.is_active,
-        message: `User ${updatedUser.is_active ? 'activated' : 'deactivated'} successfully`
-      };
+        is_active: updatedUser.is_active
+      });
     } catch (error) {
-      throw error;
+      console.error('Error toggling user status:', error);
+      return createResponse(500, 'Lỗi khi thay đổi trạng thái người dùng', null, error.message);
     }
   }
 
@@ -269,13 +279,14 @@ class UserService {
         UserRepository.findAll({ limit: 10000, is_active: false })
       ]);
 
-      return {
+      return createResponse(200, 'Lấy thống kê người dùng thành công', {
         total: totalResult.users ? totalResult.users.length : 0,
         active: activeResult.users ? activeResult.users.length : 0,
         inactive: inactiveResult.users ? inactiveResult.users.length : 0
-      };
+      });
     } catch (error) {
-      throw error;
+      console.error('Error getting user stats:', error);
+      return createResponse(500, 'Lỗi khi lấy thống kê người dùng', null, error.message);
     }
   }
 
@@ -289,7 +300,7 @@ class UserService {
       const data = XLSX.utils.sheet_to_json(worksheet);
 
       if (!data || data.length === 0) {
-        throw new Error('Excel file is empty or invalid');
+        return createResponse(400, 'Excel file is empty or invalid');
       }
 
       const results = {
@@ -428,9 +439,10 @@ class UserService {
         }
       }
 
-      return results;
+      return createResponse(200, 'Import người dùng thành công', results);
     } catch (error) {
-      throw error;
+      console.error('Error importing users:', error);
+      return createResponse(500, 'Lỗi khi import người dùng', null, error.message);
     }
   }
 }

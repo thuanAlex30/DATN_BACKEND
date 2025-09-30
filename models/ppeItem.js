@@ -48,6 +48,20 @@ const ppeItemSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Add indexes for better performance
+ppeItemSchema.index({ item_code: 1 }, { unique: true });
+ppeItemSchema.index({ category_id: 1 });
+ppeItemSchema.index({ item_name: 'text', brand: 'text', model: 'text' });
+ppeItemSchema.index({ quantity_available: 1, reorder_level: 1 });
+
+// Add validation to ensure quantity_available + quantity_allocated >= 0
+ppeItemSchema.pre('save', function(next) {
+  if (this.quantity_available < 0 || this.quantity_allocated < 0) {
+    return next(new Error('Số lượng không được âm'));
+  }
+  next();
+});
+
 const PPEItem = mongoose.model('PPEItem', ppeItemSchema);
 
 module.exports = PPEItem;
