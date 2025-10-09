@@ -181,3 +181,4 @@ const initializeProjectData = async () => {
 };
 
 module.exports = initializeProjectData;
+

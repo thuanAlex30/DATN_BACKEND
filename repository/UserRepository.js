@@ -270,7 +270,7 @@ class UserRepository {
       // Filter users with management permissions or high-level positions
       return users.filter(user => {
         const hasManagementRole = user.role_id && 
-          (user.role_id.role_name === 'admin' || user.role_id.role_name === 'leader');
+          (user.role_id.role_name === 'admin' || user.role_id.role_name === 'manager');
         
         const hasManagementLevel = user.position_id && user.position_id.level >= 6;
         

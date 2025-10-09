@@ -247,6 +247,45 @@ class ProjectTaskRepository {
   }
 
   // ========== TASK VALIDATION ==========
+  // Generate unique task code for a project
+  async generateUniqueTaskCode(projectId) {
+    try {
+      // Find the highest task code number in the project
+      const lastTask = await ProjectTask.findOne({ project_id: projectId })
+        .sort({ task_code: -1 })
+        .select('task_code');
+
+      let nextNumber = 1;
+      if (lastTask && lastTask.task_code) {
+        // Extract number from task_code (e.g., TASK-001 -> 1)
+        const match = lastTask.task_code.match(/(\d+)$/);
+        if (match) {
+          nextNumber = parseInt(match[1]) + 1;
+        }
+      }
+
+      // Generate task code with leading zeros
+      const taskCode = `TASK-${nextNumber.toString().padStart(3, '0')}`;
+      
+      // Double-check uniqueness
+      const existingTask = await ProjectTask.findOne({
+        project_id: projectId,
+        task_code: taskCode
+      });
+
+      if (existingTask) {
+        // If somehow still exists, try next number
+        return `TASK-${(nextNumber + 1).toString().padStart(3, '0')}`;
+      }
+
+      return taskCode;
+    } catch (error) {
+      console.error('Error generating unique task code:', error);
+      // Fallback to timestamp-based code
+      return `TASK-${Date.now().toString().slice(-6)}`;
+    }
+  }
+
   async validateTask(taskData) {
     try {
       const errors = [];
@@ -258,8 +297,10 @@ class ProjectTaskRepository {
       if (!taskData.task_name) {
         errors.push('Task name is required');
       }
+      
+      // Generate task_code if not provided
       if (!taskData.task_code) {
-        errors.push('Task code is required');
+        taskData.task_code = await this.generateUniqueTaskCode(taskData.project_id);
       }
       if (!taskData.planned_start_date) {
         errors.push('Planned start date is required');
@@ -287,7 +328,7 @@ class ProjectTaskRepository {
         }
       }
 
-      // Check for duplicate task code in same project
+      // Check for duplicate task code in same project (only if provided)
       if (taskData.project_id && taskData.task_code) {
         const existingTask = await ProjectTask.findOne({
           project_id: taskData.project_id,
