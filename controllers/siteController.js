@@ -8,8 +8,15 @@ class SiteController {
   // Get all sites
   static getAllSites = ErrorMiddleware.asyncHandler(async (req, res) => {
     try {
-      const { page = 1, limit = 10, search, is_active } = req.query;
+      const { page = 1, limit = 10, search, is_active, project_id } = req.query;
       const query = {};
+      
+      // Add project filter - REQUIRED for project-scoped data
+      if (project_id) {
+        query.project_id = project_id;
+      } else {
+        return ApiResponse.error(res, 'Project ID is required to retrieve sites', 400);
+      }
       
       // Add search filter
       if (search) {
@@ -68,9 +75,10 @@ class SiteController {
       const siteData = req.body;
       const userId = req.user._id || req.user.id;
       
-      // Check if site with same name already exists
+      // Check if site with same name already exists in the same project
       const existingSite = await Site.findOne({ 
-        site_name: siteData.site_name 
+        site_name: siteData.site_name,
+        project_id: siteData.project_id
       });
       
       if (existingSite) {
@@ -107,10 +115,11 @@ class SiteController {
         return ApiResponse.error(res, 'Site not found', 404);
       }
       
-      // Check if site name is being changed and if new name already exists
+      // Check if site name is being changed and if new name already exists in the same project
       if (updateData.site_name && updateData.site_name !== site.site_name) {
         const existingSite = await Site.findOne({ 
           site_name: updateData.site_name,
+          project_id: site.project_id,
           _id: { $ne: id }
         });
         
@@ -218,4 +227,7 @@ class SiteController {
 }
 
 module.exports = SiteController;
+
+
+
 

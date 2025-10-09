@@ -6,11 +6,6 @@ const projectMilestoneSchema = new mongoose.Schema({
     ref: 'Project',
     required: true
   },
-  phase_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'ProjectPhase',
-    required: true
-  },
   milestone_name: {
     type: String,
     required: true,
@@ -51,6 +46,14 @@ const projectMilestoneSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  created_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  updated_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   created_at: {
     type: Date,
     default: Date.now
@@ -64,7 +67,7 @@ const projectMilestoneSchema = new mongoose.Schema({
 });
 
 // Indexes for better performance
-projectMilestoneSchema.index({ project_id: 1, phase_id: 1 });
+projectMilestoneSchema.index({ project_id: 1 });
 projectMilestoneSchema.index({ planned_date: 1 });
 projectMilestoneSchema.index({ status: 1 });
 projectMilestoneSchema.index({ responsible_user_id: 1 });

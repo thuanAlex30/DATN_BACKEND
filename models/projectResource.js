@@ -25,7 +25,7 @@ const projectResourceSchema = new mongoose.Schema({
     min: 0,
     required: true
   },
-  actual_quantity: {
+  actual_quantity: {  
     type: Number,
     min: 0,
     default: 0
@@ -33,7 +33,7 @@ const projectResourceSchema = new mongoose.Schema({
   unit_cost: {
     type: Number,
     min: 0,
-    required: true
+    default: 0
   },
   unit_measure: {
     type: String,

@@ -1,6 +1,14 @@
 const WorkLocation = require('../models/workLocation');
 const LocationAssignment = require('../models/locationAssignment');
 
+// Helper function to populate updated_by only if it exists
+const populateUpdatedBy = async (doc) => {
+  if (doc && doc.updated_by) {
+    await doc.populate('updated_by', 'full_name email');
+  }
+  return doc;
+};
+
 class WorkLocationRepository {
   // ========== BASIC CRUD ==========
   async getAllLocations(filters = {}) {
@@ -26,8 +34,12 @@ class WorkLocationRepository {
       const locations = await WorkLocation.find(query)
         .populate('area_id', 'area_name area_code')
         .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email')
         .sort({ location_code: 1 });
+
+      // Populate updated_by for each location if it exists
+      for (let location of locations) {
+        await populateUpdatedBy(location);
+      }
 
       return locations;
     } catch (error) {
@@ -40,12 +52,29 @@ class WorkLocationRepository {
     try {
       const location = await WorkLocation.findById(id)
         .populate('area_id', 'area_name area_code')
-        .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email');
+        .populate('created_by', 'full_name email');
+
+      // Only populate updated_by if it exists
+      if (location && location.updated_by) {
+        await location.populate('updated_by', 'full_name email');
+      }
 
       return location;
     } catch (error) {
       console.error('Error getting location by id:', error);
+      throw error;
+    }
+  }
+
+  async getLocationByCode(locationCode) {
+    try {
+      const location = await WorkLocation.findOne({ location_code: locationCode })
+        .populate('area_id', 'area_name area_code')
+        .populate('created_by', 'full_name email');
+
+      return location;
+    } catch (error) {
+      console.error('Error getting location by code:', error);
       throw error;
     }
   }
@@ -70,8 +99,10 @@ class WorkLocationRepository {
         { new: true, runValidators: true }
       )
         .populate('area_id', 'area_name area_code')
-        .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email');
+        .populate('created_by', 'full_name email');
+
+      // Populate updated_by if it exists
+      await populateUpdatedBy(location);
 
       return location;
     } catch (error) {
@@ -91,13 +122,25 @@ class WorkLocationRepository {
   }
 
   // ========== AREA LOCATION QUERIES ==========
-  async getAreaLocations(areaId) {
+  async getAreaLocations(areaId, projectId = null) {
     try {
-      const locations = await WorkLocation.find({ area_id: areaId })
+      let query = { area_id: areaId };
+      
+      // Add project filter if provided
+      if (projectId) {
+        query.project_id = projectId;
+      }
+      
+      const locations = await WorkLocation.find(query)
         .populate('area_id', 'area_name area_code')
+        .populate('project_id', 'project_name')
         .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email')
         .sort({ location_code: 1 });
+
+      // Populate updated_by for each location if it exists
+      for (let location of locations) {
+        await populateUpdatedBy(location);
+      }
 
       return locations;
     } catch (error) {
@@ -116,12 +159,36 @@ class WorkLocationRepository {
       const locations = await WorkLocation.find(query)
         .populate('area_id', 'area_name area_code')
         .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email')
         .sort({ location_code: 1 });
+
+      // Populate updated_by for each location if it exists
+      for (let location of locations) {
+        await populateUpdatedBy(location);
+      }
 
       return locations;
     } catch (error) {
       console.error('Error getting locations by type:', error);
+      throw error;
+    }
+  }
+
+  async getProjectLocations(projectId) {
+    try {
+      const locations = await WorkLocation.find({ project_id: projectId })
+        .populate('area_id', 'area_name area_code')
+        .populate('project_id', 'project_name')
+        .populate('created_by', 'full_name email')
+        .sort({ location_code: 1 });
+
+      // Populate updated_by for each location if it exists
+      for (let location of locations) {
+        await populateUpdatedBy(location);
+      }
+
+      return locations;
+    } catch (error) {
+      console.error('Error getting project locations:', error);
       throw error;
     }
   }
@@ -136,8 +203,12 @@ class WorkLocationRepository {
       const locations = await WorkLocation.find(query)
         .populate('area_id', 'area_name area_code')
         .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email')
         .sort({ location_code: 1 });
+
+      // Populate updated_by for each location if it exists
+      for (let location of locations) {
+        await populateUpdatedBy(location);
+      }
 
       return locations;
     } catch (error) {
@@ -156,8 +227,12 @@ class WorkLocationRepository {
       const locations = await WorkLocation.find(query)
         .populate('area_id', 'area_name area_code')
         .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email')
         .sort({ location_code: 1 });
+
+      // Populate updated_by for each location if it exists
+      for (let location of locations) {
+        await populateUpdatedBy(location);
+      }
 
       return locations;
     } catch (error) {
@@ -436,8 +511,12 @@ class WorkLocationRepository {
       const locations = await WorkLocation.find(query)
         .populate('area_id', 'area_name area_code')
         .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email')
         .sort({ location_code: 1 });
+
+      // Populate updated_by for each location if it exists
+      for (let location of locations) {
+        await populateUpdatedBy(location);
+      }
 
       return locations;
     } catch (error) {
@@ -478,7 +557,6 @@ class WorkLocationRepository {
         .populate('location_id', 'location_name location_code')
         .populate('user_id', 'full_name email')
         .populate('assigned_by', 'full_name email')
-        .populate('updated_by', 'full_name email')
         .sort({ assigned_at: -1 });
 
       return assignments;

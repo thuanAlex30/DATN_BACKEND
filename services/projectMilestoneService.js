@@ -34,7 +34,7 @@ class ProjectMilestoneService {
   async createMilestone(milestoneData, userId) {
     try {
       // Validate required fields
-      const requiredFields = ['project_id', 'milestone_name', 'planned_date'];
+      const requiredFields = ['project_id', 'milestone_name', 'planned_date', 'completion_criteria', 'responsible_user_id'];
       for (const field of requiredFields) {
         if (!milestoneData[field]) {
           return createResponse(400, `Trường ${field} là bắt buộc`);
@@ -107,16 +107,6 @@ class ProjectMilestoneService {
     }
   }
 
-  async getPhaseMilestones(phaseId) {
-    try {
-      const milestones = await projectMilestoneRepository.getPhaseMilestones(phaseId);
-      return createResponse(200, 'Lấy danh sách cột mốc giai đoạn thành công',
-        transformDocumentsId(milestones, POPULATED_FIELDS.PROJECT_MILESTONE));
-    } catch (error) {
-      console.error('Error getting phase milestones:', error);
-      return createResponse(500, 'Lỗi khi lấy danh sách cột mốc giai đoạn', null, error.message);
-    }
-  }
 
   async getUpcomingMilestones(days = 30) {
     try {

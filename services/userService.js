@@ -226,6 +226,28 @@ class UserService {
     }
   }
 
+  // Get potential managers
+  static async getPotentialManagers() {
+    try {
+      const managers = await UserRepository.findPotentialManagers();
+      
+      return createResponse(200, 'Lấy danh sách manager thành công', {
+        managers: managers.map(manager => ({
+          id: manager._id,
+          username: manager.username,
+          email: manager.email,
+          full_name: manager.full_name,
+          role: manager.role_id,
+          position: manager.position_id,
+          is_active: manager.is_active
+        }))
+      });
+    } catch (error) {
+      console.error('Error getting potential managers:', error);
+      return createResponse(500, 'Lỗi khi lấy danh sách manager', null, error.message);
+    }
+  }
+
   // Reset user password
   static async resetPassword(id, newPassword) {
     try {

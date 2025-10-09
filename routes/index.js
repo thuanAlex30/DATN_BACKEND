@@ -12,7 +12,6 @@ const incidentRoutes = require('./incidentRoutes');
 const trainingRoutes = require('./trainingRoutes');
 
 // Advanced Project Management Routes
-const projectPhaseRoutes = require('./projectPhaseRoutes');
 const projectTaskRoutes = require('./projectTaskRoutes');
 const projectMilestoneRoutes = require('./projectMilestoneRoutes');
 const siteRoutes = require('./siteRoutes');
@@ -47,7 +46,6 @@ router.get('/health', (req, res) => {
       sites: '/api/sites',
       siteAreas: '/api/site-areas',
       workLocations: '/api/work-locations',
-      projectPhases: '/api/project-phases',
       projectTasks: '/api/project-tasks',
       projectMilestones: '/api/project-milestones',
       projectResources: '/api/project-resources',
@@ -73,7 +71,6 @@ router.use('/incidents', incidentRoutes);
 router.use('/training', trainingRoutes);
 
 // Advanced Project Management Routes
-router.use('/project-phases', projectPhaseRoutes);
 router.use('/project-tasks', projectTaskRoutes);
 router.use('/project-milestones', projectMilestoneRoutes);
 router.use('/sites', siteRoutes);
@@ -129,7 +126,6 @@ router.use('*', (req, res) => {
         'PUT /api/site-areas/areas/:id',
         'DELETE /api/site-areas/areas/:id',
         'GET /api/work-locations',
-        'GET /api/project-phases',
         'GET /api/project-tasks',
         'GET /api/project-milestones',
         'GET /api/project-resources',

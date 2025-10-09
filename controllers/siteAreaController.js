@@ -7,7 +7,8 @@ class SiteAreaController {
   // ========== SITE AREA MANAGEMENT ==========
   static getSiteAreas = ErrorMiddleware.asyncHandler(async (req, res) => {
       const { siteId } = req.params;
-      const result = await siteAreaService.getSiteAreas(siteId);
+      const { projectId } = req.query; // Add project filter from query params
+      const result = await siteAreaService.getSiteAreas(siteId, projectId);
       
       if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -86,7 +87,15 @@ class SiteAreaController {
   });
 
   static getAllAreas = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { project_id } = req.query;
+    
+    // Require project_id for project-scoped data
+    if (!project_id) {
+      return ApiResponse.error(res, 'Project ID is required to retrieve areas', 400);
+    }
+    
     const filters = {
+      project_id: project_id,
       site_id: req.query.site_id,
       search: req.query.search,
       is_active: req.query.is_active

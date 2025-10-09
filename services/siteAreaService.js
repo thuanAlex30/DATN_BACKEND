@@ -47,10 +47,18 @@ class SiteAreaService {
     }
   }
 
-  async getSiteAreas(siteId) {
+  async getSiteAreas(siteId, projectId = null) {
     try {
-      const areas = await SiteArea.find({ site_id: siteId })
+      let query = { site_id: siteId };
+      
+      // Add project filter if provided
+      if (projectId) {
+        query.project_id = projectId;
+      }
+      
+      const areas = await SiteArea.find(query)
         .populate('site_id', 'site_name')
+        .populate('project_id', 'project_name')
         .populate('supervisor_id', 'full_name email')
         .sort({ area_code: 1 });
 
@@ -100,7 +108,7 @@ class SiteAreaService {
   async createArea(areaData, userId) {
     try {
       // Validate required fields
-      const requiredFields = ['site_id', 'area_name', 'area_type', 'area_size_sqm', 'safety_level', 'supervisor_id'];
+      const requiredFields = ['site_id', 'project_id', 'area_name', 'area_type', 'area_size_sqm', 'safety_level', 'supervisor_id'];
       for (const field of requiredFields) {
         if (!areaData[field]) {
           return {
@@ -110,9 +118,9 @@ class SiteAreaService {
         }
       }
 
-      // Generate area code
-      const areaCount = await SiteArea.countDocuments({ site_id: areaData.site_id });
-      const areaCode = `KVA${String(areaCount + 1).padStart(3, '0')}`;
+      // Generate unique area code per project
+      const projectAreaCount = await SiteArea.countDocuments({ project_id: areaData.project_id });
+      const areaCode = `KVA${String(projectAreaCount + 1).padStart(3, '0')}`;
 
       const area = new SiteArea({
         ...areaData,

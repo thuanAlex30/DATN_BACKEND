@@ -6,11 +6,6 @@ const projectTaskSchema = new mongoose.Schema({
     ref: 'Project',
     required: true
   },
-  phase_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'ProjectPhase',
-    required: true
-  },
   parent_task_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'ProjectTask',

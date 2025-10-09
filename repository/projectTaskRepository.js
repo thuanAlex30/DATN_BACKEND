@@ -2,7 +2,6 @@ const ProjectTask = require('../models/projectTask');
 const TaskAssignment = require('../models/taskAssignment');
 const TaskDependency = require('../models/taskDependency');
 const TaskProgressLog = require('../models/taskProgressLog');
-const ProjectPhase = require('../models/projectPhase');
 
 class ProjectTaskRepository {
   // ========== BASIC CRUD ==========
@@ -12,9 +11,6 @@ class ProjectTaskRepository {
       
       if (filters.project_id) {
         query.project_id = filters.project_id;
-      }
-      if (filters.phase_id) {
-        query.phase_id = filters.phase_id;
       }
       if (filters.task_name) {
         query.task_name = { $regex: filters.task_name, $options: 'i' };
@@ -28,19 +24,16 @@ class ProjectTaskRepository {
       if (filters.priority) {
         query.priority = filters.priority;
       }
-      if (filters.assigned_to) {
-        query.assigned_to = filters.assigned_to;
+      if (filters.responsible_user_id) {
+        query.responsible_user_id = filters.responsible_user_id;
       }
 
       const tasks = await ProjectTask.find(query)
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('area_id', 'area_name area_code')
         .populate('location_id', 'location_name location_code')
         .populate('parent_task_id', 'task_name')
-        .populate('assigned_to', 'full_name email')
-        .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email')
+        .populate('responsible_user_id', 'full_name email')
         .sort({ planned_start_date: 1 });
 
       return tasks;
@@ -54,13 +47,10 @@ class ProjectTaskRepository {
     try {
       const task = await ProjectTask.findById(id)
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('area_id', 'area_name area_code')
         .populate('location_id', 'location_name location_code')
         .populate('parent_task_id', 'task_name')
-        .populate('assigned_to', 'full_name email')
-        .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email');
+        .populate('responsible_user_id', 'full_name email');
 
       return task;
     } catch (error) {
@@ -89,13 +79,10 @@ class ProjectTaskRepository {
         { new: true, runValidators: true }
       )
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('area_id', 'area_name area_code')
         .populate('location_id', 'location_name location_code')
         .populate('parent_task_id', 'task_name')
-        .populate('assigned_to', 'full_name email')
-        .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email');
+        .populate('responsible_user_id', 'full_name email');
 
       return task;
     } catch (error) {
@@ -119,13 +106,10 @@ class ProjectTaskRepository {
     try {
       const tasks = await ProjectTask.find({ project_id: projectId })
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('area_id', 'area_name area_code')
         .populate('location_id', 'location_name location_code')
         .populate('parent_task_id', 'task_name')
-        .populate('assigned_to', 'full_name email')
-        .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email')
+        .populate('responsible_user_id', 'full_name email')
         .sort({ planned_start_date: 1 });
 
       return tasks;
@@ -135,25 +119,6 @@ class ProjectTaskRepository {
     }
   }
 
-  async getPhaseTasks(phaseId) {
-    try {
-      const tasks = await ProjectTask.find({ phase_id: phaseId })
-        .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
-        .populate('area_id', 'area_name area_code')
-        .populate('location_id', 'location_name location_code')
-        .populate('parent_task_id', 'task_name')
-        .populate('assigned_to', 'full_name email')
-        .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email')
-        .sort({ planned_start_date: 1 });
-
-      return tasks;
-    } catch (error) {
-      console.error('Error getting phase tasks:', error);
-      throw error;
-    }
-  }
 
   async getTasksByStatus(status, projectId = null) {
     try {
@@ -164,13 +129,10 @@ class ProjectTaskRepository {
 
       const tasks = await ProjectTask.find(query)
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('area_id', 'area_name area_code')
         .populate('location_id', 'location_name location_code')
         .populate('parent_task_id', 'task_name')
-        .populate('assigned_to', 'full_name email')
-        .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email')
+        .populate('responsible_user_id', 'full_name email')
         .sort({ planned_start_date: 1 });
 
       return tasks;
@@ -189,13 +151,10 @@ class ProjectTaskRepository {
 
       const tasks = await ProjectTask.find(query)
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('area_id', 'area_name area_code')
         .populate('location_id', 'location_name location_code')
         .populate('parent_task_id', 'task_name')
-        .populate('assigned_to', 'full_name email')
-        .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email')
+        .populate('responsible_user_id', 'full_name email')
         .sort({ planned_start_date: 1 });
 
       return tasks;
@@ -207,7 +166,7 @@ class ProjectTaskRepository {
 
   async getUserTasks(userId, filters = {}) {
     try {
-      const query = { assigned_to: userId };
+      const query = { responsible_user_id: userId };
       
       if (filters.project_id) {
         query.project_id = filters.project_id;
@@ -221,13 +180,10 @@ class ProjectTaskRepository {
 
       const tasks = await ProjectTask.find(query)
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('area_id', 'area_name area_code')
         .populate('location_id', 'location_name location_code')
         .populate('parent_task_id', 'task_name')
-        .populate('assigned_to', 'full_name email')
-        .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email')
+        .populate('responsible_user_id', 'full_name email')
         .sort({ planned_start_date: 1 });
 
       return tasks;
@@ -249,13 +205,10 @@ class ProjectTaskRepository {
 
       const tasks = await ProjectTask.find(query)
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('area_id', 'area_name area_code')
         .populate('location_id', 'location_name location_code')
         .populate('parent_task_id', 'task_name')
-        .populate('assigned_to', 'full_name email')
-        .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email')
+        .populate('responsible_user_id', 'full_name email')
         .sort({ planned_end_date: 1 });
 
       return tasks;
@@ -280,13 +233,10 @@ class ProjectTaskRepository {
 
       const tasks = await ProjectTask.find(query)
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('area_id', 'area_name area_code')
         .populate('location_id', 'location_name location_code')
         .populate('parent_task_id', 'task_name')
-        .populate('assigned_to', 'full_name email')
-        .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email')
+        .populate('responsible_user_id', 'full_name email')
         .sort({ planned_start_date: 1 });
 
       return tasks;
@@ -304,9 +254,6 @@ class ProjectTaskRepository {
       // Check required fields
       if (!taskData.project_id) {
         errors.push('Project ID is required');
-      }
-      if (!taskData.phase_id) {
-        errors.push('Phase ID is required');
       }
       if (!taskData.task_name) {
         errors.push('Task name is required');
@@ -473,8 +420,8 @@ class ProjectTaskRepository {
 
       await assignment.save();
 
-      // Update task assigned_to field
-      await this.updateTask(taskId, { assigned_to: userId });
+      // Update task responsible_user_id field
+      await this.updateTask(taskId, { responsible_user_id: userId });
 
       return assignment;
     } catch (error) {
@@ -660,28 +607,22 @@ class ProjectTaskRepository {
       if (filters.project_id) {
         query.project_id = filters.project_id;
       }
-      if (filters.phase_id) {
-        query.phase_id = filters.phase_id;
-      }
       if (filters.status) {
         query.status = filters.status;
       }
       if (filters.priority) {
         query.priority = filters.priority;
       }
-      if (filters.assigned_to) {
-        query.assigned_to = filters.assigned_to;
+      if (filters.responsible_user_id) {
+        query.responsible_user_id = filters.responsible_user_id;
       }
 
       const tasks = await ProjectTask.find(query)
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('area_id', 'area_name area_code')
         .populate('location_id', 'location_name location_code')
         .populate('parent_task_id', 'task_name')
-        .populate('assigned_to', 'full_name email')
-        .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email')
+        .populate('responsible_user_id', 'full_name email')
         .sort({ planned_start_date: 1 });
 
       return tasks;

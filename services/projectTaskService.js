@@ -4,16 +4,6 @@ const { createResponse } = require('../utils/response');
 
 class ProjectTaskService {
   // ========== PROJECT TASK MANAGEMENT ==========
-  async getPhaseTasks(phaseId) {
-    try {
-      const tasks = await projectTaskRepository.getPhaseTasks(phaseId);
-      return createResponse(200, 'Lấy danh sách công việc thành công',
-        transformDocumentsId(tasks, POPULATED_FIELDS.PROJECT_TASK));
-    } catch (error) {
-      console.error('Error getting phase tasks:', error);
-      return createResponse(500, 'Lỗi khi lấy danh sách công việc', null, error.message);
-    }
-  }
 
   async getTaskById(id) {
     try {
@@ -34,7 +24,7 @@ class ProjectTaskService {
   async createTask(taskData, userId) {
     try {
       // Validate required fields
-      const requiredFields = ['project_id', 'phase_id', 'task_name', 'task_code'];
+      const requiredFields = ['project_id', 'task_name', 'task_code'];
       for (const field of requiredFields) {
         if (!taskData[field]) {
           return createResponse(400, `Trường ${field} là bắt buộc`);

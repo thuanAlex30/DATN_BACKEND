@@ -6,6 +6,11 @@ const siteAreaSchema = new mongoose.Schema({
     ref: 'Site',
     required: true
   },
+  project_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Project',
+    required: true
+  },
   area_code: {
     type: String,
     required: true,
@@ -78,6 +83,8 @@ const siteAreaSchema = new mongoose.Schema({
 
 // Indexes for better performance
 siteAreaSchema.index({ site_id: 1, area_code: 1 });
+siteAreaSchema.index({ project_id: 1, area_code: 1 });
+siteAreaSchema.index({ project_id: 1, site_id: 1 });
 siteAreaSchema.index({ area_type: 1 });
 siteAreaSchema.index({ safety_level: 1 });
 siteAreaSchema.index({ supervisor_id: 1 });

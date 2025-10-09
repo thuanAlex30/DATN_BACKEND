@@ -42,6 +42,12 @@ class UserController {
     return ApiResponse.success(res, result, 'All users retrieved successfully');
   });
 
+  // Get potential managers
+  static getPotentialManagers = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const result = await UserService.getPotentialManagers();
+    return ApiResponse.success(res, result, 'Potential managers retrieved successfully');
+  });
+
   // Reset user password
   static resetPassword = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;

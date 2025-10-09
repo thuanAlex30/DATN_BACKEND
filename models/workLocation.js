@@ -6,6 +6,11 @@ const workLocationSchema = new mongoose.Schema({
     ref: 'SiteArea',
     required: true
   },
+  project_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Project',
+    required: true
+  },
   location_code: {
     type: String,
     required: true,
@@ -60,6 +65,16 @@ const workLocationSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  created_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  updated_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
+  },
   created_at: {
     type: Date,
     default: Date.now
@@ -74,6 +89,8 @@ const workLocationSchema = new mongoose.Schema({
 
 // Indexes for better performance
 workLocationSchema.index({ area_id: 1, location_code: 1 });
+workLocationSchema.index({ project_id: 1, location_code: 1 });
+workLocationSchema.index({ project_id: 1, area_id: 1 });
 workLocationSchema.index({ location_type: 1 });
 workLocationSchema.index({ is_active: 1 });
 

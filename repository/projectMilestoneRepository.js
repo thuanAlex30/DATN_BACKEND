@@ -10,9 +10,6 @@ class ProjectMilestoneRepository {
       if (filters.project_id) {
         query.project_id = filters.project_id;
       }
-      if (filters.phase_id) {
-        query.phase_id = filters.phase_id;
-      }
       if (filters.milestone_name) {
         query.milestone_name = { $regex: filters.milestone_name, $options: 'i' };
       }
@@ -25,7 +22,6 @@ class ProjectMilestoneRepository {
 
       const milestones = await ProjectMilestone.find(query)
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('responsible_user_id', 'full_name email')
         .populate('created_by', 'full_name email')
         .populate('updated_by', 'full_name email')
@@ -42,7 +38,6 @@ class ProjectMilestoneRepository {
     try {
       const milestone = await ProjectMilestone.findById(id)
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('responsible_user_id', 'full_name email')
         .populate('created_by', 'full_name email')
         .populate('updated_by', 'full_name email');
@@ -74,7 +69,6 @@ class ProjectMilestoneRepository {
         { new: true, runValidators: true }
       )
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('responsible_user_id', 'full_name email')
         .populate('created_by', 'full_name email')
         .populate('updated_by', 'full_name email');
@@ -101,7 +95,6 @@ class ProjectMilestoneRepository {
     try {
       const milestones = await ProjectMilestone.find({ project_id: projectId })
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('responsible_user_id', 'full_name email')
         .populate('created_by', 'full_name email')
         .populate('updated_by', 'full_name email')
@@ -114,22 +107,6 @@ class ProjectMilestoneRepository {
     }
   }
 
-  async getPhaseMilestones(phaseId) {
-    try {
-      const milestones = await ProjectMilestone.find({ phase_id: phaseId })
-        .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
-        .populate('responsible_user_id', 'full_name email')
-        .populate('created_by', 'full_name email')
-        .populate('updated_by', 'full_name email')
-        .sort({ planned_date: 1 });
-
-      return milestones;
-    } catch (error) {
-      console.error('Error getting phase milestones:', error);
-      throw error;
-    }
-  }
 
   async getUpcomingMilestones(days = 30) {
     try {
@@ -141,7 +118,6 @@ class ProjectMilestoneRepository {
         status: { $in: ['PENDING', 'IN_PROGRESS'] }
       })
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('responsible_user_id', 'full_name email')
         .populate('created_by', 'full_name email')
         .populate('updated_by', 'full_name email')
@@ -161,7 +137,6 @@ class ProjectMilestoneRepository {
         status: { $in: ['PENDING', 'IN_PROGRESS'] }
       })
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('responsible_user_id', 'full_name email')
         .populate('created_by', 'full_name email')
         .populate('updated_by', 'full_name email')
@@ -183,7 +158,6 @@ class ProjectMilestoneRepository {
 
       const milestones = await ProjectMilestone.find(query)
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('responsible_user_id', 'full_name email')
         .populate('created_by', 'full_name email')
         .populate('updated_by', 'full_name email')
@@ -209,7 +183,6 @@ class ProjectMilestoneRepository {
 
       const milestones = await ProjectMilestone.find(query)
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('responsible_user_id', 'full_name email')
         .populate('created_by', 'full_name email')
         .populate('updated_by', 'full_name email')
@@ -236,6 +209,12 @@ class ProjectMilestoneRepository {
       }
       if (!milestoneData.planned_date) {
         errors.push('Planned date is required');
+      }
+      if (!milestoneData.completion_criteria) {
+        errors.push('Completion criteria is required');
+      }
+      if (!milestoneData.responsible_user_id) {
+        errors.push('Responsible user is required');
       }
 
       // Check if planned date is in the future
@@ -442,7 +421,6 @@ class ProjectMilestoneRepository {
 
       const milestones = await ProjectMilestone.find(query)
         .populate('project_id', 'project_name project_code')
-        .populate('phase_id', 'phase_name')
         .populate('responsible_user_id', 'full_name email')
         .populate('created_by', 'full_name email')
         .populate('updated_by', 'full_name email')

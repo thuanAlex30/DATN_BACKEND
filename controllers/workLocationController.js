@@ -5,7 +5,8 @@ const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 class WorkLocationController {
   static getAreaLocations = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { areaId } = req.params;
-    const result = await workLocationService.getAreaLocations(areaId);
+    const { projectId } = req.query; // Add project filter from query params
+    const result = await workLocationService.getAreaLocations(areaId, projectId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -25,11 +26,22 @@ class WorkLocationController {
     }
   });
 
+  static getProjectLocations = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const result = await workLocationService.getProjectLocations(projectId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+    }
+  });
+
   static createLocation = ErrorMiddleware.asyncHandler(async (req, res) => {
     const locationData = req.body;
     const userId = req.user._id || req.user.id;
     
-    const result = await workLocationService.createLocation(locationData, userId);
+    const result = await workLocationService.createWorkLocation(locationData, userId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

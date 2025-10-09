@@ -5,14 +5,26 @@ const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 
 class ProjectTaskController {
   // ========== PROJECT TASK MANAGEMENT ==========
-  static getPhaseTasks = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { phaseId } = req.params;
-    const result = await projectTaskService.getPhaseTasks(phaseId);
+
+  static getAllTasks = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const filters = req.query;
+    const result = await projectTaskService.getAllTasks(filters);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  static getProjectTasks = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { project_id } = req.query;
+    const result = await projectTaskService.getProjectTasks(project_id);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
     }
   });
 
@@ -171,16 +183,6 @@ class ProjectTaskController {
     }
   });
 
-  static getTaskStats = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { phaseId } = req.params;
-    const result = await projectTaskService.getTaskStats(phaseId);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
-    }
-  });
 
   static getUserTasks = ErrorMiddleware.asyncHandler(async (req, res) => {
     const userId = req.user._id || req.user.id;
@@ -199,19 +201,6 @@ class ProjectTaskController {
     }
   });
 
-  static reorderTasks = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { phaseId } = req.params;
-    const { taskIds } = req.body;
-    const userId = req.user._id || req.user.id;
-    
-    const result = await projectTaskService.reorderTasks(phaseId, taskIds, userId);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
-    }
-  });
 
   static duplicateTask = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;

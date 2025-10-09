@@ -8,8 +8,11 @@ router.use(authMiddleware.authenticate);
 
 // ========== PROJECT TASK ROUTES ==========
 
-// Get all tasks for a phase
-router.get('/phase/:phaseId/tasks', projectTaskController.getPhaseTasks);
+// Get all tasks (with optional filters)
+router.get('/tasks', projectTaskController.getAllTasks);
+
+// Get tasks by project ID
+router.get('/tasks/project', projectTaskController.getProjectTasks);
 
 // Get task by ID
 router.get('/tasks/:id', projectTaskController.getTaskById);
@@ -53,7 +56,5 @@ router.get('/tasks/:id/progress-logs', projectTaskController.getTaskProgressLogs
 // Add progress log
 router.post('/tasks/:id/progress-logs', projectTaskController.addProgressLog);
 
-// Get task statistics
-router.get('/tasks/:id/stats', projectTaskController.getTaskStats);
 
 module.exports = router;

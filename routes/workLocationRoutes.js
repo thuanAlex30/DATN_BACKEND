@@ -11,6 +11,9 @@ router.use(authMiddleware.authenticate);
 // Get all locations for an area
 router.get('/area/:areaId/locations', workLocationController.getAreaLocations);
 
+// Get all locations for a project
+router.get('/project/:projectId/locations', workLocationController.getProjectLocations);
+
 // Get location by ID
 router.get('/locations/:id', workLocationController.getLocationById);
 

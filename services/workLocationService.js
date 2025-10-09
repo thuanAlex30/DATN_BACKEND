@@ -6,7 +6,7 @@ class WorkLocationService {
   // ========== WORK LOCATION MANAGEMENT ==========
   async getAllWorkLocations(filters = {}) {
     try {
-      const locations = await workLocationRepository.getAllWorkLocations(filters);
+      const locations = await workLocationRepository.getAllLocations(filters);
       return createResponse(200, 'Lấy danh sách địa điểm làm việc thành công',
         transformDocumentsId(locations, POPULATED_FIELDS.WORK_LOCATION));
     } catch (error) {
@@ -34,22 +34,26 @@ class WorkLocationService {
   async createWorkLocation(locationData, userId) {
     try {
       // Validate required fields
-      const requiredFields = ['location_name', 'location_code'];
+      const requiredFields = ['area_id', 'project_id', 'location_name', 'location_code'];
       for (const field of requiredFields) {
         if (!locationData[field]) {
           return createResponse(400, `Trường ${field} là bắt buộc`);
         }
       }
 
-      // Validate location
-      const validation = await workLocationRepository.validateWorkLocation(locationData);
-
-      if (!validation.valid) {
-        return createResponse(400, validation.errors.join(', '));
+      // Check for duplicate location code
+      const existingLocation = await workLocationRepository.getLocationByCode(locationData.location_code);
+      if (existingLocation) {
+        return createResponse(409, `Mã địa điểm "${locationData.location_code}" đã tồn tại. Vui lòng chọn mã khác.`);
       }
 
-      const location = await workLocationRepository.createWorkLocation({
-        ...locationData,
+      // Safety equipment is already in correct format from frontend
+      const transformedData = {
+        ...locationData
+      };
+
+      const location = await workLocationRepository.createLocation({
+        ...transformedData,
         created_by: userId
       });
 
@@ -57,14 +61,27 @@ class WorkLocationService {
         transformDocumentId(location, POPULATED_FIELDS.WORK_LOCATION));
     } catch (error) {
       console.error('Error creating work location:', error);
+      
+      // Handle MongoDB duplicate key error
+      if (error.code === 11000) {
+        const field = Object.keys(error.keyPattern)[0];
+        const value = error.keyValue[field];
+        return createResponse(409, `Mã địa điểm "${value}" đã tồn tại. Vui lòng chọn mã khác.`);
+      }
+      
       return createResponse(500, 'Lỗi khi tạo địa điểm làm việc', null, error.message);
     }
   }
 
-  async updateWorkLocation(id, updateData, userId) {
+  async updateLocation(id, updateData, userId) {
     try {
-      const location = await workLocationRepository.updateWorkLocation(id, {
-        ...updateData,
+      // Safety equipment is already in correct format from frontend
+      const transformedData = {
+        ...updateData
+      };
+
+      const location = await workLocationRepository.updateLocation(id, {
+        ...transformedData,
         updated_by: userId
       });
 
@@ -96,9 +113,20 @@ class WorkLocationService {
   }
 
   // ========== WORK LOCATION QUERIES ==========
+  async getAreaLocations(areaId, projectId = null) {
+    try {
+      const locations = await workLocationRepository.getAreaLocations(areaId, projectId);
+      return createResponse(200, 'Lấy danh sách địa điểm làm việc theo khu vực thành công',
+        transformDocumentsId(locations, POPULATED_FIELDS.WORK_LOCATION));
+    } catch (error) {
+      console.error('Error getting area locations:', error);
+      return createResponse(500, 'Lỗi khi lấy danh sách địa điểm làm việc theo khu vực', null, error.message);
+    }
+  }
+
   async getActiveWorkLocations() {
     try {
-      const locations = await workLocationRepository.getActiveWorkLocations();
+      const locations = await workLocationRepository.getActiveLocations();
       return createResponse(200, 'Lấy danh sách địa điểm làm việc đang hoạt động thành công',
         transformDocumentsId(locations, POPULATED_FIELDS.WORK_LOCATION));
     } catch (error) {
@@ -107,9 +135,20 @@ class WorkLocationService {
     }
   }
 
+  async getProjectLocations(projectId) {
+    try {
+      const locations = await workLocationRepository.getProjectLocations(projectId);
+      return createResponse(200, 'Lấy danh sách địa điểm làm việc theo dự án thành công',
+        transformDocumentsId(locations, POPULATED_FIELDS.WORK_LOCATION));
+    } catch (error) {
+      console.error('Error getting project locations:', error);
+      return createResponse(500, 'Lỗi khi lấy danh sách địa điểm làm việc theo dự án', null, error.message);
+    }
+  }
+
   async getWorkLocationsByType(locationType) {
     try {
-      const locations = await workLocationRepository.getWorkLocationsByType(locationType);
+      const locations = await workLocationRepository.getLocationsByType(locationType);
       return createResponse(200, `Lấy danh sách địa điểm ${locationType.toLowerCase()} thành công`,
         transformDocumentsId(locations, POPULATED_FIELDS.WORK_LOCATION));
     } catch (error) {
@@ -120,7 +159,7 @@ class WorkLocationService {
 
   async getWorkLocationsByRegion(region) {
     try {
-      const locations = await workLocationRepository.getWorkLocationsByRegion(region);
+      const locations = await workLocationRepository.getAllLocations({ region });
       return createResponse(200, `Lấy danh sách địa điểm khu vực ${region} thành công`,
         transformDocumentsId(locations, POPULATED_FIELDS.WORK_LOCATION));
     } catch (error) {
@@ -131,7 +170,7 @@ class WorkLocationService {
 
   async getWorkLocationsByStatus(status) {
     try {
-      const locations = await workLocationRepository.getWorkLocationsByStatus(status);
+      const locations = await workLocationRepository.getLocationsByStatus(status);
       return createResponse(200, `Lấy danh sách địa điểm ${status.toLowerCase()} thành công`,
         transformDocumentsId(locations, POPULATED_FIELDS.WORK_LOCATION));
     } catch (error) {
@@ -143,8 +182,11 @@ class WorkLocationService {
   // ========== WORK LOCATION VALIDATION ==========
   async validateWorkLocation(locationData) {
     try {
-      const validation = await workLocationRepository.validateWorkLocation(locationData);
-      return createResponse(200, 'Kiểm tra địa điểm làm việc thành công', validation);
+      // Simple validation - check if location_name and location_code are provided
+      if (!locationData.location_name || !locationData.location_code) {
+        return createResponse(400, 'Tên địa điểm và mã địa điểm là bắt buộc');
+      }
+      return createResponse(200, 'Kiểm tra địa điểm làm việc thành công', { valid: true });
     } catch (error) {
       console.error('Error validating work location:', error);
       return createResponse(500, 'Lỗi khi kiểm tra địa điểm làm việc', null, error.message);
@@ -154,7 +196,12 @@ class WorkLocationService {
   // ========== WORK LOCATION ANALYTICS ==========
   async getWorkLocationAnalytics() {
     try {
-      const analytics = await workLocationRepository.getWorkLocationAnalytics();
+      const locations = await workLocationRepository.getAllLocations();
+      const analytics = {
+        total: locations.length,
+        active: locations.filter(l => l.status === 'ACTIVE').length,
+        inactive: locations.filter(l => l.status === 'INACTIVE').length
+      };
       return createResponse(200, 'Lấy phân tích địa điểm làm việc thành công', analytics);
     } catch (error) {
       console.error('Error getting work location analytics:', error);
@@ -164,7 +211,18 @@ class WorkLocationService {
 
   async getWorkLocationStats(filters = {}) {
     try {
-      const stats = await workLocationRepository.getWorkLocationStats(filters);
+      const locations = await workLocationRepository.getAllLocations(filters);
+      const stats = {
+        total: locations.length,
+        by_type: {},
+        by_status: {}
+      };
+      
+      locations.forEach(location => {
+        stats.by_type[location.location_type] = (stats.by_type[location.location_type] || 0) + 1;
+        stats.by_status[location.status] = (stats.by_status[location.status] || 0) + 1;
+      });
+      
       return createResponse(200, 'Lấy thống kê địa điểm làm việc thành công', stats);
     } catch (error) {
       console.error('Error getting work location stats:', error);
@@ -175,7 +233,11 @@ class WorkLocationService {
   // ========== WORK LOCATION SEARCH ==========
   async searchWorkLocations(searchTerm, filters = {}) {
     try {
-      const locations = await workLocationRepository.searchWorkLocations(searchTerm, filters);
+      const searchFilters = {
+        ...filters,
+        location_name: searchTerm
+      };
+      const locations = await workLocationRepository.getAllLocations(searchFilters);
       return createResponse(200, 'Tìm kiếm địa điểm làm việc thành công',
         transformDocumentsId(locations, POPULATED_FIELDS.WORK_LOCATION));
     } catch (error) {
@@ -187,7 +249,10 @@ class WorkLocationService {
   // ========== WORK LOCATION MANAGEMENT ==========
   async activateWorkLocation(id, userId) {
     try {
-      const location = await workLocationRepository.activateWorkLocation(id);
+      const location = await workLocationRepository.updateWorkLocation(id, { 
+        status: 'ACTIVE',
+        updated_by: userId 
+      });
       return createResponse(200, 'Kích hoạt địa điểm làm việc thành công',
         transformDocumentId(location, POPULATED_FIELDS.WORK_LOCATION));
     } catch (error) {
@@ -198,7 +263,10 @@ class WorkLocationService {
 
   async deactivateWorkLocation(id, userId) {
     try {
-      const location = await workLocationRepository.deactivateWorkLocation(id);
+      const location = await workLocationRepository.updateWorkLocation(id, { 
+        status: 'INACTIVE',
+        updated_by: userId 
+      });
       return createResponse(200, 'Vô hiệu hóa địa điểm làm việc thành công',
         transformDocumentId(location, POPULATED_FIELDS.WORK_LOCATION));
     } catch (error) {
@@ -210,7 +278,18 @@ class WorkLocationService {
   // ========== WORK LOCATION REPORTS ==========
   async generateWorkLocationReport() {
     try {
-      const report = await workLocationRepository.generateWorkLocationReport();
+      const locations = await workLocationRepository.getAllLocations();
+      const report = {
+        generated_at: new Date(),
+        total_locations: locations.length,
+        locations: locations.map(location => ({
+          id: location._id,
+          name: location.location_name,
+          code: location.location_code,
+          type: location.location_type,
+          status: location.status
+        }))
+      };
       return createResponse(200, 'Tạo báo cáo địa điểm làm việc thành công', report);
     } catch (error) {
       console.error('Error generating work location report:', error);

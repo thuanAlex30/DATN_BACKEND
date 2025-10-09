@@ -39,8 +39,8 @@ class ProjectService {
 
   async createProject(projectData, userId) {
     try {
-      // Validate required fields
-      const requiredFields = ['project_name', 'description', 'start_date', 'end_date', 'leader_id', 'site_name'];
+      // Validate required fields (site_id không bắt buộc)
+      const requiredFields = ['project_name', 'description', 'start_date', 'end_date', 'leader_id'];
       for (const field of requiredFields) {
         if (!projectData[field]) {
           return createResponse(400, `Trường ${field} là bắt buộc`);
@@ -58,36 +58,36 @@ class ProjectService {
         return createResponse(404, 'Không tìm thấy trưởng dự án');
       }
 
-      // Handle site_name - create or find site
-      const Site = require('../models/site');
-      let site;
-      
-      // Try to find existing site by name
-      site = await Site.findOne({ site_name: projectData.site_name });
-      
-      // If site doesn't exist, create a new one
-      if (!site) {
-        site = new Site({
-          site_name: projectData.site_name,
-          address: projectData.site_name, // Use site_name as address if not provided
-          is_active: true
-        });
-        await site.save();
+      // Validate site exists (chỉ khi có site_id)
+      if (projectData.site_id) {
+        const Site = require('../models/site');
+        const site = await Site.findById(projectData.site_id);
+        if (!site) {
+          return createResponse(404, 'Không tìm thấy địa điểm dự án');
+        }
       }
 
-      // Replace site_name with site_id in projectData
-      const projectDataWithSiteId = {
-        ...projectData,
-        site_id: site._id
-      };
-      delete projectDataWithSiteId.site_name;
-
-      const project = await projectRepository.createProject(projectDataWithSiteId);
+      const project = await projectRepository.createProject(projectData);
       
       return createResponse(201, 'Tạo dự án thành công',
         transformDocumentId(project, POPULATED_FIELDS.PROJECT));
     } catch (error) {
       console.error('Error creating project:', error);
+      
+      // Handle specific MongoDB errors
+      if (error.name === 'ValidationError') {
+        const validationErrors = Object.values(error.errors).map(err => err.message);
+        return createResponse(400, 'Dữ liệu không hợp lệ', null, validationErrors.join(', '));
+      }
+      
+      if (error.code === 11000) {
+        return createResponse(400, 'Tên dự án đã tồn tại');
+      }
+      
+      if (error.name === 'CastError') {
+        return createResponse(400, 'ID không hợp lệ');
+      }
+      
       return createResponse(500, 'Lỗi khi tạo dự án', null, error.message);
     }
   }
@@ -149,8 +149,8 @@ class ProjectService {
       // Check if user has permission to delete (only leader or admin)
       if (project.leader_id.toString() !== userId) {
         // Check if user is admin
-        const user = await User.findById(userId);
-        if (!user || user.role_id.toString() !== 'admin') {
+        const user = await User.findById(userId).populate('role_id');
+        if (!user || !user.role_id || user.role_id.role_name !== 'admin') {
           return createResponse(403, 'Bạn không có quyền xóa dự án này');
         }
       }

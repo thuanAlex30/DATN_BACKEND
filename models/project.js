@@ -38,7 +38,7 @@ const projectSchema = new mongoose.Schema({
   site_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Site',
-    required: true
+    required: false  // ✅ Không bắt buộc để có thể tạo project trước
   },
   progress: {
     type: Number,

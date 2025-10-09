@@ -208,6 +208,14 @@ class SiteService {
         transformDocumentId(location, POPULATED_FIELDS.WORK_LOCATION));
     } catch (error) {
       console.error('Error creating work location:', error);
+      
+      // Handle MongoDB duplicate key error
+      if (error.code === 11000) {
+        const field = Object.keys(error.keyPattern)[0];
+        const value = error.keyValue[field];
+        return createResponse(409, `Mã địa điểm "${value}" đã tồn tại. Vui lòng chọn mã khác.`);
+      }
+      
       return createResponse(500, 'Lỗi khi tạo vị trí làm việc', null, error.message);
     }
   }
