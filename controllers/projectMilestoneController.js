@@ -16,6 +16,17 @@ class ProjectMilestoneController {
     }
   });
 
+  static getMilestonesByUser = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const result = await projectMilestoneService.getMilestonesByUser(userId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
   static getMilestoneById = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
     const result = await projectMilestoneService.getMilestoneById(id);

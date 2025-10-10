@@ -200,6 +200,17 @@ class ProjectRiskController {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
     }
   });
+
+  static getAssignedRisks = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const result = await projectRiskService.getAssignedRisks(userId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+    }
+  });
 }
 
 module.exports = ProjectRiskController;

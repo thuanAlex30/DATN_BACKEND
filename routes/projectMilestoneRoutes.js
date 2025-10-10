@@ -11,6 +11,9 @@ router.use(authMiddleware.authenticate);
 // Get all milestones for a project
 router.get('/project/:projectId/milestones', projectMilestoneController.getProjectMilestones);
 
+// Get milestones assigned to a specific user
+router.get('/milestones/assigned/:userId', projectMilestoneController.getMilestonesByUser);
+
 // Get milestone by ID
 router.get('/milestones/:id', projectMilestoneController.getMilestoneById);
 

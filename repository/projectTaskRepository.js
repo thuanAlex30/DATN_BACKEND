@@ -119,6 +119,24 @@ class ProjectTaskRepository {
     }
   }
 
+  // Get tasks assigned to a specific user
+  async getTasksByUser(userId) {
+    try {
+      const tasks = await ProjectTask.find({ responsible_user_id: userId })
+        .populate('project_id', 'project_name project_code')
+        .populate('area_id', 'area_name area_code')
+        .populate('location_id', 'location_name location_code')
+        .populate('parent_task_id', 'task_name')
+        .populate('responsible_user_id', 'full_name email username')
+        .sort({ planned_start_date: 1 });
+
+      return tasks;
+    } catch (error) {
+      console.error('Error getting tasks by user:', error);
+      throw error;
+    }
+  }
+
 
   async getTasksByStatus(status, projectId = null) {
     try {

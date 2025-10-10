@@ -32,6 +32,9 @@ router.get('/project/:projectId/stats', projectRiskController.getRiskStats);
 // Get all risks with filters
 router.get('/risks', projectRiskController.getAllRisks);
 
+// Get risks assigned to a specific user
+router.get('/risks/assigned/:userId', projectRiskController.getAssignedRisks);
+
 // Search risks
 router.get('/risks/search', projectRiskController.searchRisks);
 

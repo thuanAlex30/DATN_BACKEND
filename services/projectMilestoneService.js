@@ -15,6 +15,17 @@ class ProjectMilestoneService {
     }
   }
 
+  async getMilestonesByUser(userId) {
+    try {
+      const milestones = await projectMilestoneRepository.getMilestonesByUser(userId);
+      return createResponse(200, 'Lấy danh sách cột mốc của người dùng thành công',
+        transformDocumentsId(milestones, POPULATED_FIELDS.PROJECT_MILESTONE));
+    } catch (error) {
+      console.error('Error getting milestones by user:', error);
+      return createResponse(500, 'Lỗi khi lấy danh sách cột mốc của người dùng', null, error.message);
+    }
+  }
+
   async getMilestoneById(id) {
     try {
       const milestone = await projectMilestoneRepository.getMilestoneById(id);

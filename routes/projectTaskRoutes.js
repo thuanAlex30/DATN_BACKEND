@@ -14,6 +14,9 @@ router.get('/tasks', projectTaskController.getAllTasks);
 // Get tasks by project ID
 router.get('/tasks/project', projectTaskController.getProjectTasks);
 
+// Get tasks assigned to a specific user
+router.get('/tasks/assigned/:userId', projectTaskController.getTasksByUser);
+
 // Get task by ID
 router.get('/tasks/:id', projectTaskController.getTaskById);
 

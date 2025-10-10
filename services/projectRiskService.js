@@ -255,6 +255,29 @@ class ProjectRiskService {
       };
     }
   }
+
+  async getAssignedRisks(userId) {
+    try {
+      const risks = await ProjectRisk.find({ owner_id: userId })
+        .populate('project_id', 'project_name')
+        .populate('phase_id', 'phase_name')
+        .populate('owner_id', 'full_name email')
+        .sort({ risk_score: -1, identified_date: -1 });
+
+      return {
+        success: true,
+        data: risks,
+        message: 'Lấy danh sách rủi ro được giao thành công'
+      };
+    } catch (error) {
+      console.error('Error getting assigned risks:', error);
+      return {
+        success: false,
+        message: 'Lỗi khi lấy danh sách rủi ro được giao',
+        error: error.message
+      };
+    }
+  }
 }
 
 module.exports = new ProjectRiskService();

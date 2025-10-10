@@ -28,6 +28,17 @@ class ProjectTaskController {
     }
   });
 
+  static getTasksByUser = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const result = await projectTaskService.getTasksByUser(userId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
   static getTaskById = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
     const result = await projectTaskService.getTaskById(id);

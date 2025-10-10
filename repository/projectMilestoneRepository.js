@@ -107,6 +107,23 @@ class ProjectMilestoneRepository {
     }
   }
 
+  // Get milestones assigned to a specific user
+  async getMilestonesByUser(userId) {
+    try {
+      const milestones = await ProjectMilestone.find({ responsible_user_id: userId })
+        .populate('project_id', 'project_name project_code')
+        .populate('responsible_user_id', 'full_name email username')
+        .populate('created_by', 'full_name email')
+        .populate('updated_by', 'full_name email')
+        .sort({ planned_date: 1 });
+
+      return milestones;
+    } catch (error) {
+      console.error('Error getting milestones by user:', error);
+      throw error;
+    }
+  }
+
 
   async getUpcomingMilestones(days = 30) {
     try {

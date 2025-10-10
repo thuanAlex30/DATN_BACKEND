@@ -108,6 +108,17 @@ class ProjectTaskService {
     }
   }
 
+  async getTasksByUser(userId) {
+    try {
+      const tasks = await projectTaskRepository.getTasksByUser(userId);
+      return createResponse(200, 'Lấy danh sách công việc của người dùng thành công',
+        transformDocumentsId(tasks, POPULATED_FIELDS.PROJECT_TASK));
+    } catch (error) {
+      console.error('Error getting tasks by user:', error);
+      return createResponse(500, 'Lỗi khi lấy danh sách công việc của người dùng', null, error.message);
+    }
+  }
+
   async getTasksByStatus(status, projectId = null) {
     try {
       const tasks = await projectTaskRepository.getTasksByStatus(status, projectId);
