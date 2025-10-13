@@ -1,6 +1,7 @@
 const projectRiskService = require('../services/projectRiskService');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
+const ProjectRiskEvents = require('../events/projectRiskEvents');
 
 class ProjectRiskController {
   static getProjectRisks = ErrorMiddleware.asyncHandler(async (req, res) => {
@@ -31,6 +32,23 @@ class ProjectRiskController {
     
     const result = await projectRiskService.createRisk(riskData, userId);
     
+    // Emit project risk created event
+    if (result.success && result.data) {
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        await ProjectRiskEvents.emitProjectRiskCreated(result.data, metadata);
+      } catch (error) {
+        console.error('❌ Error emitting project risk created event:', error);
+        // Don't fail the request if event emission fails
+      }
+    }
+    
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
@@ -43,7 +61,28 @@ class ProjectRiskController {
     const updateData = req.body;
     const userId = req.user._id || req.user.id;
     
+    // Get old risk data for comparison
+    const oldRiskResult = await projectRiskService.getRiskById(id);
     const result = await projectRiskService.updateRisk(id, updateData, userId);
+    
+    // Emit project risk updated event
+    if (result.success && result.data) {
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        if (oldRiskResult.success) {
+          await ProjectRiskEvents.emitProjectRiskUpdated(result.data, oldRiskResult.data, metadata);
+        }
+      } catch (error) {
+        console.error('❌ Error emitting project risk updated event:', error);
+        // Don't fail the request if event emission fails
+      }
+    }
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -56,7 +95,26 @@ class ProjectRiskController {
     const { id } = req.params;
     const userId = req.user._id || req.user.id;
     
+    // Get risk data before deletion
+    const oldRiskResult = await projectRiskService.getRiskById(id);
     const result = await projectRiskService.deleteRisk(id, userId);
+    
+    // Emit project risk deleted event
+    if (result.success && oldRiskResult.success) {
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        await ProjectRiskEvents.emitProjectRiskDeleted(oldRiskResult.data, metadata);
+      } catch (error) {
+        console.error('❌ Error emitting project risk deleted event:', error);
+        // Don't fail the request if event emission fails
+      }
+    }
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

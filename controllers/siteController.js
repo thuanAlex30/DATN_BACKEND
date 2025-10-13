@@ -1,6 +1,7 @@
 const Site = require('../models/site');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
+const SiteEvents = require('../events/siteEvents');
 
 class SiteController {
   // ========== SITE MANAGEMENT ==========
@@ -92,6 +93,21 @@ class SiteController {
       
       await site.save();
       
+      // Emit site created event
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        await SiteEvents.emitSiteCreated(site, metadata);
+      } catch (error) {
+        console.error('❌ Error emitting site created event:', error);
+        // Don't fail the request if event emission fails
+      }
+      
       return ApiResponse.success(res, site, 'Site created successfully', 201);
     } catch (error) {
       if (error.name === 'ValidationError') {
@@ -138,6 +154,22 @@ class SiteController {
         { new: true, runValidators: true }
       );
       
+      // Emit site updated event
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        const changes = Object.keys(updateData);
+        await SiteEvents.emitSiteUpdated(updatedSite, site, changes, metadata);
+      } catch (error) {
+        console.error('❌ Error emitting site updated event:', error);
+        // Don't fail the request if event emission fails
+      }
+      
       return ApiResponse.success(res, updatedSite, 'Site updated successfully');
     } catch (error) {
       if (error.name === 'ValidationError') {
@@ -167,6 +199,21 @@ class SiteController {
       }
       
       await Site.findByIdAndDelete(id);
+      
+      // Emit site deleted event
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        await SiteEvents.emitSiteDeleted(site, metadata);
+      } catch (error) {
+        console.error('❌ Error emitting site deleted event:', error);
+        // Don't fail the request if event emission fails
+      }
       
       return ApiResponse.success(res, null, 'Site deleted successfully');
     } catch (error) {

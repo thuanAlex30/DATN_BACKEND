@@ -1,6 +1,7 @@
 const projectChangeRequestService = require('../services/projectChangeRequestService');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
+const ProjectChangeRequestEvents = require('../events/projectChangeRequestEvents');
 
 class ProjectChangeRequestController {
   static getProjectChangeRequests = ErrorMiddleware.asyncHandler(async (req, res) => {
@@ -30,6 +31,23 @@ class ProjectChangeRequestController {
     const userId = req.user._id || req.user.id;
     
     const result = await projectChangeRequestService.createChangeRequest(changeData, userId);
+    
+    // Emit project change request created event
+    if (result.success && result.data) {
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        await ProjectChangeRequestEvents.emitProjectChangeRequestCreated(result.data, metadata);
+      } catch (error) {
+        console.error('❌ Error emitting project change request created event:', error);
+        // Don't fail the request if event emission fails
+      }
+    }
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -183,6 +201,29 @@ class ProjectChangeRequestController {
     
     const result = await projectChangeRequestService.approveChangeRequest(id, approval_notes, userId);
     
+    // Emit project change request approved event
+    if (result.success && result.data) {
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        const approvalData = {
+          approver_name: req.user?.full_name,
+          approver_email: req.user?.email,
+          approver_role: req.user?.role,
+          approval_notes: approval_notes
+        };
+        await ProjectChangeRequestEvents.emitProjectChangeRequestApproved(result.data, approvalData, metadata);
+      } catch (error) {
+        console.error('❌ Error emitting project change request approved event:', error);
+        // Don't fail the request if event emission fails
+      }
+    }
+    
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
@@ -196,6 +237,29 @@ class ProjectChangeRequestController {
     const userId = req.user._id || req.user.id;
     
     const result = await projectChangeRequestService.rejectChangeRequest(id, rejection_reason, userId);
+    
+    // Emit project change request rejected event
+    if (result.success && result.data) {
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        const rejectionData = {
+          rejector_name: req.user?.full_name,
+          rejector_email: req.user?.email,
+          rejector_role: req.user?.role,
+          rejection_reason: rejection_reason
+        };
+        await ProjectChangeRequestEvents.emitProjectChangeRequestRejected(result.data, rejectionData, metadata);
+      } catch (error) {
+        console.error('❌ Error emitting project change request rejected event:', error);
+        // Don't fail the request if event emission fails
+      }
+    }
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

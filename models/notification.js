@@ -133,7 +133,7 @@ notificationSchema.statics.getNotifications = async function(userId, filters = {
         } = filters;
 
         // Build query
-        const query = { user_id: mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId };
+        const query = { user_id: mongoose.isValidObjectId(userId) ? new mongoose.Types.ObjectId(userId) : userId };
 
         if (type) query.type = type;
         if (is_read !== undefined) query.is_read = is_read;

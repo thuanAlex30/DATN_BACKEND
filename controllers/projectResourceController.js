@@ -1,6 +1,7 @@
 const projectResourceService = require('../services/projectResourceService');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
+const ProjectResourceEvents = require('../events/projectResourceEvents');
 
 class ProjectResourceController {
   static getProjectResources = ErrorMiddleware.asyncHandler(async (req, res) => {
@@ -30,6 +31,23 @@ class ProjectResourceController {
     const userId = req.user._id || req.user.id;
     
     const result = await projectResourceService.createResource(resourceData, userId);
+    
+    // Emit project resource created event
+    if (result.success && result.data) {
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        await ProjectResourceEvents.emitProjectResourceCreated(result.data, metadata);
+      } catch (error) {
+        console.error('❌ Error emitting project resource created event:', error);
+        // Don't fail the request if event emission fails
+      }
+    }
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

@@ -1,10 +1,15 @@
 // Load .env with fallback values
 require('dotenv').config();
 
-// Set JWT_SECRET if not provided
+// Set environment variables if not provided
 if (!process.env.JWT_SECRET) {
   process.env.JWT_SECRET = 'your_super_secret_jwt_key_here_2024_safety_management_system';
   console.log('⚠️  JWT_SECRET not found in .env, using default value');
+}
+
+// Set Kafka environment variables
+if (!process.env.KAFKAJS_NO_PARTITIONER_WARNING) {
+  process.env.KAFKAJS_NO_PARTITIONER_WARNING = '1';
 }
 
 const express = require('express');
@@ -18,6 +23,7 @@ const ErrorMiddleware = require('./middlewares/ErrorMiddleware');
 const LoggingMiddleware = require('./middlewares/LoggingMiddleware');
 const initializeTrainingData = require('./database/initializeTrainingData');
 const websocketService = require('./services/websocketService');
+const kafkaMonitor = require('./services/kafkaMonitor');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -183,6 +189,17 @@ app.use(ErrorMiddleware.handle);
     // Initialize WebSocket server
     websocketService.initialize(server);
     
+    // Initialize Kafka services
+    const kafkaInitialized = await websocketService.initializeKafkaServices();
+    
+    // Start Kafka monitoring only if Kafka services are initialized
+    if (kafkaInitialized) {
+      await kafkaMonitor.startMonitoring();
+      console.log('✅ Kafka monitoring started');
+    } else {
+      console.log('⚠️ Kafka monitoring not started due to initialization failure');
+    }
+    
     // Setup test handlers for development
     websocketService.setupTestHandlers();
 
@@ -194,6 +211,7 @@ app.use(ErrorMiddleware.handle);
     // Graceful shutdown
     process.on('SIGTERM', () => {
       console.log('SIGTERM received. Shutting down gracefully...');
+      kafkaMonitor.stopMonitoring();
       server.close(() => {
         console.log('✅ Server shutdown complete.');
         process.exit(0);
@@ -202,6 +220,7 @@ app.use(ErrorMiddleware.handle);
 
     process.on('SIGINT', () => {
       console.log('SIGINT received. Shutting down gracefully...');
+      kafkaMonitor.stopMonitoring();
       server.close(() => {
         console.log('✅ Server shutdown complete.');
         process.exit(0);

@@ -3,6 +3,7 @@ const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 const path = require('path');
 const websocketService = require('../services/websocketService');
+const TrainingEvents = require('../events/trainingEvents');
 
 class TrainingController {
     // ========== Course Set Controllers ==========
@@ -32,6 +33,21 @@ class TrainingController {
         const result = await trainingService.createCourseSet(courseSetData);
         
         if (result.success) {
+            // Emit course set created event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                await TrainingEvents.emitCourseSetCreated(result.data, metadata);
+            } catch (error) {
+                console.error('❌ Error emitting course set created event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
         } else {
             return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
@@ -41,9 +57,29 @@ class TrainingController {
     static updateCourseSet = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseSetId } = req.params;
         const courseSetData = req.body;
+        
+        // Get old course set data for comparison
+        const oldCourseSetResult = await trainingService.getCourseSetById(courseSetId);
         const result = await trainingService.updateCourseSet(courseSetId, courseSetData);
         
         if (result.success) {
+            // Emit course set updated event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                if (oldCourseSetResult.success) {
+                    await TrainingEvents.emitCourseSetUpdated(result.data, oldCourseSetResult.data, metadata);
+                }
+            } catch (error) {
+                console.error('❌ Error emitting course set updated event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
         } else {
             return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
@@ -52,9 +88,29 @@ class TrainingController {
 
     static deleteCourseSet = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseSetId } = req.params;
+        
+        // Get course set data before deletion
+        const oldCourseSetResult = await trainingService.getCourseSetById(courseSetId);
         const result = await trainingService.deleteCourseSet(courseSetId);
         
         if (result.success) {
+            // Emit course set deleted event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                if (oldCourseSetResult.success) {
+                    await TrainingEvents.emitCourseSetDeleted(oldCourseSetResult.data, metadata);
+                }
+            } catch (error) {
+                console.error('❌ Error emitting course set deleted event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
         } else {
             return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
@@ -157,6 +213,21 @@ class TrainingController {
         const result = await trainingService.createTrainingSession(sessionData);
         
         if (result.success) {
+            // Emit training session created event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                await TrainingEvents.emitTrainingSessionCreated(result.data, metadata);
+            } catch (error) {
+                console.error('❌ Error emitting training session created event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
         } else {
             return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
@@ -166,9 +237,29 @@ class TrainingController {
     static updateTrainingSession = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { sessionId } = req.params;
         const sessionData = req.body;
+        
+        // Get old session data for comparison
+        const oldSessionResult = await trainingService.getTrainingSessionById(sessionId);
         const result = await trainingService.updateTrainingSession(sessionId, sessionData);
         
         if (result.success) {
+            // Emit training session updated event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                if (oldSessionResult.success) {
+                    await TrainingEvents.emitTrainingSessionUpdated(result.data, oldSessionResult.data, metadata);
+                }
+            } catch (error) {
+                console.error('❌ Error emitting training session updated event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
         } else {
             return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
@@ -177,9 +268,29 @@ class TrainingController {
 
     static deleteTrainingSession = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { sessionId } = req.params;
+        
+        // Get session data before deletion
+        const oldSessionResult = await trainingService.getTrainingSessionById(sessionId);
         const result = await trainingService.deleteTrainingSession(sessionId);
         
         if (result.success) {
+            // Emit training session deleted event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                if (oldSessionResult.success) {
+                    await TrainingEvents.emitTrainingSessionDeleted(oldSessionResult.data, metadata);
+                }
+            } catch (error) {
+                console.error('❌ Error emitting training session deleted event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
         } else {
             return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
@@ -439,6 +550,21 @@ class TrainingController {
         const result = await trainingService.submitTraining(sessionId, userId, answers, score, completionTime);
         
         if (result.success) {
+            // Emit training completion event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                await TrainingEvents.emitTrainingCompletion(result.data, metadata);
+            } catch (error) {
+                console.error('❌ Error emitting training completion event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
         } else {
             return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
@@ -452,6 +578,21 @@ class TrainingController {
         const result = await trainingService.retakeTraining(sessionId, userId);
         
         if (result.success) {
+            // Emit training retake event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                await TrainingEvents.emitTrainingRetake(result.data, metadata);
+            } catch (error) {
+                console.error('❌ Error emitting training retake event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
         } else {
             return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);

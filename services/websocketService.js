@@ -1,6 +1,10 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 const Role = require('../models/role');
+const kafkaProducer = require('./kafkaProducer');
+const kafkaConsumer = require('./kafkaConsumer');
+const ProjectEvents = require('../events/projectEvents');
+const TaskEvents = require('../events/taskEvents');
 
 class WebSocketService {
     constructor() {
@@ -38,7 +42,35 @@ class WebSocketService {
         this.setupMiddleware();
         this.setupEventHandlers();
         
+        // Initialize Kafka services
+        this.initializeKafkaServices();
+        
         console.log('🔌 WebSocket server initialized');
+    }
+
+    /**
+     * Initialize Kafka services
+     */
+    async initializeKafkaServices() {
+        try {
+            console.log('🔄 Initializing Kafka services...');
+            
+            // Initialize Kafka Producer
+            await kafkaProducer.initialize();
+            
+            // Initialize Kafka Consumer
+            await kafkaConsumer.initialize();
+            
+            // Start consuming events
+            await kafkaConsumer.startConsuming();
+            
+            console.log('✅ Kafka services initialized successfully');
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Failed to initialize Kafka services:', error);
+            return false;
+        }
     }
 
     /**
@@ -748,56 +780,123 @@ class WebSocketService {
     /**
      * Emit project created event
      */
-    emitProjectCreated(project, creator) {
-        const eventData = {
-            project,
-            creator: {
-                id: creator._id,
-                name: creator.full_name
-            },
-            timestamp: new Date()
-        };
+    async emitProjectCreated(project, creator, metadata = {}) {
+        try {
+            // Emit to Kafka
+            await ProjectEvents.emitProjectCreated(project, creator, metadata);
+            
+            // Also emit to WebSocket for immediate feedback
+            const eventData = {
+                project,
+                creator: {
+                    id: creator._id,
+                    name: creator.full_name
+                },
+                timestamp: new Date()
+            };
 
-        this.emitToRole('manager', 'project_created', eventData);
-        this.emitToRoom('admin_room', 'project_created', eventData);
+            this.emitToRole('manager', 'project_created', eventData);
+            this.emitToRoom('admin_room', 'project_created', eventData);
+            
+        } catch (error) {
+            console.error('❌ Failed to emit project created event:', error);
+            // Fallback to WebSocket only
+            const eventData = {
+                project,
+                creator: {
+                    id: creator._id,
+                    name: creator.full_name
+                },
+                timestamp: new Date()
+            };
+
+            this.emitToRole('manager', 'project_created', eventData);
+            this.emitToRoom('admin_room', 'project_created', eventData);
+        }
     }
 
     /**
      * Emit project progress updated event
      */
-    emitProjectProgressUpdated(project, updater) {
-        const eventData = {
-            project,
-            updater: {
-                id: updater._id,
-                name: updater.full_name
-            },
-            timestamp: new Date()
-        };
+    async emitProjectProgressUpdated(project, updater, metadata = {}) {
+        try {
+            // Emit to Kafka
+            await ProjectEvents.emitProjectProgressUpdated(project, updater, metadata);
+            
+            // Also emit to WebSocket for immediate feedback
+            const eventData = {
+                project,
+                updater: {
+                    id: updater._id,
+                    name: updater.full_name
+                },
+                timestamp: new Date()
+            };
 
-        this.emitToRoom(`project_${project._id}`, 'project_progress_updated', eventData);
-        this.emitToRole('manager', 'project_progress_updated', eventData);
+            this.emitToRoom(`project_${project._id}`, 'project_progress_updated', eventData);
+            this.emitToRole('manager', 'project_progress_updated', eventData);
+            
+        } catch (error) {
+            console.error('❌ Failed to emit project progress updated event:', error);
+            // Fallback to WebSocket only
+            const eventData = {
+                project,
+                updater: {
+                    id: updater._id,
+                    name: updater.full_name
+                },
+                timestamp: new Date()
+            };
+
+            this.emitToRoom(`project_${project._id}`, 'project_progress_updated', eventData);
+            this.emitToRole('manager', 'project_progress_updated', eventData);
+        }
     }
 
     /**
      * Emit project assignment event
      */
-    emitProjectAssigned(assignment, assignee, assigner) {
-        const eventData = {
-            assignment,
-            assignee: {
-                id: assignee._id,
-                name: assignee.full_name
-            },
-            assigner: {
-                id: assigner._id,
-                name: assigner.full_name
-            },
-            timestamp: new Date()
-        };
+    async emitProjectAssigned(assignment, assignee, assigner, metadata = {}) {
+        try {
+            // Emit to Kafka
+            await ProjectEvents.emitProjectAssigned(assignment, assignee, assigner, metadata);
+            
+            // Also emit to WebSocket for immediate feedback
+            const eventData = {
+                assignment,
+                assignee: {
+                    id: assignee._id,
+                    name: assignee.full_name
+                },
+                assigner: {
+                    id: assigner._id,
+                    name: assigner.full_name
+                },
+                timestamp: new Date()
+            };
 
-        this.emitToUser(assignee._id, 'project_assigned', eventData);
-        this.emitToRole('manager', 'project_assigned', eventData);
+            this.emitToUser(assignee._id, 'project_assigned', eventData);
+            this.emitToRole('manager', 'project_assigned', eventData);
+            
+        } catch (error) {
+            console.error('❌ Failed to emit project assigned event:', error);
+            // Fallback to WebSocket only
+            const eventData = {
+                assignment,
+                assignee: {
+                    id: assignee._id,
+                    name: assignee.full_name
+                },
+                assigner: {
+                    id: assigner._id,
+                    name: assigner.full_name
+                },
+                timestamp: new Date()
+            };
+
+            this.emitToUser(assignee._id, 'project_assigned', eventData);
+            this.emitToRole('manager', 'project_assigned', eventData);
+        }
     }
 
     // ==================== UTILITY METHODS ====================

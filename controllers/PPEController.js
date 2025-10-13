@@ -2,6 +2,7 @@ const ppeService = require('../services/ppeService');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 const websocketService = require('../services/websocketService');
+const PPEEvents = require('../events/ppeEvents');
 
 class PPEController {
   // PPE Categories
@@ -135,6 +136,15 @@ class PPEController {
     const itemData = req.body;
     const result = await ppeService.createItem(itemData);
     
+    // Emit Kafka event for PPE item created
+    if (result.success && result.data) {
+      try {
+        await PPEEvents.emitPPEItemCreated(result.data, req.user || { _id: 'system', role: 'admin', full_name: 'System' });
+      } catch (eventError) {
+        console.error('Failed to emit PPE item created event:', eventError);
+      }
+    }
+    
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
@@ -146,6 +156,19 @@ class PPEController {
     const { id } = req.params;
     const itemData = req.body;
     const result = await ppeService.updateItem(id, itemData);
+    
+    // Emit Kafka event for PPE item updated
+    if (result.success && result.data) {
+      try {
+        const changes = {};
+        Object.keys(itemData).forEach(key => {
+          changes[key] = itemData[key];
+        });
+        await PPEEvents.emitPPEItemUpdated(result.data, req.user || { _id: 'system', role: 'admin', full_name: 'System' }, changes);
+      } catch (eventError) {
+        console.error('Failed to emit PPE item updated event:', eventError);
+      }
+    }
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -159,6 +182,22 @@ class PPEController {
     const quantityData = req.body; // { quantity_available, quantity_allocated }
     const result = await ppeService.updateItemQuantity(id, quantityData);
     
+    // Emit Kafka event for PPE item stock updated
+    if (result.success && result.data) {
+      try {
+        const stockChange = {
+          type: 'quantity_update',
+          previous_stock: quantityData.previous_quantity,
+          new_stock: quantityData.quantity_available,
+          change_quantity: quantityData.quantity_available - (quantityData.previous_quantity || 0),
+          change_reason: quantityData.reason || 'Manual update'
+        };
+        await PPEEvents.emitPPEItemStockUpdated(result.data, req.user || { _id: 'system', role: 'admin', full_name: 'System' }, stockChange);
+      } catch (eventError) {
+        console.error('Failed to emit PPE item stock updated event:', eventError);
+      }
+    }
+    
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
@@ -168,7 +207,20 @@ class PPEController {
 
   static deleteItem = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
+    
+    // Get item data before deletion for event
+    const itemData = await ppeService.getItemById(id);
+    
     const result = await ppeService.deleteItem(id);
+    
+    // Emit Kafka event for PPE item deleted
+    if (result.success && itemData.success) {
+      try {
+        await PPEEvents.emitPPEItemDeleted(itemData.data, req.user || { _id: 'system', role: 'admin', full_name: 'System' });
+      } catch (eventError) {
+        console.error('Failed to emit PPE item deleted event:', eventError);
+      }
+    }
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -305,6 +357,21 @@ class PPEController {
   static createAssignment = ErrorMiddleware.asyncHandler(async (req, res) => {
     const assignmentData = req.body;
     const result = await ppeService.createAssignment(assignmentData);
+    
+    // Emit Kafka event for PPE item assigned
+    if (result.success && result.data) {
+      try {
+        const User = require('../models/user');
+        const assignee = await User.findById(assignmentData.user_id);
+        const item = await ppeService.getItemById(assignmentData.item_id);
+        
+        if (assignee && item.success) {
+          await PPEEvents.emitPPEItemAssigned(item.data, assignee, req.user || { _id: 'system', role: 'admin', full_name: 'System' });
+        }
+      } catch (eventError) {
+        console.error('Failed to emit PPE item assigned event:', eventError);
+      }
+    }
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -585,6 +652,15 @@ class PPEController {
     const result = await ppeService.createIssuance(issuanceData);
     
     if (result.success) {
+      // Emit WebSocket notification for PPE issued
+      try {
+        const { issuance, issuer, recipient } = result.data;
+        websocketService.emitPPEIssued(issuance, issuer, recipient);
+        console.log(`🛡️ PPE issuance WebSocket notification sent for user: ${recipient._id}`);
+      } catch (wsError) {
+        console.error('Failed to emit PPE issued WebSocket notification:', wsError);
+      }
+      
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
@@ -609,6 +685,15 @@ class PPEController {
     const result = await ppeService.returnIssuance(id, returnData);
     
     if (result.success) {
+      // Emit WebSocket notification for PPE returned
+      try {
+        const { issuance, returner } = result.data;
+        websocketService.emitPPEReturned(issuance, returner);
+        console.log(`🛡️ PPE return WebSocket notification sent for user: ${returner._id}`);
+      } catch (wsError) {
+        console.error('Failed to emit PPE returned WebSocket notification:', wsError);
+      }
+      
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
@@ -633,6 +718,15 @@ class PPEController {
     const result = await ppeService.returnIssuanceEmployee(id, returnData, employeeId);
     
     if (result.success) {
+      // Emit WebSocket notification for PPE returned by employee
+      try {
+        const { issuance, returner } = result.data;
+        websocketService.emitPPEReturned(issuance, returner);
+        console.log(`🛡️ PPE employee return WebSocket notification sent for user: ${returner._id}`);
+      } catch (wsError) {
+        console.error('Failed to emit PPE employee return WebSocket notification:', wsError);
+      }
+      
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);

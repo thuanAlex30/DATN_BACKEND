@@ -1,6 +1,7 @@
 const SystemLog = require('../models/systemLog');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
+const SystemEvents = require('../events/systemEvents');
 
 class SystemLogController {
     // Get all system logs with filters and pagination
@@ -100,6 +101,23 @@ class SystemLogController {
             };
 
             const log = await SystemLog.createLog(logData);
+            
+            // Emit system log created event
+            if (log) {
+                try {
+                    const metadata = {
+                        userId: logData.user_id,
+                        userRole: req.user?.role,
+                        userFullName: req.user?.full_name,
+                        ipAddress: logData.ip_address,
+                        userAgent: logData.user_agent
+                    };
+                    await SystemEvents.emitSystemLogCreated(log, metadata);
+                } catch (error) {
+                    console.error('❌ Error emitting system log created event:', error);
+                    // Don't fail the request if event emission fails
+                }
+            }
             
             ApiResponse.success(res, log, 'Tạo nhật ký hệ thống thành công', 201);
         } catch (error) {

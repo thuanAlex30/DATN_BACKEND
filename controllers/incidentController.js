@@ -2,6 +2,7 @@ const Incident = require('../models/incident');
 const User = require('../models/user');
 const { sendEmail, sendSMS, sendNotification } = require('../utils/notifications'); // giả sử có các hàm này
 const websocketService = require('../services/websocketService');
+const IncidentEvents = require('../events/incidentEvents');
 
 // 1. Ghi nhận sự cố
 exports.reportIncident = async (req, res) => {
@@ -24,6 +25,13 @@ exports.reportIncident = async (req, res) => {
     // Emit WebSocket event for incident reported
     websocketService.emitIncidentReported(incident, req.user);
     
+    // Emit Kafka event for incident reported
+    try {
+      await IncidentEvents.emitIncidentReported(incident, req.user);
+    } catch (eventError) {
+      console.error('Failed to emit incident reported event:', eventError);
+    }
+    
     res.status(201).json(incident);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -37,9 +45,12 @@ exports.classifyIncident = async (req, res) => {
     const { severity } = req.body;
     const incident = await Incident.findById(id);
     if (!incident) return res.status(404).json({ error: 'Không tìm thấy sự cố' });
+    
+    const oldSeverity = incident.severity;
     incident.severity = severity;
     incident.status = 'Đang xử lý';
     incident.histories.push({ action: 'Phân loại', performedBy: req.user._id, note: `Phân loại: ${severity}` });
+    
     // Gửi thông báo theo mức độ
     if (severity === 'rất nghiêm trọng') {
       await sendSMS('Giám đốc, ATVS, Y tế', `Sự cố ${incident.incidentId} rất nghiêm trọng!`);
@@ -54,6 +65,14 @@ exports.classifyIncident = async (req, res) => {
     
     // Emit WebSocket event for incident classified
     websocketService.emitIncidentClassified(incident, req.user);
+    
+    // Emit Kafka event for incident updated
+    try {
+      const changes = { severity: { old: oldSeverity, new: severity } };
+      await IncidentEvents.emitIncidentUpdated(incident, req.user, changes);
+    } catch (eventError) {
+      console.error('Failed to emit incident updated event:', eventError);
+    }
     
     res.json(incident);
   } catch (err) {
@@ -76,6 +95,15 @@ exports.assignIncident = async (req, res) => {
     const assignee = await User.findById(assignedTo);
     if (assignee) {
       websocketService.emitIncidentAssigned(incident, assignee, req.user);
+    }
+    
+    // Emit Kafka event for incident assigned
+    try {
+      if (assignee) {
+        await IncidentEvents.emitIncidentAssigned(incident, assignee, req.user);
+      }
+    } catch (eventError) {
+      console.error('Failed to emit incident assigned event:', eventError);
     }
     
     res.json(incident);
@@ -131,6 +159,13 @@ exports.closeIncident = async (req, res) => {
     
     // Emit WebSocket event for incident closed
     websocketService.emitIncidentClosed(incident, req.user);
+    
+    // Emit Kafka event for incident closed
+    try {
+      await IncidentEvents.emitIncidentClosed(incident, req.user);
+    } catch (eventError) {
+      console.error('Failed to emit incident closed event:', eventError);
+    }
     
     res.json(incident);
   } catch (err) {

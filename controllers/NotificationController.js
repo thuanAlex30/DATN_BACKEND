@@ -3,6 +3,7 @@ const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 const mongoose = require('mongoose');
 const websocketService = require('../services/websocketService');
+const NotificationEvents = require('../events/notificationEvents');
 
 class NotificationController {
     // Get notifications for current user
@@ -167,6 +168,13 @@ class NotificationController {
             // Emit WebSocket event for notification created
             websocketService.emitNotificationCreated(notification);
             
+            // Emit Kafka event for notification sent
+            try {
+                await NotificationEvents.emitNotificationSent(notification, req.user || { _id: 'system', role: 'admin', full_name: 'System' });
+            } catch (eventError) {
+                console.error('Failed to emit notification sent event:', eventError);
+            }
+            
             ApiResponse.success(res, notification, 'Tạo thông báo thành công', 201);
         } catch (error) {
             console.error('Error creating notification:', error);
@@ -184,6 +192,13 @@ class NotificationController {
             
             // Emit WebSocket event for notification read
             websocketService.emitNotificationRead(notification, req.user);
+            
+            // Emit Kafka event for notification read
+            try {
+                await NotificationEvents.emitNotificationRead(notification, req.user);
+            } catch (eventError) {
+                console.error('Failed to emit notification read event:', eventError);
+            }
             
             ApiResponse.success(res, notification, 'Đánh dấu thông báo đã đọc thành công');
         } catch (error) {
@@ -280,6 +295,13 @@ class NotificationController {
                 
                 // Emit WebSocket event for each notification
                 websocketService.emitNotificationCreated(notification);
+                
+                // Emit Kafka event for each notification
+                try {
+                    await NotificationEvents.emitNotificationSent(notification, req.user || { _id: 'system', role: 'admin', full_name: 'System' });
+                } catch (eventError) {
+                    console.error('Failed to emit notification sent event:', eventError);
+                }
             }
             
             ApiResponse.success(res, {

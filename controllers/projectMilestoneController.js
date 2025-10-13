@@ -2,6 +2,7 @@ const projectMilestoneService = require('../services/projectMilestoneService');
 const websocketService = require('../services/websocketService');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
+const ProjectMilestoneEvents = require('../events/projectMilestoneEvents');
 
 class ProjectMilestoneController {
   // ========== PROJECT MILESTONE MANAGEMENT ==========
@@ -51,6 +52,23 @@ class ProjectMilestoneController {
         creator: req.user,
         timestamp: new Date()
       });
+    }
+    
+    // Emit Kafka event for milestone created
+    if (result.success && result.data) {
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        await ProjectMilestoneEvents.emitProjectMilestoneCreated(result.data, metadata);
+      } catch (error) {
+        console.error('❌ Error emitting project milestone created event:', error);
+        // Don't fail the request if event emission fails
+      }
     }
     
     if (result.success) {
@@ -207,6 +225,29 @@ class ProjectMilestoneController {
         completer: req.user,
         timestamp: new Date()
       });
+    }
+    
+    // Emit Kafka event for milestone completed
+    if (result.success && result.data) {
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        const completionData = {
+          completer_name: req.user?.full_name,
+          completer_email: req.user?.email,
+          completer_role: req.user?.role,
+          completion_notes: completion_notes
+        };
+        await ProjectMilestoneEvents.emitProjectMilestoneCompleted(result.data, completionData, metadata);
+      } catch (error) {
+        console.error('❌ Error emitting project milestone completed event:', error);
+        // Don't fail the request if event emission fails
+      }
     }
     
     if (result.success) {

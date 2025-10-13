@@ -1,6 +1,7 @@
 const PositionRepository = require('../repository/PositionRepository');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
+const PositionEvents = require('../events/positionEvents');
 
 class PositionController {
   static getAllPositions = ErrorMiddleware.asyncHandler(async (req, res) => {
@@ -41,6 +42,21 @@ class PositionController {
 
     const position = await PositionRepository.create(positionData);
 
+    // Emit position created event
+    try {
+      const metadata = {
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        userFullName: req.user?.full_name,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      };
+      await PositionEvents.emitPositionCreated(position, metadata);
+    } catch (error) {
+      console.error('❌ Error emitting position created event:', error);
+      // Don't fail the request if event emission fails
+    }
+
     return ApiResponse.success(res, position, 'Position created successfully', 201);
   });
 
@@ -65,6 +81,21 @@ class PositionController {
 
     const position = await PositionRepository.updateById(id, updateData);
 
+    // Emit position updated event
+    try {
+      const metadata = {
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        userFullName: req.user?.full_name,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      };
+      await PositionEvents.emitPositionUpdated(position, existingPosition, metadata);
+    } catch (error) {
+      console.error('❌ Error emitting position updated event:', error);
+      // Don't fail the request if event emission fails
+    }
+
     return ApiResponse.success(res, position, 'Position updated successfully');
   });
 
@@ -84,6 +115,21 @@ class PositionController {
     }
 
     await PositionRepository.deleteById(id);
+
+    // Emit position deleted event
+    try {
+      const metadata = {
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        userFullName: req.user?.full_name,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      };
+      await PositionEvents.emitPositionDeleted(position, metadata);
+    } catch (error) {
+      console.error('❌ Error emitting position deleted event:', error);
+      // Don't fail the request if event emission fails
+    }
 
     return ApiResponse.success(res, null, 'Position deleted successfully');
   });
@@ -161,6 +207,21 @@ class PositionController {
     }
 
     const result = await PositionRepository.bulkDelete(ids);
+
+    // Emit bulk position deleted event
+    try {
+      const metadata = {
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        userFullName: req.user?.full_name,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      };
+      await PositionEvents.emitBulkPositionDeleted(existingPositions.filter(p => p), metadata);
+    } catch (error) {
+      console.error('❌ Error emitting bulk position deleted event:', error);
+      // Don't fail the request if event emission fails
+    }
 
     return ApiResponse.success(res, 
       { affected_count: result.modifiedCount }, 
@@ -308,6 +369,21 @@ class PositionController {
     };
 
     const newPosition = await PositionRepository.create(newPositionData);
+
+    // Emit position cloned event
+    try {
+      const metadata = {
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        userFullName: req.user?.full_name,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      };
+      await PositionEvents.emitPositionCloned(newPosition, originalPosition, metadata);
+    } catch (error) {
+      console.error('❌ Error emitting position cloned event:', error);
+      // Don't fail the request if event emission fails
+    }
 
     return ApiResponse.success(res, newPosition, 'Position cloned successfully', 201);
   });

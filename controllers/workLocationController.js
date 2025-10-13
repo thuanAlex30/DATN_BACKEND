@@ -1,6 +1,7 @@
 const workLocationService = require('../services/workLocationService');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
+const WorkLocationEvents = require('../events/workLocationEvents');
 
 class WorkLocationController {
   static getAreaLocations = ErrorMiddleware.asyncHandler(async (req, res) => {
@@ -43,6 +44,23 @@ class WorkLocationController {
     
     const result = await workLocationService.createWorkLocation(locationData, userId);
     
+    // Emit work location created event
+    if (result.success && result.data) {
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        await WorkLocationEvents.emitWorkLocationCreated(result.data, metadata);
+      } catch (error) {
+        console.error('❌ Error emitting work location created event:', error);
+        // Don't fail the request if event emission fails
+      }
+    }
+    
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
@@ -57,6 +75,24 @@ class WorkLocationController {
     
     const result = await workLocationService.updateLocation(id, updateData, userId);
     
+    // Emit work location updated event
+    if (result.success && result.data) {
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        const changes = Object.keys(updateData);
+        await WorkLocationEvents.emitWorkLocationUpdated(result.data, result.oldData, changes, metadata);
+      } catch (error) {
+        console.error('❌ Error emitting work location updated event:', error);
+        // Don't fail the request if event emission fails
+      }
+    }
+    
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
@@ -69,6 +105,23 @@ class WorkLocationController {
     const userId = req.user._id || req.user.id;
     
     const result = await workLocationService.deleteLocation(id, userId);
+    
+    // Emit work location deleted event
+    if (result.success && result.data) {
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        await WorkLocationEvents.emitWorkLocationDeleted(result.data, metadata);
+      } catch (error) {
+        console.error('❌ Error emitting work location deleted event:', error);
+        // Don't fail the request if event emission fails
+      }
+    }
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

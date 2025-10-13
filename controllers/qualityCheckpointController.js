@@ -1,6 +1,7 @@
 const qualityCheckpointService = require('../services/qualityCheckpointService');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
+const QualityEvents = require('../events/qualityEvents');
 
 class QualityCheckpointController {
   static getTaskCheckpoints = ErrorMiddleware.asyncHandler(async (req, res) => {
@@ -32,6 +33,21 @@ class QualityCheckpointController {
     const result = await qualityCheckpointService.createCheckpoint(checkpointData, userId);
     
     if (result.success) {
+      // Emit quality checkpoint created event
+      try {
+        const metadata = {
+          userId: req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        await QualityEvents.emitQualityCheckpointCreated(result.data, metadata);
+      } catch (error) {
+        console.error('❌ Error emitting quality checkpoint created event:', error);
+        // Don't fail the request if event emission fails
+      }
+      
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
@@ -43,9 +59,28 @@ class QualityCheckpointController {
     const updateData = req.body;
     const userId = req.user._id || req.user.id;
     
+    // Get old checkpoint data for comparison
+    const oldCheckpointResult = await qualityCheckpointService.getCheckpointById(id);
     const result = await qualityCheckpointService.updateCheckpoint(id, updateData, userId);
     
     if (result.success) {
+      // Emit quality checkpoint updated event
+      try {
+        const metadata = {
+          userId: req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        if (oldCheckpointResult.success) {
+          await QualityEvents.emitQualityCheckpointUpdated(result.data, oldCheckpointResult.data, metadata);
+        }
+      } catch (error) {
+        console.error('❌ Error emitting quality checkpoint updated event:', error);
+        // Don't fail the request if event emission fails
+      }
+      
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
@@ -56,9 +91,28 @@ class QualityCheckpointController {
     const { id } = req.params;
     const userId = req.user._id || req.user.id;
     
+    // Get checkpoint data before deletion
+    const oldCheckpointResult = await qualityCheckpointService.getCheckpointById(id);
     const result = await qualityCheckpointService.deleteCheckpoint(id, userId);
     
     if (result.success) {
+      // Emit quality checkpoint deleted event
+      try {
+        const metadata = {
+          userId: req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        if (oldCheckpointResult.success) {
+          await QualityEvents.emitQualityCheckpointDeleted(oldCheckpointResult.data, metadata);
+        }
+      } catch (error) {
+        console.error('❌ Error emitting quality checkpoint deleted event:', error);
+        // Don't fail the request if event emission fails
+      }
+      
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
@@ -179,9 +233,28 @@ class QualityCheckpointController {
     const { completion_notes } = req.body;
     const userId = req.user._id || req.user.id;
     
+    // Get checkpoint data before completion
+    const oldCheckpointResult = await qualityCheckpointService.getCheckpointById(id);
     const result = await qualityCheckpointService.completeCheckpoint(id, completion_notes, userId);
     
     if (result.success) {
+      // Emit quality checkpoint completed event
+      try {
+        const metadata = {
+          userId: req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        if (oldCheckpointResult.success) {
+          await QualityEvents.emitQualityCheckpointCompleted(oldCheckpointResult.data, { completion_notes }, metadata);
+        }
+      } catch (error) {
+        console.error('❌ Error emitting quality checkpoint completed event:', error);
+        // Don't fail the request if event emission fails
+      }
+      
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);

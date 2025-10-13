@@ -2,6 +2,7 @@ const projectService = require('../services/projectService');
 const websocketService = require('../services/websocketService');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
+const ProjectEvents = require('../events/projectEvents');
 
 class ProjectController {
   // ========== PROJECT MANAGEMENT ==========
@@ -44,6 +45,18 @@ class ProjectController {
       websocketService.emitProjectCreated(result.data, req.user);
     }
     
+    // Emit Kafka event for project created
+    if (result.success && result.data) {
+      try {
+        await ProjectEvents.emitProjectCreated(result.data, req.user, {
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+      } catch (eventError) {
+        console.error('Failed to emit project created event:', eventError);
+      }
+    }
+    
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, 201);
     } else {
@@ -67,6 +80,18 @@ class ProjectController {
       });
     }
     
+    // Emit Kafka event for project updated
+    if (result.success && result.data) {
+      try {
+        await ProjectEvents.emitProjectUpdated(result.data, req.user, {
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+      } catch (eventError) {
+        console.error('Failed to emit project updated event:', eventError);
+      }
+    }
+    
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, 200);
     } else {
@@ -78,7 +103,22 @@ class ProjectController {
     const { id } = req.params;
     const userId = req.user._id || req.user.id;
     
+    // Get project data before deletion for event
+    const projectData = await projectService.getProjectById(id);
+    
     const result = await projectService.deleteProject(id, userId);
+    
+    // Emit Kafka event for project deleted
+    if (result.success && projectData.success) {
+      try {
+        await ProjectEvents.emitProjectDeleted(projectData.data, req.user, {
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+      } catch (eventError) {
+        console.error('Failed to emit project deleted event:', eventError);
+      }
+    }
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, 200);
@@ -124,6 +164,24 @@ class ProjectController {
       
       if (assignee) {
         websocketService.emitProjectAssigned(result.data, assignee, req.user);
+      }
+    }
+    
+    // Emit Kafka event for project assigned
+    if (result.success && result.data) {
+      try {
+        const User = require('../models/user');
+        const assignee = await User.findById(assignmentData.user_id);
+        const project = await projectService.getProjectById(assignmentData.project_id);
+        
+        if (assignee && project.success) {
+          await ProjectEvents.emitProjectAssigned(project.data, assignee, req.user, {
+            ipAddress: req.ip,
+            userAgent: req.get('User-Agent')
+          });
+        }
+      } catch (eventError) {
+        console.error('Failed to emit project assigned event:', eventError);
       }
     }
     
@@ -250,11 +308,28 @@ class ProjectController {
       return ApiResponse.error(res, 'Tiến độ phải từ 0 đến 100', 400);
     }
     
+    // Get old progress for event
+    const oldProject = await projectService.getProjectById(id);
+    const oldProgress = oldProject.success ? oldProject.data.progress : 0;
+    
     const result = await projectService.updateProjectProgress(id, progress, userId);
     
     // Emit WebSocket event for project progress updated
     if (result.success && result.data) {
       websocketService.emitProjectProgressUpdated(result.data, req.user);
+    }
+    
+    // Emit Kafka event for project progress updated
+    if (result.success && result.data) {
+      try {
+        await ProjectEvents.emitProjectProgressUpdated(result.data, req.user, {
+          previousProgress: oldProgress,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+      } catch (eventError) {
+        console.error('Failed to emit project progress updated event:', eventError);
+      }
     }
     
     if (result.success) {

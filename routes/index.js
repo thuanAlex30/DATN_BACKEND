@@ -1,7 +1,7 @@
 const express = require('express');
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
-const roleRoutes = require('./roleRoutes');
+// const roleRoutes = require('./roleRoutes');
 const departmentRoutes = require('./departmentRoutes');
 const positionRoutes = require('./positionRoutes');
 const systemLogRoutes = require('./systemLogRoutes');
@@ -23,44 +23,108 @@ const projectChangeRequestRoutes = require('./projectChangeRequestRoutes');
 const projectStatusReportRoutes = require('./projectStatusReportRoutes');
 const qualityCheckpointRoutes = require('./qualityCheckpointRoutes');
 
+console.log('Loading kafkaMonitor...');
+const kafkaMonitor = require('../services/kafkaMonitor');
+console.log('kafkaMonitor loaded:', typeof kafkaMonitor);
+
 const router = express.Router();
 
 // Health check endpoint
 router.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Safety Management System API is running',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0',
-    endpoints: {
-      auth: '/api/auth',
-      users: '/api/users',
-      roles: '/api/roles',
-      departments: '/api/departments',
-      positions: '/api/positions',
-      systemLogs: '/api/system-logs',
-      notifications: '/api/notifications',
-      ppe: '/api/ppe',
-      projects: '/api/projects',
-      training: '/api/training',
-      sites: '/api/sites',
-      siteAreas: '/api/site-areas',
-      workLocations: '/api/work-locations',
-      projectTasks: '/api/project-tasks',
-      projectMilestones: '/api/project-milestones',
-      projectResources: '/api/project-resources',
-      projectRisks: '/api/project-risks',
-      projectChangeRequests: '/api/project-change-requests',
-      projectStatusReports: '/api/project-status-reports',
-      qualityCheckpoints: '/api/quality-checkpoints'
-    }
-  });
+  try {
+    console.log('Health check called, kafkaMonitor:', typeof kafkaMonitor);
+    const kafkaMetrics = kafkaMonitor.getMetrics();
+    console.log('Kafka metrics:', kafkaMetrics);
+    res.json({
+      success: true,
+      message: 'Safety Management System API is running',
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development',
+      services: {
+        database: 'connected',
+        websocket: 'active',
+        kafka: kafkaMetrics.isMonitoring ? 'monitoring' : 'inactive'
+      },
+      kafka: {
+        monitoring: kafkaMetrics.isMonitoring,
+        producer: {
+          connected: kafkaMetrics.producer.isConnected,
+          messagesSent: kafkaMetrics.producer.messagesSent,
+          errors: kafkaMetrics.producer.errors,
+          averageLatency: kafkaMetrics.producer.averageLatency
+        },
+        consumer: {
+          connected: kafkaMetrics.consumer.isConnected,
+          messagesProcessed: kafkaMetrics.consumer.messagesProcessed,
+          errors: kafkaMetrics.consumer.errors
+        },
+        dlq: {
+          messagesInDLQ: kafkaMetrics.dlq.messagesInDLQ
+        }
+      },
+      endpoints: {
+        auth: '/api/auth',
+        users: '/api/users',
+        roles: '/api/roles',
+        departments: '/api/departments',
+        positions: '/api/positions',
+        systemLogs: '/api/system-logs',
+        notifications: '/api/notifications',
+        ppe: '/api/ppe',
+        projects: '/api/projects',
+        training: '/api/training',
+        sites: '/api/sites',
+        siteAreas: '/api/site-areas',
+        workLocations: '/api/work-locations',
+        projectTasks: '/api/project-tasks',
+        projectMilestones: '/api/project-milestones',
+        projectResources: '/api/project-resources',
+        projectRisks: '/api/project-risks',
+        projectChangeRequests: '/api/project-change-requests',
+        projectStatusReports: '/api/project-status-reports',
+        qualityCheckpoints: '/api/quality-checkpoints'
+      }
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.json({
+      success: true,
+      message: 'Safety Management System API is running',
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
+      error: error.message,
+      endpoints: {
+        auth: '/api/auth',
+        users: '/api/users',
+        roles: '/api/roles',
+        departments: '/api/departments',
+        positions: '/api/positions',
+        systemLogs: '/api/system-logs',
+        notifications: '/api/notifications',
+        ppe: '/api/ppe',
+        projects: '/api/projects',
+        training: '/api/training',
+        sites: '/api/sites',
+        siteAreas: '/api/site-areas',
+        workLocations: '/api/work-locations',
+        projectTasks: '/api/project-tasks',
+        projectMilestones: '/api/project-milestones',
+        projectResources: '/api/project-resources',
+        projectRisks: '/api/project-risks',
+        projectChangeRequests: '/api/project-change-requests',
+        projectStatusReports: '/api/project-status-reports',
+        qualityCheckpoints: '/api/quality-checkpoints'
+      }
+    });
+  }
 });
 
 // API routes
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
-router.use('/roles', roleRoutes);
+// router.use('/roles', roleRoutes);
 router.use('/departments', departmentRoutes);
 router.use('/positions', positionRoutes);
 router.use('/system-logs', systemLogRoutes);

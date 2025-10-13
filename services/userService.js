@@ -3,7 +3,7 @@ const RoleRepository = require('../repository/RoleRepository');
 const DepartmentRepository = require('../repository/DepartmentRepository');
 const PositionRepository = require('../repository/PositionRepository');
 const HashUtils = require('../utils/hash');
-const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
 const { transformDocumentId, transformDocumentsId, POPULATED_FIELDS } = require('../utils/transformId');
 const { createResponse } = require('../utils/response');
 
@@ -316,10 +316,19 @@ class UserService {
   static async importUsersFromExcel(file) {
     try {
       // Read Excel file
-      const workbook = XLSX.read(file.buffer, { type: 'buffer' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const data = XLSX.utils.sheet_to_json(worksheet);
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(file.buffer);
+      const worksheet = workbook.getWorksheet(1);
+      const data = [];
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) { // Skip header row
+          const rowData = {};
+          row.eachCell((cell, colNumber) => {
+            rowData[worksheet.getRow(1).getCell(colNumber).value] = cell.value;
+          });
+          data.push(rowData);
+        }
+      });
 
       if (!data || data.length === 0) {
         return createResponse(400, 'Excel file is empty or invalid');

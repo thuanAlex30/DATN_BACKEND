@@ -1,7 +1,8 @@
 const ppeRepository = require('../repository/PPERepository');
 const mongoose = require('mongoose');
 const User = require('../models/user');
-const XLSX = require('xlsx');
+const PPEIssuance = require('../models/ppeissuance');
+const ExcelJS = require('exceljs');
 const { transformDocumentId, transformDocumentsId, POPULATED_FIELDS } = require('../utils/transformId');
 const { createResponse } = require('../utils/response');
 
@@ -51,10 +52,19 @@ class PPEService {
   async importCategoriesFromExcel(file) {
     try {
       // Read Excel file
-      const workbook = XLSX.read(file.buffer, { type: 'buffer' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const data = XLSX.utils.sheet_to_json(worksheet);
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(file.buffer);
+      const worksheet = workbook.getWorksheet(1);
+      const data = [];
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) { // Skip header row
+          const rowData = {};
+          row.eachCell((cell, colNumber) => {
+            rowData[worksheet.getRow(1).getCell(colNumber).value] = cell.value;
+          });
+          data.push(rowData);
+        }
+      });
 
       if (!data || data.length === 0) {
         return createResponse(400, 'Excel file is empty or invalid');
@@ -315,7 +325,7 @@ class PPEService {
     const session = await mongoose.startSession();
     
     try {
-      let issuance;
+      let issuance, issuer, recipient;
       await session.withTransaction(async () => {
         // Validate required fields
         if (!issuanceData.user_id || !issuanceData.item_id || !issuanceData.quantity || 
@@ -333,6 +343,10 @@ class PPEService {
           throw new Error(`Không đủ tồn kho để phát. Hiện có: ${item.quantity_available}, cần phát: ${issuanceData.quantity}`);
         }
 
+        // Get issuer and recipient info for WebSocket
+        issuer = await User.findById(issuanceData.issued_by);
+        recipient = await User.findById(issuanceData.user_id);
+
         // Create issuance
         issuance = await ppeRepository.createIssuance(issuanceData);
 
@@ -343,8 +357,11 @@ class PPEService {
         });
       });
       
-      return createResponse(201, 'Phát PPE thành công',
-        transformDocumentId(issuance, POPULATED_FIELDS.PPE_ISSUANCE));
+      return createResponse(201, 'Phát PPE thành công', {
+        issuance: transformDocumentId(issuance, POPULATED_FIELDS.PPE_ISSUANCE),
+        issuer: issuer,
+        recipient: recipient
+      });
     } catch (error) {
       console.error('Error creating PPE issuance:', error);
       return createResponse(500, 'Lỗi khi phát PPE', null, error.message);
@@ -378,6 +395,9 @@ class PPEService {
         return createResponse(400, 'PPE đã được trả về');
       }
 
+      // Get returner info for WebSocket
+      const returner = await User.findById(issuance.user_id);
+
       // Update issuance status
       await ppeRepository.updateIssuance(id, {
         status: 'returned',
@@ -393,7 +413,10 @@ class PPEService {
         });
       }
 
-      return createResponse(200, 'Trả PPE thành công');
+      return createResponse(200, 'Trả PPE thành công', {
+        issuance: transformDocumentId(issuance, POPULATED_FIELDS.PPE_ISSUANCE),
+        returner: returner
+      });
     } catch (error) {
       console.error('Error returning PPE issuance:', error);
       return createResponse(500, 'Lỗi khi trả PPE', null, error.message);
@@ -474,10 +497,14 @@ class PPEService {
         });
       }
 
-      // Get the updated issuance to return
+      // Get the updated issuance and returner info for WebSocket
       const updatedIssuance = await ppeRepository.getIssuanceById(id);
-      return createResponse(200, 'Trả PPE thành công',
-        transformDocumentId(updatedIssuance, POPULATED_FIELDS.PPE_ISSUANCE));
+      const returner = await User.findById(employeeId);
+      
+      return createResponse(200, 'Trả PPE thành công', {
+        issuance: transformDocumentId(updatedIssuance, POPULATED_FIELDS.PPE_ISSUANCE),
+        returner: returner
+      });
     } catch (error) {
       console.error('Error returning PPE issuance by employee:', error);
       return createResponse(500, 'Lỗi khi trả PPE', null, error.message);
@@ -675,11 +702,28 @@ class PPEService {
   // Get all users for PPE assignment
   async getAllUsers() {
     try {
-      const users = await User.find({}, '_id full_name email department_id position')
+      const users = await User.find({}, '_id full_name email department_id position_id')
         .populate('department_id', 'department_name')
+        .populate('position_id', 'position_name')
         .sort({ full_name: 1 });
+
+      // Add active PPE count for each user
+      const usersWithPPECount = await Promise.all(users.map(async (user) => {
+        const activeIssuances = await PPEIssuance.find({
+          user_id: user._id,
+          status: 'issued'
+        });
+        
+        const activePPECount = activeIssuances.reduce((sum, issuance) => sum + issuance.quantity, 0);
+        
+        return {
+          ...user.toObject(),
+          active_ppe_count: activePPECount
+        };
+      }));
+
       return createResponse(200, 'Lấy danh sách nhân viên thành công',
-        transformDocumentsId(users, POPULATED_FIELDS.USER));
+        transformDocumentsId(usersWithPPECount, POPULATED_FIELDS.USER));
     } catch (error) {
       console.error('Error getting all users:', error);
       return createResponse(500, 'Lỗi khi lấy danh sách nhân viên', null, error.message);

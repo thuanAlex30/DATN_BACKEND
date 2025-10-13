@@ -1,6 +1,7 @@
 const projectStatusReportService = require('../services/projectStatusReportService');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
+const ProjectStatusReportEvents = require('../events/projectStatusReportEvents');
 
 class ProjectStatusReportController {
   static getProjectStatusReports = ErrorMiddleware.asyncHandler(async (req, res) => {
@@ -31,6 +32,23 @@ class ProjectStatusReportController {
     
     const result = await projectStatusReportService.createStatusReport(reportData, userId);
     
+    // Emit project status report created event
+    if (result.success && result.data) {
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        await ProjectStatusReportEvents.emitProjectStatusReportCreated(result.data, metadata);
+      } catch (error) {
+        console.error('❌ Error emitting project status report created event:', error);
+        // Don't fail the request if event emission fails
+      }
+    }
+    
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
@@ -43,7 +61,28 @@ class ProjectStatusReportController {
     const updateData = req.body;
     const userId = req.user._id || req.user.id;
     
+    // Get old report data for comparison
+    const oldReportResult = await projectStatusReportService.getStatusReportById(id);
     const result = await projectStatusReportService.updateStatusReport(id, updateData, userId);
+    
+    // Emit project status report updated event
+    if (result.success && result.data) {
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        if (oldReportResult.success) {
+          await ProjectStatusReportEvents.emitProjectStatusReportUpdated(result.data, oldReportResult.data, metadata);
+        }
+      } catch (error) {
+        console.error('❌ Error emitting project status report updated event:', error);
+        // Don't fail the request if event emission fails
+      }
+    }
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -56,7 +95,26 @@ class ProjectStatusReportController {
     const { id } = req.params;
     const userId = req.user._id || req.user.id;
     
+    // Get report data before deletion
+    const oldReportResult = await projectStatusReportService.getStatusReportById(id);
     const result = await projectStatusReportService.deleteStatusReport(id, userId);
+    
+    // Emit project status report deleted event
+    if (result.success && oldReportResult.success) {
+      try {
+        const metadata = {
+          userId: req.user?._id || req.user?.id,
+          userRole: req.user?.role,
+          userFullName: req.user?.full_name,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        };
+        await ProjectStatusReportEvents.emitProjectStatusReportDeleted(oldReportResult.data, metadata);
+      } catch (error) {
+        console.error('❌ Error emitting project status report deleted event:', error);
+        // Don't fail the request if event emission fails
+      }
+    }
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

@@ -2,6 +2,7 @@ const siteAreaService = require('../services/siteAreaService');
 const websocketService = require('../services/websocketService');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
+const SiteAreaEvents = require('../events/siteAreaEvents');
 
 class SiteAreaController {
   // ========== SITE AREA MANAGEMENT ==========
@@ -43,6 +44,23 @@ class SiteAreaController {
         });
       }
       
+      // Emit Kafka event for area created
+      if (result.success && result.data) {
+        try {
+          const metadata = {
+            userId: req.user?._id || req.user?.id,
+            userRole: req.user?.role,
+            userFullName: req.user?.full_name,
+            ipAddress: req.ip,
+            userAgent: req.get('User-Agent')
+          };
+          await SiteAreaEvents.emitSiteAreaCreated(result.data, metadata);
+        } catch (error) {
+          console.error('❌ Error emitting site area created event:', error);
+          // Don't fail the request if event emission fails
+        }
+      }
+      
       if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
       } else {
@@ -64,6 +82,24 @@ class SiteAreaController {
           updater: req.user,
           timestamp: new Date()
         });
+      }
+      
+      // Emit Kafka event for area updated
+      if (result.success && result.data) {
+        try {
+          const metadata = {
+            userId: req.user?._id || req.user?.id,
+            userRole: req.user?.role,
+            userFullName: req.user?.full_name,
+            ipAddress: req.ip,
+            userAgent: req.get('User-Agent')
+          };
+          const changes = Object.keys(updateData);
+          await SiteAreaEvents.emitSiteAreaUpdated(result.data, result.oldData, changes, metadata);
+        } catch (error) {
+          console.error('❌ Error emitting site area updated event:', error);
+          // Don't fail the request if event emission fails
+        }
       }
       
       if (result.success) {

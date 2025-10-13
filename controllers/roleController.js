@@ -1,11 +1,28 @@
-const RoleService = require('../services/roleService ');
+const RoleService = require('../services/roleService');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
+const RoleEvents = require('../events/roleEvents');
 
 class RoleController {
   // Create new role
   static createRole = ErrorMiddleware.asyncHandler(async (req, res) => {
     const result = await RoleService.createRole(req.body);
+    
+    // Emit role created event
+    try {
+      const metadata = {
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        userFullName: req.user?.full_name,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      };
+      await RoleEvents.emitRoleCreated(result, metadata);
+    } catch (error) {
+      console.error('❌ Error emitting role created event:', error);
+      // Don't fail the request if event emission fails
+    }
+    
     return ApiResponse.success(res, result, 'Role created successfully', 201);
   });
 
@@ -19,14 +36,52 @@ class RoleController {
   // Update role
   static updateRole = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
+    
+    // Get old role data for comparison
+    const oldRole = await RoleService.getRoleById(id);
     const result = await RoleService.updateRole(id, req.body);
+    
+    // Emit role updated event
+    try {
+      const metadata = {
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        userFullName: req.user?.full_name,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      };
+      await RoleEvents.emitRoleUpdated(result, oldRole, metadata);
+    } catch (error) {
+      console.error('❌ Error emitting role updated event:', error);
+      // Don't fail the request if event emission fails
+    }
+    
     return ApiResponse.success(res, result, 'Role updated successfully');
   });
 
   // Delete role
   static deleteRole = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
+    
+    // Get role data before deletion
+    const roleData = await RoleService.getRoleById(id);
     const result = await RoleService.deleteRole(id);
+    
+    // Emit role deleted event
+    try {
+      const metadata = {
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        userFullName: req.user?.full_name,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      };
+      await RoleEvents.emitRoleDeleted(roleData, metadata);
+    } catch (error) {
+      console.error('❌ Error emitting role deleted event:', error);
+      // Don't fail the request if event emission fails
+    }
+    
     return ApiResponse.success(res, result, 'Role deleted successfully');
   });
 
@@ -51,7 +106,26 @@ class RoleController {
   // Toggle role status
   static toggleRoleStatus = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
+    
+    // Get old role data for comparison
+    const oldRole = await RoleService.getRoleById(id);
     const result = await RoleService.toggleRoleStatus(id);
+    
+    // Emit role status toggled event
+    try {
+      const metadata = {
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        userFullName: req.user?.full_name,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      };
+      await RoleEvents.emitRoleStatusToggled(result, oldRole.status, metadata);
+    } catch (error) {
+      console.error('❌ Error emitting role status toggled event:', error);
+      // Don't fail the request if event emission fails
+    }
+    
     return ApiResponse.success(res, result, result.message);
   });
 
@@ -71,7 +145,26 @@ class RoleController {
   static updateRolePermissions = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { permissions } = req.body;
+    
+    // Get old role data for comparison
+    const oldRole = await RoleService.getRoleById(id);
     const result = await RoleService.updateRolePermissions(id, permissions);
+    
+    // Emit role permissions updated event
+    try {
+      const metadata = {
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        userFullName: req.user?.full_name,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      };
+      await RoleEvents.emitRolePermissionsUpdated(result, oldRole.permissions || [], metadata);
+    } catch (error) {
+      console.error('❌ Error emitting role permissions updated event:', error);
+      // Don't fail the request if event emission fails
+    }
+    
     return ApiResponse.success(res, result, 'Role permissions updated successfully');
   });
 }

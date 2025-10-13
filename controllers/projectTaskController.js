@@ -2,6 +2,7 @@ const projectTaskService = require('../services/projectTaskService');
 const websocketService = require('../services/websocketService');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
+const TaskEvents = require('../events/taskEvents');
 
 class ProjectTaskController {
   // ========== PROJECT TASK MANAGEMENT ==========
@@ -65,6 +66,18 @@ class ProjectTaskController {
       });
     }
     
+    // Emit Kafka event for task created
+    if (result.success && result.data) {
+      try {
+        await TaskEvents.emitTaskCreated(result.data, req.user, {
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+      } catch (eventError) {
+        console.error('Failed to emit task created event:', eventError);
+      }
+    }
+    
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
@@ -88,6 +101,18 @@ class ProjectTaskController {
       });
     }
     
+    // Emit Kafka event for task updated
+    if (result.success && result.data) {
+      try {
+        await TaskEvents.emitTaskUpdated(result.data, req.user, {
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+      } catch (eventError) {
+        console.error('Failed to emit task updated event:', eventError);
+      }
+    }
+    
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
@@ -99,7 +124,22 @@ class ProjectTaskController {
     const { id } = req.params;
     const userId = req.user._id || req.user.id;
     
+    // Get task data before deletion for event
+    const taskData = await projectTaskService.getTaskById(id);
+    
     const result = await projectTaskService.deleteTask(id, userId);
+    
+    // Emit Kafka event for task deleted
+    if (result.success && taskData.success) {
+      try {
+        await TaskEvents.emitTaskDeleted(taskData.data, req.user, {
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+      } catch (eventError) {
+        console.error('Failed to emit task deleted event:', eventError);
+      }
+    }
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -113,6 +153,10 @@ class ProjectTaskController {
     const { status } = req.body;
     const userId = req.user._id || req.user.id;
     
+    // Get old status for event
+    const oldTask = await projectTaskService.getTaskById(id);
+    const oldStatus = oldTask.success ? oldTask.data.status : null;
+    
     const result = await projectTaskService.updateTaskStatus(id, status, userId);
     
     // Emit WebSocket event for task status updated
@@ -122,6 +166,19 @@ class ProjectTaskController {
         updater: req.user,
         timestamp: new Date()
       });
+    }
+    
+    // Emit Kafka event for task status updated
+    if (result.success && result.data) {
+      try {
+        await TaskEvents.emitTaskStatusUpdated(result.data, req.user, {
+          previousStatus: oldStatus,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+      } catch (eventError) {
+        console.error('Failed to emit task status updated event:', eventError);
+      }
     }
     
     if (result.success) {
@@ -140,6 +197,10 @@ class ProjectTaskController {
       return ApiResponse.error(res, 'Tiến độ phải từ 0 đến 100', 400);
     }
     
+    // Get old progress for event
+    const oldTask = await projectTaskService.getTaskById(id);
+    const oldProgress = oldTask.success ? oldTask.data.progress : 0;
+    
     const result = await projectTaskService.updateTaskProgress(id, progress, userId);
     
     // Emit WebSocket event for task progress updated
@@ -149,6 +210,19 @@ class ProjectTaskController {
         updater: req.user,
         timestamp: new Date()
       });
+    }
+    
+    // Emit Kafka event for task progress updated
+    if (result.success && result.data) {
+      try {
+        await TaskEvents.emitTaskProgressUpdated(result.data, req.user, {
+          previousProgress: oldProgress,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+      } catch (eventError) {
+        console.error('Failed to emit task progress updated event:', eventError);
+      }
     }
     
     if (result.success) {
@@ -172,6 +246,23 @@ class ProjectTaskController {
         assigner: req.user,
         timestamp: new Date()
       });
+    }
+    
+    // Emit Kafka event for task assigned
+    if (result.success && result.data) {
+      try {
+        const User = require('../models/user');
+        const assignee = await User.findById(assignee_id);
+        
+        if (assignee) {
+          await TaskEvents.emitTaskAssigned(result.data, assignee, req.user, {
+            ipAddress: req.ip,
+            userAgent: req.get('User-Agent')
+          });
+        }
+      } catch (eventError) {
+        console.error('Failed to emit task assigned event:', eventError);
+      }
     }
     
     if (result.success) {
@@ -266,6 +357,21 @@ class ProjectTaskController {
         commenter: req.user,
         timestamp: new Date()
       });
+    }
+    
+    // Emit Kafka event for task comment added
+    if (result.success && result.data) {
+      try {
+        const task = await projectTaskService.getTaskById(id);
+        if (task.success) {
+          await TaskEvents.emitTaskCommentAdded(task.data, comment, req.user, {
+            ipAddress: req.ip,
+            userAgent: req.get('User-Agent')
+          });
+        }
+      } catch (eventError) {
+        console.error('Failed to emit task comment added event:', eventError);
+      }
     }
     
     if (result.success) {

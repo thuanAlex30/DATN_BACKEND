@@ -1,0 +1,153 @@
+# Docker Compose file for Safety Management System
+
+services:
+  # MongoDB Atlas - External cloud database
+  # No local MongoDB container needed
+
+  # Zookeeper for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: safety-zookeeper
+    restart: unless-stopped
+    ports:
+      - "22181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    networks:
+      - safety-network
+
+  # Kafka Message Broker
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: safety-kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    depends_on:
+      - zookeeper
+    networks:
+      - safety-network
+
+  # Kafka UI for monitoring
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: safety-kafka-ui
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    depends_on:
+      - kafka
+    networks:
+      - safety-network
+
+  # Kafka Topics Initializer
+  kafka-init:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: safety-kafka-init
+    depends_on:
+      - kafka
+    networks:
+      - safety-network
+    command: >
+      bash -c "
+        echo 'Waiting for Kafka to be ready...';
+        until kafka-topics --bootstrap-server kafka:29092 --list > /dev/null 2>&1; do
+          echo 'Kafka is not ready yet. Waiting...';
+          sleep 5;
+        done;
+        echo 'Kafka is ready. Creating topics...';
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic project-risk-events --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic project-status-report-events --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic project-events --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic task-events --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic incident-events --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic ppe-events --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic user-events --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic notification-events --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic system-events --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic role-events --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic department-events --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic position-events --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic training-events --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic quality-events --partitions 3 --replication-factor 1;
+        echo 'Creating Dead Letter Queue topics...';
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic project-events.dlq --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic task-events.dlq --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic incident-events.dlq --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic ppe-events.dlq --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic user-events.dlq --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic notification-events.dlq --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic system-events.dlq --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic role-events.dlq --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic department-events.dlq --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic position-events.dlq --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic training-events.dlq --partitions 3 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic quality-events.dlq --partitions 3 --replication-factor 1;
+        echo 'All topics created successfully!';
+        kafka-topics --bootstrap-server kafka:29092 --list;
+      "
+
+  # Backend API
+  backend:
+    build: .
+    container_name: safety-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      MONGODB_URI: mongodb+srv://thuandh30:admin@safetymanagementsystem.0gssvfl.mongodb.net/safety_management_system?retryWrites=true&w=majority
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_CLIENT_ID: safety-management-system
+      KAFKA_GROUP_ID: safety-management-group
+      JWT_SECRET: your_super_secret_jwt_key_here_2024_safety_management_system
+      JWT_REFRESH_SECRET: your_super_secret_refresh_jwt_key_here_2024_safety_management_system
+      JWT_EXPIRE: 7d
+      JWT_REFRESH_EXPIRE: 30d
+      FRONTEND_URL: http://localhost:5173
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    depends_on:
+      - kafka
+      - kafka-init
+    networks:
+      - safety-network
+
+  # Frontend and Nginx removed for backend-only setup
+  # Add them back when needed
+
+volumes:
+  zookeeper_data:
+    driver: local
+  zookeeper_logs:
+    driver: local
+  kafka_data:
+    driver: local
+
+networks:
+  safety-network:
+    driver: bridge

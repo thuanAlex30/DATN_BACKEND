@@ -1,11 +1,20 @@
-const UserService = require('../services/UserService');
+const UserService = require('../services/userService');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
+const UserEvents = require('../events/userEvents');
 
 class UserController {
   // Create new user
   static createUser = ErrorMiddleware.asyncHandler(async (req, res) => {
     const result = await UserService.createUser(req.body);
+    
+    // Emit user registered event
+    try {
+      await UserEvents.emitUserRegistered(result, req.user || { _id: 'system', role: 'admin', full_name: 'System' });
+    } catch (eventError) {
+      console.error('Failed to emit user registered event:', eventError);
+    }
+    
     return ApiResponse.success(res, result, 'User created successfully', 201);
   });
 
@@ -19,14 +28,39 @@ class UserController {
   // Update user
   static updateUser = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const oldUser = await UserService.getUserById(id);
     const result = await UserService.updateUser(id, req.body);
+    
+    // Emit user profile updated event
+    try {
+      const changes = {};
+      Object.keys(req.body).forEach(key => {
+        if (oldUser[key] !== result[key]) {
+          changes[key] = { old: oldUser[key], new: result[key] };
+        }
+      });
+      
+      await UserEvents.emitUserProfileUpdated(result, req.user || { _id: 'system', role: 'admin', full_name: 'System' }, changes);
+    } catch (eventError) {
+      console.error('Failed to emit user profile updated event:', eventError);
+    }
+    
     return ApiResponse.success(res, result, 'User updated successfully');
   });
 
   // Delete user
   static deleteUser = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const oldUser = await UserService.getUserById(id);
     const result = await UserService.deleteUser(id);
+    
+    // Emit user deleted event
+    try {
+      await UserEvents.emitUserDeleted(oldUser, req.user || { _id: 'system', role: 'admin', full_name: 'System' });
+    } catch (eventError) {
+      console.error('Failed to emit user deleted event:', eventError);
+    }
+    
     return ApiResponse.success(res, result, 'User deleted successfully');
   });
 
@@ -59,7 +93,16 @@ class UserController {
   // Toggle user status
   static toggleUserStatus = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const oldUser = await UserService.getUserById(id);
     const result = await UserService.toggleUserStatus(id);
+    
+    // Emit user status updated event
+    try {
+      await UserEvents.emitUserStatusUpdated(result, req.user || { _id: 'system', role: 'admin', full_name: 'System' }, oldUser.status, result.status);
+    } catch (eventError) {
+      console.error('Failed to emit user status updated event:', eventError);
+    }
+    
     return ApiResponse.success(res, result, result.message);
   });
 

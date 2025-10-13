@@ -1,5 +1,5 @@
 const express = require('express');
-const RoleController = require('../controllers/RoleController');
+const RoleController = require('../controllers/roleController');
 const AuthMiddleware = require('../middlewares/AuthMiddleware');
 const ValidationMiddleware = require('../middlewares/ValidationMiddleware');
 const Joi = require('joi');
