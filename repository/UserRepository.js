@@ -267,16 +267,39 @@ class UserRepository {
         .sort({ full_name: 1 })
         .exec();
 
+      console.log('All active users found:', users.length);
+      console.log('Users with roles:', users.map(u => ({
+        name: u.full_name,
+        role: u.role_id?.role_name,
+        position: u.position_id?.position_name,
+        level: u.position_id?.level
+      })));
+
       // Filter users with management permissions or high-level positions
-      return users.filter(user => {
+      const potentialManagers = users.filter(user => {
         const hasManagementRole = user.role_id && 
           (user.role_id.role_name === 'admin' || user.role_id.role_name === 'manager');
         
         const hasManagementLevel = user.position_id && user.position_id.level >= 6;
         
-        return hasManagementRole || hasManagementLevel;
+        const isManager = hasManagementRole || hasManagementLevel;
+        
+        if (isManager) {
+          console.log('Found potential manager:', {
+            name: user.full_name,
+            role: user.role_id?.role_name,
+            position: user.position_id?.position_name,
+            level: user.position_id?.level
+          });
+        }
+        
+        return isManager;
       });
+
+      console.log('Potential managers found:', potentialManagers.length);
+      return potentialManagers;
     } catch (error) {
+      console.error('Error in findPotentialManagers:', error);
       throw error;
     }
   }
