@@ -13,20 +13,15 @@ class IncidentEvents {
     try {
       const eventData = {
         incidentId: incident._id,
-        incidentType: incident.type,
+        title: incident.title,
         severity: incident.severity,
         status: incident.status,
         location: incident.location,
         description: incident.description,
         projectId: incident.project_id,
-        siteId: incident.site_id,
-        reporterId: incident.reporter_id,
-        reportedAt: incident.reported_at,
-        attachments: incident.attachments || [],
-        witnesses: incident.witnesses || [],
-        immediateActions: incident.immediate_actions || [],
-        estimatedCost: incident.estimated_cost,
-        estimatedDelay: incident.estimated_delay
+        reporterId: incident.createdBy,
+        reportedAt: incident.createdAt,
+        attachments: incident.images || []
       };
 
       const metadata = {

@@ -143,10 +143,22 @@ class KafkaMonitor {
       await admin.connect();
 
       const dlqTopics = Object.values(topics).map(topic => `${topic}.dlq`);
-      const topicMetadata = await admin.fetchTopicMetadata({ topics: dlqTopics });
+      
+      // Check if DLQ topics exist before trying to fetch metadata
+      const allTopics = await admin.listTopics();
+      const existingDLQTopics = dlqTopics.filter(topic => allTopics.includes(topic));
+      
+      if (existingDLQTopics.length === 0) {
+        // No DLQ topics exist, skip collection
+        this.metrics.dlq.messagesInDLQ = 0;
+        await admin.disconnect();
+        return;
+      }
+
+      const topicMetadata = await admin.fetchTopicMetadata({ topics: existingDLQTopics });
 
       let totalDLQMessages = 0;
-      for (const topic of dlqTopics) {
+      for (const topic of existingDLQTopics) {
         const topicInfo = topicMetadata.topics.find(t => t.name === topic);
         if (topicInfo) {
           // Get partition offsets
@@ -160,7 +172,8 @@ class KafkaMonitor {
       this.metrics.dlq.messagesInDLQ = totalDLQMessages;
       await admin.disconnect();
     } catch (error) {
-      console.error('❌ Error collecting DLQ metrics:', error);
+      // Silently skip DLQ metrics if topics don't exist
+      this.metrics.dlq.messagesInDLQ = 0;
     }
   }
 
