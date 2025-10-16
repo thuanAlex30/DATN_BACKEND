@@ -15,6 +15,8 @@ router.put('/investigate/:id', AuthMiddleware.authenticate, IncidentController.i
 router.put('/progress/:id', AuthMiddleware.authenticate, IncidentController.updateIncidentProgress);
 // Đóng sự cố & xuất báo cáo
 router.put('/close/:id', AuthMiddleware.authenticate, IncidentController.closeIncident);
+// Cập nhật thông tin nhân viên trong sự cố
+router.put('/update-employee/:id', AuthMiddleware.authenticate, IncidentController.updateEmployeeIncident);
 // Lấy danh sách sự cố
 router.get('/', AuthMiddleware.authenticate, IncidentController.getIncidents);
 // Lấy chi tiết sự cố
