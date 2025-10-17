@@ -33,8 +33,8 @@ class AuthMiddleware {
         return ApiResponse.unauthorized(res, 'Account is deactivated');
       }
 
-      // Populate role information
-      await user.populate('role_id');
+      // Populate role and department information
+      await user.populate(['role_id', 'department_id']);
       
       if (!user.role_id || !user.role_id.is_active) {
         return ApiResponse.unauthorized(res, 'Invalid or inactive role');
@@ -141,15 +141,32 @@ class AuthMiddleware {
     
     return (req, res, next) => {
       try {
+        console.log('🔍 Role Authorization Debug:', {
+          allowedRoles,
+          user: req.user ? {
+            id: req.user.id,
+            username: req.user.username,
+            role: req.user.role
+          } : null,
+          userRoleName: req.user?.role?.role_name || req.user?.role,
+          hasAccess: allowedRoles.includes(req.user?.role?.role_name || req.user?.role)
+        });
+
         if (!req.user) {
+          console.log('❌ No user found in request');
           return ApiResponse.unauthorized(res, 'Authentication required');
         }
 
         const userRoleName = req.user.role?.role_name || req.user.role;
         if (!allowedRoles.includes(userRoleName)) {
+          console.log('❌ User role not in allowed roles:', {
+            userRoleName,
+            allowedRoles
+          });
           return ApiResponse.forbidden(res, 'Insufficient role permissions');
         }
 
+        console.log('✅ Role authorization successful');
         next();
       } catch (error) {
         console.error('Role authorization error:', error);

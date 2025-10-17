@@ -108,9 +108,22 @@ class ProjectMilestoneRepository {
   }
 
   // Get milestones assigned to a specific user
-  async getMilestonesByUser(userId) {
+  async getMilestonesByUser(userId, filters = {}) {
     try {
-      const milestones = await ProjectMilestone.find({ responsible_user_id: userId })
+      const query = { responsible_user_id: userId };
+      
+      // Add project filter if provided
+      if (filters.project_id) {
+        query.project_id = filters.project_id;
+      }
+      if (filters.status) {
+        query.status = filters.status;
+      }
+      if (filters.priority) {
+        query.priority = filters.priority;
+      }
+      
+      const milestones = await ProjectMilestone.find(query)
         .populate('project_id', 'project_name project_code')
         .populate('responsible_user_id', 'full_name email username')
         .populate('created_by', 'full_name email')

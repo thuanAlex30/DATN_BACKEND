@@ -224,6 +224,20 @@ class AuthService {
         roleData = await RoleRepository.findById(user.role_id);
       }
 
+      // Populate department data
+      let departmentData = null;
+      if (user.department_id) {
+        const DepartmentRepository = require('../repository/DepartmentRepository');
+        departmentData = await DepartmentRepository.findById(user.department_id);
+      }
+
+      // Populate position data
+      let positionData = null;
+      if (user.position_id) {
+        const PositionRepository = require('../repository/PositionRepository');
+        positionData = await PositionRepository.findById(user.position_id);
+      }
+
       return createResponse(200, 'Lấy thông tin profile thành công', {
         id: user._id,
         username: user.username,
@@ -241,8 +255,24 @@ class AuthService {
           created_at: roleData.created_at,
           updated_at: roleData.updated_at
         } : null,
-        department: user.department_id,
-        position: user.position_id,
+        department: departmentData ? {
+          _id: departmentData._id,
+          name: departmentData.name,
+          description: departmentData.description,
+          is_active: departmentData.is_active,
+          created_at: departmentData.created_at,
+          updated_at: departmentData.updated_at
+        } : null,
+        department_id: user.department_id,
+        position: positionData ? {
+          _id: positionData._id,
+          name: positionData.name,
+          description: positionData.description,
+          is_active: positionData.is_active,
+          created_at: positionData.created_at,
+          updated_at: positionData.updated_at
+        } : null,
+        position_id: user.position_id,
         is_active: user.is_active,
         last_login: user.last_login,
         created_at: user.created_at,

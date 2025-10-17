@@ -35,6 +35,11 @@ const projectSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  created_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   site_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Site',
@@ -44,16 +49,6 @@ const projectSchema = new mongoose.Schema({
     type: Number,
     min: 0,
     max: 100,
-    default: 0
-  },
-  budget: {
-    type: Number,
-    min: 0,
-    default: 0
-  },
-  actual_cost: {
-    type: Number,
-    min: 0,
     default: 0
   },
   priority: {
@@ -91,7 +86,8 @@ const projectSchema = new mongoose.Schema({
 projectSchema.index({ project_name: 'text', description: 'text' });
 projectSchema.index({ status: 1 });
 projectSchema.index({ leader_id: 1 });
+projectSchema.index({ created_by: 1 });
 projectSchema.index({ site_id: 1 });
 projectSchema.index({ start_date: 1, end_date: 1 });
 
-module.exports = mongoose.model('Project', projectSchema);
+module.exports = mongoose.models.Project || mongoose.model('Project', projectSchema);

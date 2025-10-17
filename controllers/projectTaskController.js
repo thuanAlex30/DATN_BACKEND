@@ -30,8 +30,8 @@ class ProjectTaskController {
   });
 
   static getTasksByUser = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { userId } = req.params;
-    const result = await projectTaskService.getTasksByUser(userId);
+    const { projectId, userId } = req.params;
+    const result = await projectTaskService.getTasksByUser(userId, { project_id: projectId });
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

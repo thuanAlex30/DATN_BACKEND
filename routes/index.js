@@ -7,6 +7,7 @@ const positionRoutes = require('./positionRoutes');
 const systemLogRoutes = require('./systemLogRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const ppeRoutes = require('./ppeRoutes');
+const ppeAdvancedRoutes = require('./ppeAdvanced');
 const projectRoutes = require('./projectRoutes');
 const incidentRoutes = require('./incidentRoutes');
 const trainingRoutes = require('./trainingRoutes');
@@ -22,6 +23,7 @@ const projectRiskRoutes = require('./projectRiskRoutes');
 const projectChangeRequestRoutes = require('./projectChangeRequestRoutes');
 const projectStatusReportRoutes = require('./projectStatusReportRoutes');
 const qualityCheckpointRoutes = require('./qualityCheckpointRoutes');
+const projectCommunicationRoutes = require('./projectCommunicationRoutes');
 
 console.log('Loading kafkaMonitor...');
 const kafkaMonitor = require('../services/kafkaMonitor');
@@ -73,6 +75,7 @@ router.get('/health', (req, res) => {
         systemLogs: '/api/system-logs',
         notifications: '/api/notifications',
         ppe: '/api/ppe',
+        ppeAdvanced: '/api/ppe-advanced',
         projects: '/api/projects',
         training: '/api/training',
         sites: '/api/sites',
@@ -84,7 +87,8 @@ router.get('/health', (req, res) => {
         projectRisks: '/api/project-risks',
         projectChangeRequests: '/api/project-change-requests',
         projectStatusReports: '/api/project-status-reports',
-        qualityCheckpoints: '/api/quality-checkpoints'
+        qualityCheckpoints: '/api/quality-checkpoints',
+        projectCommunication: '/api/project-communication'
       }
     });
   } catch (error) {
@@ -104,6 +108,7 @@ router.get('/health', (req, res) => {
         systemLogs: '/api/system-logs',
         notifications: '/api/notifications',
         ppe: '/api/ppe',
+        ppeAdvanced: '/api/ppe-advanced',
         projects: '/api/projects',
         training: '/api/training',
         sites: '/api/sites',
@@ -115,7 +120,8 @@ router.get('/health', (req, res) => {
         projectRisks: '/api/project-risks',
         projectChangeRequests: '/api/project-change-requests',
         projectStatusReports: '/api/project-status-reports',
-        qualityCheckpoints: '/api/quality-checkpoints'
+        qualityCheckpoints: '/api/quality-checkpoints',
+        projectCommunication: '/api/project-communication'
       }
     });
   }
@@ -130,6 +136,7 @@ router.use('/positions', positionRoutes);
 router.use('/system-logs', systemLogRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/ppe', ppeRoutes);
+router.use('/ppe-advanced', ppeAdvancedRoutes);
 router.use('/projects', projectRoutes);
 router.use('/incidents', incidentRoutes);
 router.use('/training', trainingRoutes);
@@ -145,6 +152,7 @@ router.use('/project-risks', projectRiskRoutes);
 router.use('/project-change-requests', projectChangeRequestRoutes);
 router.use('/project-status-reports', projectStatusReportRoutes);
 router.use('/quality-checkpoints', qualityCheckpointRoutes);
+router.use('/project-communication', projectCommunicationRoutes);
 
 // Global 404 handler for API routes
 router.use('*', (req, res) => {

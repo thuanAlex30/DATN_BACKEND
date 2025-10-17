@@ -102,7 +102,6 @@ const initializeProjectData = async () => {
                     description: 'Kỹ sư có kinh nghiệm trong lĩnh vực xây dựng',
                     planned_quantity: 5,
                     unit_measure: 'người',
-                    unit_cost: 15000000, // 15 triệu VND
                     required_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
                     status: 'PLANNED',
                     location: 'Công trường chính'
@@ -114,7 +113,6 @@ const initializeProjectData = async () => {
                     description: 'Máy đào đất công suất lớn',
                     planned_quantity: 2,
                     unit_measure: 'chiếc',
-                    unit_cost: 500000000, // 500 triệu VND
                     required_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
                     status: 'PLANNED',
                     location: 'Kho thiết bị'
@@ -126,7 +124,6 @@ const initializeProjectData = async () => {
                     description: 'Xi măng chất lượng cao',
                     planned_quantity: 100,
                     unit_measure: 'tấn',
-                    unit_cost: 2000000, // 2 triệu VND per ton
                     required_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
                     status: 'PLANNED',
                     location: 'Kho vật liệu'
@@ -138,7 +135,6 @@ const initializeProjectData = async () => {
                     description: 'Búa máy phá dỡ công trình',
                     planned_quantity: 3,
                     unit_measure: 'chiếc',
-                    unit_cost: 50000000, // 50 triệu VND
                     required_date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000), // 10 days from now
                     status: 'PLANNED',
                     location: 'Kho dụng cụ'
@@ -150,7 +146,6 @@ const initializeProjectData = async () => {
                     description: 'Xe tải chở vật liệu',
                     planned_quantity: 4,
                     unit_measure: 'chiếc',
-                    unit_cost: 800000000, // 800 triệu VND
                     required_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
                     status: 'PLANNED',
                     location: 'Bãi xe'
@@ -162,7 +157,6 @@ const initializeProjectData = async () => {
                     description: 'Nhà thầu phụ thi công hệ thống điện',
                     planned_quantity: 1,
                     unit_measure: 'công ty',
-                    unit_cost: 1000000000, // 1 tỷ VND
                     required_date: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000), // 20 days from now
                     status: 'PLANNED',
                     location: 'Văn phòng công ty'

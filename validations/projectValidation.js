@@ -163,6 +163,30 @@ const projectValidation = {
       })
   }),
 
+  // Project and User ID validation for user-specific endpoints
+  projectUserParams: Joi.object({
+    projectId: Joi.string().custom((value, helpers) => {
+      if (!ObjectId.isValid(value)) {
+        return helpers.error('any.invalid');
+      }
+      return value;
+    }).required()
+      .messages({
+        'any.invalid': 'ID dự án không hợp lệ',
+        'any.required': 'ID dự án là bắt buộc'
+      }),
+    userId: Joi.string().custom((value, helpers) => {
+      if (!ObjectId.isValid(value)) {
+        return helpers.error('any.invalid');
+      }
+      return value;
+    }).required()
+      .messages({
+        'any.invalid': 'ID người dùng không hợp lệ',
+        'any.required': 'ID người dùng là bắt buộc'
+      })
+  }),
+
   // Project progress validation
   updateProgress: Joi.object({
     progress: Joi.number().min(0).max(100).required()

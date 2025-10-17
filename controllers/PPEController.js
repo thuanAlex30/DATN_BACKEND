@@ -1,5 +1,6 @@
 const ppeService = require('../services/ppeService');
 const { ApiResponse } = require('../utils/response');
+const EnhancedApiResponse = require('../utils/enhancedResponse');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 const websocketService = require('../services/websocketService');
 const PPEEvents = require('../events/ppeEvents');
@@ -104,16 +105,14 @@ class PPEController {
       const result = await ppeService.getAllItems(filters);
       
       if (result.success) {
-        // Additional safety check for BSON errors
-        try {
-          return ApiResponse.success(res, result.data, result.message, result.statusCode);
-        } catch (bsonError) {
-          console.error('BSON serialization error in getAllItems:', bsonError);
-          // Return empty data if BSON error occurs
-          return ApiResponse.success(res, [], 'Lấy danh sách thiết bị PPE thành công (dữ liệu rỗng do lỗi ObjectId)', 200);
-        }
+        // Use enhanced response handler with BSON error recovery
+        return EnhancedApiResponse.success(res, result.data, result.message, result.statusCode, {
+          fallbackStrategy: 'replace',
+          logErrors: true,
+          maxRetries: 3
+        });
       } else {
-        return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        return EnhancedApiResponse.error(res, result.message, result.statusCode || 500, result.data);
       }
     } catch (error) {
       console.error('Error in getAllItems:', error);
@@ -516,16 +515,14 @@ class PPEController {
       const result = await ppeService.getInventoryReport(filters);
       
       if (result.success) {
-        // Additional safety check for BSON errors
-        try {
-          return ApiResponse.success(res, result.data, result.message, result.statusCode);
-        } catch (bsonError) {
-          console.error('BSON serialization error in getInventoryReport:', bsonError);
-          // Return empty data if BSON error occurs
-          return ApiResponse.success(res, [], 'Lấy báo cáo tồn kho PPE thành công (dữ liệu rỗng do lỗi ObjectId)', 200);
-        }
+        // Use enhanced response handler with BSON error recovery
+        return EnhancedApiResponse.success(res, result.data, result.message, result.statusCode, {
+          fallbackStrategy: 'replace',
+          logErrors: true,
+          maxRetries: 3
+        });
       } else {
-        return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        return EnhancedApiResponse.error(res, result.message, result.statusCode || 500, result.data);
       }
     } catch (error) {
       console.error('Error in getInventoryReport:', error);
@@ -647,6 +644,180 @@ class PPEController {
     }
   });
 
+  // Admin phát PPE cho Manager
+  static issueToManager = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const issuanceData = {
+      ...req.body,
+      issuance_level: 'admin_to_manager',
+      issued_by: req.user.id
+    };
+    
+    const result = await ppeService.createIssuance(issuanceData);
+    
+    if (result.success) {
+      // Emit WebSocket notification for PPE issued to manager
+      try {
+        const { issuance, issuer, recipient } = result.data;
+        websocketService.emitPPEIssuedToManager(issuance, issuer, recipient);
+        console.log(`🛡️ PPE issued to manager WebSocket notification sent for user: ${recipient._id}`);
+      } catch (wsError) {
+        console.error('Failed to emit PPE issued to manager WebSocket notification:', wsError);
+      }
+      
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+    }
+  });
+
+  // Manager phát PPE cho Employee
+  static issueToEmployee = ErrorMiddleware.asyncHandler(async (req, res) => {
+    console.log('🔍 issueToEmployee - req.user:', req.user);
+    console.log('🔍 issueToEmployee - req.body:', req.body);
+    console.log('🔍 issueToEmployee - req.body.issued_by:', req.body.issued_by);
+    
+    const issuanceData = {
+      ...req.body,
+      issued_by: req.body.issued_by || req.user?.id || req.user?._id,
+      issuance_level: 'manager_to_employee',
+      manager_id: req.user?.id || req.user?._id
+    };
+    
+    console.log('🔍 issueToEmployee - issuanceData:', issuanceData);
+    
+    try {
+      const result = await ppeService.createIssuanceToEmployee(issuanceData);
+      console.log('🔍 issueToEmployee - result:', result);
+      
+      if (result.success) {
+      // Emit WebSocket notification for PPE issued to employee
+      try {
+        const { issuance, issuer, recipient } = result.data;
+        websocketService.emitPPEIssuedToEmployee(issuance, issuer, recipient);
+        console.log(`🛡️ PPE issued to employee WebSocket notification sent for user: ${recipient._id}`);
+      } catch (wsError) {
+        console.error('Failed to emit PPE issued to employee WebSocket notification:', wsError);
+      }
+      
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+    }
+    } catch (error) {
+      console.error('❌ issueToEmployee - Error:', error);
+      return ApiResponse.error(res, error.message, 400, { error: error.message });
+    }
+  });
+
+  // Employee trả PPE cho Manager
+  static returnToManager = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const returnData = {
+      ...req.body,
+      returned_by: req.user.id
+    };
+    
+    const result = await ppeService.returnIssuanceToManager(id, returnData);
+    
+    if (result.success) {
+      // Emit WebSocket notification for PPE returned to manager
+      try {
+        const { issuance, returner, manager } = result.data;
+        websocketService.emitPPEReturnedToManager(issuance, returner, manager);
+        console.log(`🛡️ PPE returned to manager WebSocket notification sent for user: ${manager._id}`);
+      } catch (wsError) {
+        console.error('Failed to emit PPE returned to manager WebSocket notification:', wsError);
+      }
+      
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+    }
+  });
+
+  // Manager trả PPE cho Admin
+  static returnToAdmin = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const returnData = {
+      ...req.body,
+      returned_by: req.user.id
+    };
+    
+    const result = await ppeService.returnIssuanceToAdmin(id, returnData);
+    
+    if (result.success) {
+      // Emit WebSocket notification for PPE returned to admin
+      try {
+        const { issuance, returner } = result.data;
+        websocketService.emitPPEReturnedToAdmin(issuance, returner);
+        console.log(`🛡️ PPE returned to admin WebSocket notification sent for user: ${returner._id}`);
+      } catch (wsError) {
+        console.error('Failed to emit PPE returned to admin WebSocket notification:', wsError);
+      }
+      
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+    }
+  });
+
+  // Lấy danh sách PPE của Manager
+  static getManagerPPE = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const managerId = req.user.id;
+    const result = await ppeService.getManagerPPE(managerId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // Lấy danh sách PPE của Employee
+  static getEmployeePPE = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const employeeId = req.user.id;
+    const result = await ppeService.getEmployeePPE(employeeId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // Lấy danh sách PPE của Employees trong department (dành cho manager)
+  static getDepartmentEmployeesPPE = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const managerId = req.user.id;
+    console.log('🔍 PPE Controller Debug:', {
+      managerId,
+      user: req.user ? {
+        id: req.user.id,
+        username: req.user.username,
+        department_id: req.user.department_id
+      } : null
+    });
+    const result = await ppeService.getDepartmentEmployeesPPE(managerId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // Lấy lịch sử PPE của Manager
+  static getManagerPPEHistory = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const managerId = req.user.id;
+    const result = await ppeService.getManagerPPEHistory(managerId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // Legacy method - giữ lại để tương thích
   static createIssuance = ErrorMiddleware.asyncHandler(async (req, res) => {
     const issuanceData = req.body;
     const result = await ppeService.createIssuance(issuanceData);
@@ -808,7 +979,8 @@ class PPEController {
   });
 
   static getAllUsers = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await ppeService.getAllUsers();
+    const { managerId } = req.query;
+    const result = await ppeService.getAllUsers(managerId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

@@ -13,28 +13,29 @@ class PPEEvents {
     try {
       const eventData = {
         ppeItemId: ppeItem._id,
-        name: ppeItem.name,
-        type: ppeItem.type,
-        category: ppeItem.category,
-        description: ppeItem.description,
-        manufacturer: ppeItem.manufacturer,
+        item_name: ppeItem.item_name,
+        item_code: ppeItem.item_code,
+        category_id: ppeItem.category_id,
+        brand: ppeItem.brand,
         model: ppeItem.model,
-        serialNumber: ppeItem.serial_number,
-        purchaseDate: ppeItem.purchase_date,
-        purchasePrice: ppeItem.purchase_price,
-        supplier: ppeItem.supplier,
-        warrantyPeriod: ppeItem.warranty_period,
-        expiryDate: ppeItem.expiry_date,
-        status: ppeItem.status,
+        reorder_level: ppeItem.reorder_level,
+        quantity_available: ppeItem.quantity_available,
+        quantity_allocated: ppeItem.quantity_allocated,
+        manufacturing_date: ppeItem.manufacturing_date,
+        expiry_date: ppeItem.expiry_date,
+        batch_number: ppeItem.batch_number,
+        serial_number: ppeItem.serial_number,
+        condition_status: ppeItem.condition_status,
         location: ppeItem.location,
-        siteId: ppeItem.site_id,
-        projectId: ppeItem.project_id,
-        assignedTo: ppeItem.assigned_to,
-        specifications: ppeItem.specifications || {},
-        complianceStandards: ppeItem.compliance_standards || [],
-        maintenanceSchedule: ppeItem.maintenance_schedule || {},
-        lastInspectionDate: ppeItem.last_inspection_date,
-        nextInspectionDate: ppeItem.next_inspection_date
+        supplier: ppeItem.supplier,
+        purchase_date: ppeItem.purchase_date,
+        purchase_price: ppeItem.purchase_price,
+        warranty_period: ppeItem.warranty_period,
+        compliance_standards: ppeItem.compliance_standards || [],
+        maintenance_schedule: ppeItem.maintenance_schedule || {},
+        last_inspection_date: ppeItem.last_inspection_date,
+        next_inspection_date: ppeItem.next_inspection_date,
+        status: ppeItem.status || 'active'
       };
 
       const metadata = {
@@ -70,28 +71,29 @@ class PPEEvents {
     try {
       const eventData = {
         ppeItemId: ppeItem._id,
-        name: ppeItem.name,
-        type: ppeItem.type,
-        category: ppeItem.category,
-        description: ppeItem.description,
-        manufacturer: ppeItem.manufacturer,
+        item_name: ppeItem.item_name,
+        item_code: ppeItem.item_code,
+        category_id: ppeItem.category_id,
+        brand: ppeItem.brand,
         model: ppeItem.model,
-        serialNumber: ppeItem.serial_number,
-        purchaseDate: ppeItem.purchase_date,
-        purchasePrice: ppeItem.purchase_price,
-        supplier: ppeItem.supplier,
-        warrantyPeriod: ppeItem.warranty_period,
-        expiryDate: ppeItem.expiry_date,
-        status: ppeItem.status,
+        reorder_level: ppeItem.reorder_level,
+        quantity_available: ppeItem.quantity_available,
+        quantity_allocated: ppeItem.quantity_allocated,
+        manufacturing_date: ppeItem.manufacturing_date,
+        expiry_date: ppeItem.expiry_date,
+        batch_number: ppeItem.batch_number,
+        serial_number: ppeItem.serial_number,
+        condition_status: ppeItem.condition_status,
         location: ppeItem.location,
-        siteId: ppeItem.site_id,
-        projectId: ppeItem.project_id,
-        assignedTo: ppeItem.assigned_to,
-        specifications: ppeItem.specifications || {},
-        complianceStandards: ppeItem.compliance_standards || [],
-        maintenanceSchedule: ppeItem.maintenance_schedule || {},
-        lastInspectionDate: ppeItem.last_inspection_date,
-        nextInspectionDate: ppeItem.next_inspection_date,
+        supplier: ppeItem.supplier,
+        purchase_date: ppeItem.purchase_date,
+        purchase_price: ppeItem.purchase_price,
+        warranty_period: ppeItem.warranty_period,
+        compliance_standards: ppeItem.compliance_standards || [],
+        maintenance_schedule: ppeItem.maintenance_schedule || {},
+        last_inspection_date: ppeItem.last_inspection_date,
+        next_inspection_date: ppeItem.next_inspection_date,
+        status: ppeItem.status || 'active',
         updatedAt: ppeItem.updated_at,
         changes: changes
       };
@@ -607,6 +609,138 @@ class PPEEvents {
       return result;
     } catch (error) {
       console.error('❌ Error emitting PPE item stock updated event:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Emit PPE issuance created event
+   * @param {Object} issuance - PPE issuance data
+   * @param {Object} issuer - Issuer information
+   * @returns {Promise<Object>} Event result
+   */
+  static async emitPPEIssuanceCreated(issuance, issuer) {
+    try {
+      const eventData = {
+        issuanceId: issuance._id,
+        user_id: issuance.user_id,
+        item_id: issuance.item_id,
+        quantity: issuance.quantity,
+        issued_date: issuance.issued_date,
+        expected_return_date: issuance.expected_return_date,
+        issued_by: issuance.issued_by,
+        status: issuance.status,
+        issuance_level: issuance.issuance_level,
+        manager_id: issuance.manager_id,
+        notes: issuance.notes,
+        createdAt: issuance.createdAt
+      };
+
+      const metadata = {
+        userId: issuer._id,
+        userRole: issuer.role,
+        userFullName: issuer.full_name,
+        timestamp: new Date().toISOString(),
+        source: 'ppe-service'
+      };
+
+      const result = await kafkaProducer.sendPPEEvent(
+        eventTypes.PPE_ISSUANCE_CREATED,
+        eventData,
+        metadata
+      );
+
+      console.log(`✅ PPE issuance created event emitted: ${result.eventId}`);
+      return result;
+    } catch (error) {
+      console.error('❌ Error emitting PPE issuance created event:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Emit PPE issuance returned event
+   * @param {Object} issuance - PPE issuance data
+   * @param {Object} returner - Returner information
+   * @returns {Promise<Object>} Event result
+   */
+  static async emitPPEIssuanceReturned(issuance, returner) {
+    try {
+      const eventData = {
+        issuanceId: issuance._id,
+        user_id: issuance.user_id,
+        item_id: issuance.item_id,
+        quantity: issuance.quantity,
+        actual_return_date: issuance.actual_return_date,
+        return_condition: issuance.return_condition,
+        return_notes: issuance.return_notes,
+        status: issuance.status,
+        issuance_level: issuance.issuance_level,
+        updatedAt: issuance.updatedAt
+      };
+
+      const metadata = {
+        userId: returner._id,
+        userRole: returner.role,
+        userFullName: returner.full_name,
+        timestamp: new Date().toISOString(),
+        source: 'ppe-service'
+      };
+
+      const result = await kafkaProducer.sendPPEEvent(
+        eventTypes.PPE_ISSUANCE_RETURNED,
+        eventData,
+        metadata
+      );
+
+      console.log(`✅ PPE issuance returned event emitted: ${result.eventId}`);
+      return result;
+    } catch (error) {
+      console.error('❌ Error emitting PPE issuance returned event:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Emit PPE issuance reported event
+   * @param {Object} issuance - PPE issuance data
+   * @param {Object} reporter - Reporter information
+   * @returns {Promise<Object>} Event result
+   */
+  static async emitPPEIssuanceReported(issuance, reporter) {
+    try {
+      const eventData = {
+        issuanceId: issuance._id,
+        user_id: issuance.user_id,
+        item_id: issuance.item_id,
+        quantity: issuance.quantity,
+        report_type: issuance.report_type,
+        report_description: issuance.report_description,
+        report_severity: issuance.report_severity,
+        reported_date: issuance.reported_date,
+        status: issuance.status,
+        issuance_level: issuance.issuance_level,
+        updatedAt: issuance.updatedAt
+      };
+
+      const metadata = {
+        userId: reporter._id,
+        userRole: reporter.role,
+        userFullName: reporter.full_name,
+        timestamp: new Date().toISOString(),
+        source: 'ppe-service'
+      };
+
+      const result = await kafkaProducer.sendPPEEvent(
+        eventTypes.PPE_ISSUANCE_REPORTED,
+        eventData,
+        metadata
+      );
+
+      console.log(`✅ PPE issuance reported event emitted: ${result.eventId}`);
+      return result;
+    } catch (error) {
+      console.error('❌ Error emitting PPE issuance reported event:', error);
       throw error;
     }
   }

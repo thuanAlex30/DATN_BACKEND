@@ -17,12 +17,6 @@ const projectStatusReportSchema = new mongoose.Schema({
     max: 100,
     required: true
   },
-  budget_utilization: {
-    type: Number,
-    min: 0,
-    max: 100,
-    required: true
-  },
   tasks_completed: {
     type: Number,
     min: 0,

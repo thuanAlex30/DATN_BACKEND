@@ -231,7 +231,7 @@ class ProjectChangeRequestRepository {
       }
 
       // Check if change type is valid
-      const validChangeTypes = ['SCOPE', 'SCHEDULE', 'BUDGET', 'RESOURCE', 'QUALITY', 'RISK', 'OTHER'];
+      const validChangeTypes = ['SCOPE', 'SCHEDULE', 'RESOURCE', 'QUALITY', 'RISK', 'OTHER'];
       if (changeRequestData.change_type && !validChangeTypes.includes(changeRequestData.change_type)) {
         errors.push('Invalid change type');
       }

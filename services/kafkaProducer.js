@@ -161,7 +161,6 @@ class KafkaProducer {
         description: projectData.description,
         startDate: projectData.start_date,
         endDate: projectData.end_date,
-        budget: projectData.budget,
         priority: projectData.priority
       },
       metadata: {

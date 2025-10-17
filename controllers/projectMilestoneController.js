@@ -18,8 +18,8 @@ class ProjectMilestoneController {
   });
 
   static getMilestonesByUser = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { userId } = req.params;
-    const result = await projectMilestoneService.getMilestonesByUser(userId);
+    const { projectId, userId } = req.params;
+    const result = await projectMilestoneService.getMilestonesByUser(userId, { project_id: projectId });
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

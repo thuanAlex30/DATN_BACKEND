@@ -30,11 +30,6 @@ const projectResourceSchema = new mongoose.Schema({
     min: 0,
     default: 0
   },
-  unit_cost: {
-    type: Number,
-    min: 0,
-    default: 0
-  },
   unit_measure: {
     type: String,
     required: true,

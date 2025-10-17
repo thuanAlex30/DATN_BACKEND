@@ -4,6 +4,7 @@ const multer = require('multer');
 const ppeController = require('../controllers/PPEController');
 const authMiddleware = require('../middlewares/AuthMiddleware');
 const validationMiddleware = require('../middlewares/ValidationMiddleware');
+const addIssuedByMiddleware = require('../middlewares/AddIssuedByMiddleware');
 const Joi = require('joi');
 
 // Configure multer for file upload
@@ -72,10 +73,27 @@ const issuanceValidation = {
       }),
     issued_by: Joi.string()
       .pattern(/^[0-9a-fA-F]{24}$/)
-      .required()
+      .optional()
       .messages({
-        'string.pattern.base': 'ID người phát không hợp lệ',
-        'any.required': 'Người phát là bắt buộc'
+        'string.pattern.base': 'ID người phát không hợp lệ'
+      }),
+    notes: Joi.string()
+      .max(500)
+      .optional()
+      .messages({
+        'string.max': 'Ghi chú không được quá 500 ký tự'
+      }),
+    issuance_level: Joi.string()
+      .valid('admin_to_manager', 'manager_to_employee')
+      .optional()
+      .messages({
+        'any.only': 'Cấp độ phát PPE phải là admin_to_manager hoặc manager_to_employee'
+      }),
+    manager_id: Joi.string()
+      .pattern(/^[0-9a-fA-F]{24}$/)
+      .optional()
+      .messages({
+        'string.pattern.base': 'ID Manager không hợp lệ'
       })
   }),
   return: Joi.object({
@@ -183,7 +201,61 @@ router.put('/items/:id/quantity',
   ppeController.updateItemQuantity
 );
 
-// PPE Issuances Routes
+// PPE Issuances Routes - Luồng phân cấp Admin → Manager → Employee
+// Admin phát PPE cho Manager
+router.post('/issuances/to-manager', 
+  authMiddleware.authorizeRole(['admin']),
+  validationMiddleware.validateBody(issuanceValidation.create),
+  ppeController.issueToManager
+);
+
+// Manager phát PPE cho Employee
+router.post('/issuances/to-employee', 
+  authMiddleware.authorizeRole(['manager']),
+  addIssuedByMiddleware,
+  validationMiddleware.validateBody(issuanceValidation.create),
+  ppeController.issueToEmployee
+);
+
+// Employee trả PPE cho Manager
+router.post('/issuances/:id/return-to-manager', 
+  authMiddleware.authorizeRole(['employee']),
+  validationMiddleware.validateBody(issuanceValidation.return),
+  ppeController.returnToManager
+);
+
+// Manager trả PPE cho Admin
+router.post('/issuances/:id/return-to-admin', 
+  authMiddleware.authorizeRole(['manager']),
+  validationMiddleware.validateBody(issuanceValidation.return),
+  ppeController.returnToAdmin
+);
+
+// Lấy danh sách PPE của Manager
+router.get('/issuances/manager-ppe', 
+  authMiddleware.authorizeRole(['manager']),
+  ppeController.getManagerPPE
+);
+
+// Lấy danh sách PPE của Employee (chỉ dành cho employee)
+router.get('/issuances/employee-ppe', 
+  authMiddleware.authorizeRole(['employee']),
+  ppeController.getEmployeePPE
+);
+
+// Lấy danh sách PPE của Employees trong department (dành cho manager)
+router.get('/issuances/department-employees-ppe', 
+  authMiddleware.authorizeRole(['manager']),
+  ppeController.getDepartmentEmployeesPPE
+);
+
+// Lấy lịch sử PPE của Manager
+router.get('/issuances/manager-history', 
+  authMiddleware.authorizeRole(['manager']),
+  ppeController.getManagerPPEHistory
+);
+
+// Legacy PPE Issuances Routes - giữ lại để tương thích
 router.get('/issuances', ppeController.getAllIssuances);
 router.get('/issuances/my', ppeController.getMyIssuances);
 router.get('/issuances/:id', ppeController.getIssuanceById);
@@ -192,6 +264,7 @@ router.get('/issuances/active', ppeController.getActiveIssuances);
 router.get('/issuances/expiring', ppeController.getExpiringIssuances);
 router.post('/issuances', 
   authMiddleware.authorizeRole(['admin', 'manager', 'safety_officer']),
+  addIssuedByMiddleware,
   validationMiddleware.validateBody(issuanceValidation.create),
   ppeController.createIssuance
 );

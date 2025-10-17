@@ -23,7 +23,7 @@ const projectRiskSchema = new mongoose.Schema({
   },
   risk_category: {
     type: String,
-    enum: ['TECHNICAL', 'FINANCIAL', 'SCHEDULE', 'SAFETY', 'ENVIRONMENTAL', 'REGULATORY', 'SUPPLIER', 'PERSONNEL'],
+    enum: ['TECHNICAL', 'SCHEDULE', 'SAFETY', 'ENVIRONMENTAL', 'REGULATORY', 'SUPPLIER', 'PERSONNEL'],
     required: true
   },
   probability: {
@@ -70,11 +70,6 @@ const projectRiskSchema = new mongoose.Schema({
   },
   actual_resolution_date: {
     type: Date
-  },
-  cost_impact: {
-    type: Number,
-    min: 0,
-    default: 0
   },
   schedule_impact_days: {
     type: Number,

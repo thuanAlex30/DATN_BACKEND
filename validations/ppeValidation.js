@@ -187,7 +187,12 @@ const validateCreateIssuance = [
   
   body('issued_by')
     .custom(isValidObjectId)
-    .withMessage('Người phát là bắt buộc')
+    .withMessage('Người phát không hợp lệ'),
+  
+  body('notes')
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage('Ghi chú không được quá 500 ký tự')
 ];
 
 const validateUpdateIssuance = [

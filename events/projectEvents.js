@@ -24,7 +24,6 @@ class ProjectEvents {
           description: project.description,
           startDate: project.start_date,
           endDate: project.end_date,
-          budget: project.budget,
           priority: project.priority || 'medium'
         },
         metadata: {
@@ -79,7 +78,6 @@ class ProjectEvents {
           description: project.description,
           startDate: project.start_date,
           endDate: project.end_date,
-          budget: project.budget,
           priority: project.priority || 'medium'
         },
         metadata: {
@@ -135,7 +133,6 @@ class ProjectEvents {
           description: project.description,
           startDate: project.start_date,
           endDate: project.end_date,
-          budget: project.budget,
           priority: project.priority || 'medium'
         },
         metadata: {
@@ -192,7 +189,6 @@ class ProjectEvents {
           description: project.description,
           startDate: project.start_date,
           endDate: project.end_date,
-          budget: project.budget,
           priority: project.priority || 'medium'
         },
         metadata: {
@@ -248,7 +244,6 @@ class ProjectEvents {
           description: project.description,
           startDate: project.start_date,
           endDate: project.end_date,
-          budget: project.budget,
           priority: project.priority || 'medium'
         },
         metadata: {
