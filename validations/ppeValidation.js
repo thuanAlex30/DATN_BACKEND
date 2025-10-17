@@ -202,7 +202,7 @@ const validateUpdateIssuance = [
   
   body('status')
     .optional()
-    .isIn(['issued', 'returned', 'overdue'])
+    .isIn(['issued', 'returned', 'overdue', 'damaged', 'replacement_needed', 'pending_manager_return'])
     .withMessage('Trạng thái không hợp lệ'),
   
   body('actual_return_date')

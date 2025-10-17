@@ -178,7 +178,8 @@ class PPERepository {
                   $expr: {
                     $and: [
                       { $eq: ['$item_id', '$$itemId'] },
-                      { $eq: ['$status', 'issued'] }
+                      { $eq: ['$issuance_level', 'admin_to_manager'] },
+                      { $ne: ['$status', 'returned'] }
                     ]
                   }
                 }
@@ -186,7 +187,7 @@ class PPERepository {
               {
                 $group: {
                   _id: null,
-                  total_allocated: { $sum: '$quantity' }
+                  total_allocated: { $sum: { $ifNull: ['$remaining_quantity', '$quantity'] } }
                 }
               }
             ],
@@ -426,92 +427,91 @@ class PPERepository {
       {
         $match: {
           user_id: new mongoose.Types.ObjectId(managerId),
-          item_id: new mongoose.Types.ObjectId(itemId)
+          item_id: new mongoose.Types.ObjectId(itemId),
+          issuance_level: 'admin_to_manager'  // Chỉ lấy PPE Manager nhận từ Admin
         }
       },
       {
-        $group: {
-          _id: {
-            user_id: '$user_id',
-            item_id: '$item_id',
-            issuance_level: '$issuance_level',
-            status: '$status'
+        $lookup: {
+          from: 'ppeissuances',
+          let: { 
+            managerId: '$user_id',
+            itemId: '$item_id'
           },
-          total_quantity: { $sum: '$quantity' }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            user_id: '$_id.user_id',
-            item_id: '$_id.item_id'
-          },
-          stats: {
-            $push: {
-              issuance_level: '$_id.issuance_level',
-              status: '$_id.status',
-              quantity: '$total_quantity'
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$manager_id', '$$managerId'] },
+                    { $eq: ['$item_id', '$$itemId'] },
+                    { $eq: ['$issuance_level', 'manager_to_employee'] }
+                  ]
+                }
+              }
+            },
+            {
+              $project: {
+                quantity: 1,
+                status: 1
+              }
             }
-          }
+          ],
+          as: 'employee_issuances'
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total_received: {
+            $sum: '$quantity'  // ✅ TỔNG SỐ NHẬN = SUM tất cả quantity, không phụ thuộc status
+          },
+          total_returned: {
+            $sum: {
+              // Tính số đã trả = quantity - remaining_quantity (hoặc toàn bộ quantity nếu status='returned')
+              $cond: [
+                { $eq: ['$status', 'returned'] },
+                '$quantity',  // Đã trả toàn bộ
+                { $subtract: ['$quantity', { $ifNull: ['$remaining_quantity', '$quantity'] }] }  // Trả một phần
+              ]
+            }
+          },
+          remaining_in_hand: {
+            $sum: {
+              $cond: [
+                { $ne: ['$status', 'returned'] },
+                { $ifNull: ['$remaining_quantity', '$quantity'] },  // ✅ Dùng remaining_quantity
+                0
+              ]
+            }
+          },
+          employee_issuances_all: { $push: '$employee_issuances' }
         }
       },
       {
         $project: {
           _id: 0,
-          total_received: {
-            $sum: {
-              $map: {
-                input: {
-                  $filter: {
-                    input: '$stats',
-                    cond: {
-                      $and: [
-                        { $eq: ['$$this.issuance_level', 'admin_to_manager'] },
-                        { $eq: ['$$this.status', 'issued'] }
-                      ]
-                    }
-                  }
-                },
-                as: 'stat',
-                in: '$$stat.quantity'
-              }
-            }
-          },
-          total_returned: {
-            $sum: {
-              $map: {
-                input: {
-                  $filter: {
-                    input: '$stats',
-                    cond: {
-                      $and: [
-                        { $eq: ['$$this.issuance_level', 'admin_to_manager'] },
-                        { $eq: ['$$this.status', 'returned'] }
-                      ]
-                    }
-                  }
-                },
-                as: 'stat',
-                in: '$$stat.quantity'
-              }
-            }
-          },
+          total_received: 1,
+          total_returned: 1,
+          remaining_in_hand: 1,  // ✅ Thêm field này
           total_issued_to_employees: {
             $sum: {
-              $map: {
+              $reduce: {
                 input: {
-                  $filter: {
-                    input: '$stats',
-                    cond: {
-                      $and: [
-                        { $eq: ['$$this.issuance_level', 'manager_to_employee'] },
-                        { $eq: ['$$this.status', 'issued'] }
-                      ]
-                    }
+                  $reduce: {
+                    input: '$employee_issuances_all',
+                    initialValue: [],
+                    in: { $concatArrays: ['$$value', '$$this'] }
                   }
                 },
-                as: 'stat',
-                in: '$$stat.quantity'
+                initialValue: 0,
+                in: {
+                  $cond: [
+                    { $ne: ['$$this.status', 'returned'] },
+                    { $add: ['$$value', '$$this.quantity'] },
+                    '$$value'
+                  ]
+                }
               }
             }
           }
@@ -520,7 +520,12 @@ class PPERepository {
     ];
 
     const result = await PPEIssuance.aggregate(pipeline);
-    return result.length > 0 ? result[0] : { total_received: 0, total_returned: 0, total_issued_to_employees: 0 };
+    return result.length > 0 ? result[0] : { 
+      total_received: 0, 
+      total_returned: 0, 
+      remaining_in_hand: 0,  // ✅ Thêm field này
+      total_issued_to_employees: 0 
+    };
   }
 
   // Lấy danh sách PPE đang chờ Manager xác nhận trả

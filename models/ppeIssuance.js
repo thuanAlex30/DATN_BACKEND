@@ -95,6 +95,11 @@ const ppeIssuanceSchema = new mongoose.Schema({
     default: function() {
       return this.issuance_level === 'manager_to_employee' ? this.quantity : undefined;
     }
+  },
+  // Số lượng còn lại có thể trả (cho trường hợp trả từng phần)
+  remaining_quantity: {
+    type: Number,
+    min: 0
   }
 }, {
   timestamps: true

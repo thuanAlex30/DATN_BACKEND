@@ -761,6 +761,29 @@ class PPEController {
     }
   });
 
+  // Manager xác nhận nhận PPE từ Employee
+  static confirmEmployeeReturn = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const managerId = req.user.id;
+    
+    const result = await ppeService.confirmEmployeeReturn(id, managerId);
+    
+    if (result.success) {
+      // Emit WebSocket notification for PPE return confirmed
+      try {
+        const { issuance, employee, manager } = result.data;
+        websocketService.emitPPEReturnedToManager(issuance, employee, manager);
+        console.log(`🛡️ PPE employee return confirmed WebSocket notification sent for manager: ${manager._id}`);
+      } catch (wsError) {
+        console.error('Failed to emit PPE return confirmation WebSocket notification:', wsError);
+      }
+      
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+    }
+  });
+
   // Lấy danh sách PPE của Manager
   static getManagerPPE = ErrorMiddleware.asyncHandler(async (req, res) => {
     const managerId = req.user.id;

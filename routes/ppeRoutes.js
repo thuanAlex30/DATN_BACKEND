@@ -110,6 +110,15 @@ const issuanceValidation = {
       .messages({
         'any.only': 'Tình trạng trả phải là good, damaged hoặc worn'
       }),
+    quantity: Joi.number()
+      .integer()
+      .min(1)
+      .optional()
+      .messages({
+        'number.base': 'Số lượng phải là số',
+        'number.integer': 'Số lượng phải là số nguyên',
+        'number.min': 'Số lượng phải lớn hơn 0'
+      }),
     notes: Joi.string()
       .max(500)
       .optional()
@@ -222,6 +231,12 @@ router.post('/issuances/:id/return-to-manager',
   authMiddleware.authorizeRole(['employee']),
   validationMiddleware.validateBody(issuanceValidation.return),
   ppeController.returnToManager
+);
+
+// Manager xác nhận nhận PPE từ Employee
+router.post('/issuances/:id/confirm-employee-return', 
+  authMiddleware.authorizeRole(['manager']),
+  ppeController.confirmEmployeeReturn
 );
 
 // Manager trả PPE cho Admin

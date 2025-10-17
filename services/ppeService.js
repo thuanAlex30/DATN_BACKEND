@@ -4,6 +4,7 @@ const UserService = require('./userService');
 const mongoose = require('mongoose');
 const User = require('../models/user');
 const PPEIssuance = require('../models/ppeIssuance');
+const Department = require('../models/department');
 const ExcelJS = require('exceljs');
 const { transformDocumentId, transformDocumentsId, POPULATED_FIELDS } = require('../utils/transformId');
 const { createResponse } = require('../utils/response');
@@ -348,15 +349,42 @@ class PPEService {
           throw new Error('Tất cả các trường bắt buộc phải được điền');
         }
 
-        // Kiểm tra Manager có đủ PPE không - Sử dụng aggregation để tính toán chính xác
+        // Kiểm tra vai trò và cùng phòng ban
+        const managerUser = await User.findById(issuanceData.issued_by)
+          .populate('role_id', 'role_name')
+          .populate('department_id');
+        const employeeUser = await User.findById(issuanceData.user_id)
+          .populate('role_id', 'role_name')
+          .populate('department_id');
+
+        if (!managerUser) {
+          throw new Error('Manager không tồn tại');
+        }
+        if (!employeeUser) {
+          throw new Error('Nhân viên không tồn tại');
+        }
+        const managerRole = managerUser.role_id && managerUser.role_id.role_name ? managerUser.role_id.role_name : null;
+        if (managerRole !== 'manager') {
+          throw new Error('Chỉ Manager mới được phát PPE cho nhân viên');
+        }
+        if (!managerUser.department_id) {
+          throw new Error('Manager chưa được gán phòng ban');
+        }
+        const managerDeptId = (managerUser.department_id._id || managerUser.department_id).toString();
+        const employeeDeptId = employeeUser.department_id ? (employeeUser.department_id._id || employeeUser.department_id).toString() : '';
+        if (!employeeDeptId || employeeDeptId !== managerDeptId) {
+          throw new Error('Chỉ được phát PPE cho nhân viên trong cùng phòng ban');
+        }
+
+        // Kiểm tra Manager có đủ PPE in-hand để phát - sử dụng aggregation để tính chính xác
         const managerPPEStats = await ppeRepository.getManagerPPEStats(issuanceData.issued_by, issuanceData.item_id);
         
         if (!managerPPEStats || managerPPEStats.total_received === 0) {
           throw new Error('Manager chưa nhận PPE này từ Admin');
         }
 
-        // Tính số lượng PPE còn lại của Manager (đã trừ đi PPE đã phát cho Employee)
-        const availableQuantity = managerPPEStats.total_received - managerPPEStats.total_returned - managerPPEStats.total_issued_to_employees;
+        // Tính số PPE có thể phát = remaining_in_hand - total_issued_to_employees
+        const availableQuantity = Math.max(0, (managerPPEStats.remaining_in_hand || 0) - (managerPPEStats.total_issued_to_employees || 0));
 
         if (availableQuantity < issuanceData.quantity) {
           throw new Error(`Manager không đủ PPE để phát. Hiện có: ${availableQuantity}, cần phát: ${issuanceData.quantity}`);
@@ -367,8 +395,13 @@ class PPEService {
         recipient = await User.findById(issuanceData.user_id);
         manager = issuer;
 
-        // Create issuance
-        issuance = await ppeRepository.createIssuance(issuanceData);
+        // Create issuance with proper level and manager reference
+        const issuancePayload = {
+          ...issuanceData,
+          issuance_level: 'manager_to_employee',
+          manager_id: issuanceData.issued_by
+        };
+        issuance = await ppeRepository.createIssuance(issuancePayload);
       });
       
       return createResponse(201, 'Manager phát PPE cho Employee thành công', {
@@ -401,6 +434,15 @@ class PPEService {
         return createResponse(400, 'Chỉ có thể trả PPE được phát từ Manager');
       }
 
+      // Enforce: employee can only return their own PPE
+      if (returnData.returned_by) {
+        const returnedByStr = typeof returnData.returned_by === 'string' ? returnData.returned_by : returnData.returned_by.toString();
+        const issuanceUserIdStr = (issuance.user_id._id || issuance.user_id).toString();
+        if (returnedByStr !== issuanceUserIdStr) {
+          return createResponse(403, 'Bạn chỉ có thể trả PPE của chính mình');
+        }
+      }
+
       // Get returner and manager info for WebSocket
       const returner = await User.findById(issuance.user_id);
       const manager = await User.findById(issuance.manager_id);
@@ -429,7 +471,7 @@ class PPEService {
     const session = await mongoose.startSession();
     
     try {
-      let issuance, returner, item;
+      let issuance, returner, item, updatedIssuance;
       await session.withTransaction(async () => {
         issuance = await ppeRepository.getIssuanceById(id);
         if (!issuance) {
@@ -444,28 +486,74 @@ class PPEService {
           throw new Error('Chỉ có thể trả PPE được phát từ Admin');
         }
 
+        // Verify manager is returning their own issuance
+        if (returnData.returned_by) {
+          const returnedByStr = typeof returnData.returned_by === 'string' ? returnData.returned_by : returnData.returned_by.toString();
+          const issuanceUserIdStr = (issuance.user_id._id || issuance.user_id).toString();
+          if (returnedByStr !== issuanceUserIdStr) {
+            throw new Error('Bạn không có quyền trả PPE này');
+          }
+        }
+
         // Get returner and item info
         returner = await User.findById(issuance.user_id);
         item = await ppeRepository.getItemById(issuance.item_id);
 
-        // Update issuance status
-        await ppeRepository.updateIssuance(id, {
-          status: 'returned',
+        // Compute aggregated available-to-return from manager stats (in-hand only)
+        const stats = await ppeRepository.getManagerPPEStats(issuance.user_id._id || issuance.user_id, issuance.item_id._id || issuance.item_id);
+        const aggregatedAvailableToReturn = Math.max(0, (stats.remaining_in_hand || 0) - (stats.total_issued_to_employees || 0));
+
+        console.log(`[DEBUG returnIssuanceToAdmin] Issuance ID: ${id}`);
+        console.log(`[DEBUG returnIssuanceToAdmin] Stats:`, JSON.stringify(stats, null, 2));
+        console.log(`[DEBUG returnIssuanceToAdmin] aggregatedAvailableToReturn: ${aggregatedAvailableToReturn}`);
+        console.log(`[DEBUG returnIssuanceToAdmin] returnData.quantity: ${returnData.quantity}`);
+
+        // Default to min(per-issuance remaining, aggregated in-hand)
+        const remainingQty = issuance.remaining_quantity !== undefined ? issuance.remaining_quantity : issuance.quantity;
+        const defaultQty = Math.min(remainingQty, aggregatedAvailableToReturn);
+        const returnQty = returnData.quantity || defaultQty;
+        
+        console.log(`[DEBUG returnIssuanceToAdmin] remainingQty: ${remainingQty}, defaultQty: ${defaultQty}, returnQty: ${returnQty}`);
+
+        // Validate return quantity
+        if (returnQty > aggregatedAvailableToReturn) {
+          throw new Error(`Số lượng trả (${returnQty}) vượt quá số PPE đang giữ (${aggregatedAvailableToReturn}). Vui lòng thu hồi PPE từ nhân viên trước.`);
+        }
+
+        if (returnQty <= 0) {
+          throw new Error('Không còn PPE để trả');
+        }
+
+        // Calculate new remaining quantity
+        const newRemainingQty = remainingQty - returnQty;
+
+        // Determine new status: if all returned -> 'returned', else still 'issued'
+        const newStatus = newRemainingQty === 0 ? 'returned' : 'issued';
+
+        // Update issuance
+        const updateData = {
+          status: newStatus,
+          remaining_quantity: newRemainingQty,
           actual_return_date: returnData.actual_return_date || new Date(),
           return_condition: returnData.return_condition,
           notes: returnData.notes
-        });
+        };
 
-        // Update item quantity - deallocate the quantity
+        updatedIssuance = await ppeRepository.updateIssuance(id, updateData);
+        console.log(`[DEBUG returnIssuanceToAdmin] Updated issuance:`, JSON.stringify(updatedIssuance, null, 2));
+
+        // Update item quantity - deallocate the returned quantity
         await ppeRepository.updateItemQuantity(issuance.item_id, {
-          quantity_available: item.quantity_available + issuance.quantity,
-          quantity_allocated: item.quantity_allocated - issuance.quantity
+          quantity_available: item.quantity_available + returnQty,
+          quantity_allocated: item.quantity_allocated - returnQty
         });
+        console.log(`[DEBUG returnIssuanceToAdmin] Updated item quantity: available=${item.quantity_available + returnQty}, allocated=${item.quantity_allocated - returnQty}`);
       });
       
       return createResponse(200, 'Manager trả PPE cho Admin thành công', {
-        issuance: transformDocumentId(issuance, POPULATED_FIELDS.PPE_ISSUANCE),
-        returner: returner
+        issuance: transformDocumentId(updatedIssuance || issuance, POPULATED_FIELDS.PPE_ISSUANCE),
+        returner: returner,
+        returned_quantity: (updatedIssuance ? (issuance.remaining_quantity !== undefined ? (issuance.remaining_quantity - updatedIssuance.remaining_quantity) : (issuance.quantity - updatedIssuance.remaining_quantity)) : (returnData.quantity))
       });
     } catch (error) {
       console.error('Error returning PPE to admin:', error);
@@ -475,13 +563,70 @@ class PPEService {
     }
   }
 
+  // Manager xác nhận nhận PPE từ Employee
+  async confirmEmployeeReturn(id, managerId) {
+    const session = await mongoose.startSession();
+    
+    try {
+      let issuance, employee, manager;
+      await session.withTransaction(async () => {
+        issuance = await ppeRepository.getIssuanceById(id);
+        if (!issuance) {
+          throw new Error('Không tìm thấy bản ghi phát PPE');
+        }
+
+        // Verify this is a manager-to-employee issuance
+        if (issuance.issuance_level !== 'manager_to_employee') {
+          throw new Error('Bản ghi này không phải PPE phát cho Employee');
+        }
+
+        // Verify the manager owns this issuance
+        const issuanceManagerId = issuance.manager_id._id || issuance.manager_id;
+        const managerIdStr = issuanceManagerId.toString();
+        const requestManagerIdStr = managerId.toString();
+        
+        if (managerIdStr !== requestManagerIdStr) {
+          throw new Error('Bạn không có quyền xác nhận PPE này');
+        }
+
+        // Verify status is pending_manager_return
+        if (issuance.status !== 'pending_manager_return') {
+          throw new Error('PPE này không ở trạng thái chờ xác nhận');
+        }
+
+        // Get employee and manager info
+        employee = await User.findById(issuance.user_id);
+        manager = await User.findById(managerId);
+
+        // Mark issuance as returned (Employee has returned to Manager)
+        await ppeRepository.updateIssuance(id, {
+          status: 'returned'
+        });
+
+        // No quantity changes here - Manager still holds the PPE
+        // Quantity will only change when Manager returns to Admin
+      });
+      
+      return createResponse(200, 'Xác nhận nhận PPE từ Employee thành công', {
+        issuance: transformDocumentId(issuance, POPULATED_FIELDS.PPE_ISSUANCE),
+        employee: employee,
+        manager: manager
+      });
+    } catch (error) {
+      console.error('Error confirming employee PPE return:', error);
+      return createResponse(500, 'Lỗi khi xác nhận nhận PPE từ Employee', null, error.message);
+    } finally {
+      await session.endSession();
+    }
+  }
+
   // Lấy danh sách PPE của Manager - Sử dụng aggregation để tính toán chính xác
   async getManagerPPE(managerId) {
     try {
-      // Lấy tất cả PPE items mà Manager đã nhận từ Admin
+      // ✅ Lấy TẤT CẢ PPE items mà Manager đã nhận từ Admin (bao gồm cả đã trả)
       const receivedIssuances = await ppeRepository.getIssuancesByUser(managerId, {
-        issuance_level: 'admin_to_manager',
-        status: { $in: ['issued', 'overdue', 'damaged', 'replacement_needed'] }
+        issuance_level: 'admin_to_manager'
+        // ✅ KHÔNG filter status - lấy tất cả để tính total_received chính xác
       });
 
       // Group by item và tính toán chính xác
@@ -495,23 +640,33 @@ class PPEService {
             item: issuance.item_id,
             total_received: 0,
             total_returned: 0,
+            remaining_in_hand: 0,  // ✅ Số còn giữ chưa phát
             total_issued_to_employees: 0,
-            remaining: 0,
+            remaining: 0,  // ✅ = remaining_in_hand - total_issued_to_employees
             issuances: []
           };
         }
         
+        // ✅ Tính tổng số đã nhận (bao gồm cả đã trả)
         ppeSummary[itemId].total_received += issuance.quantity;
         ppeSummary[itemId].issuances.push(issuance);
       }
 
-      // Tính toán chính xác cho từng item
+      // Tính toán chính xác cho từng item và transform issuances
       for (const itemId in ppeSummary) {
         const stats = await ppeRepository.getManagerPPEStats(managerId, itemId);
+        console.log(`[DEBUG] getManagerPPEStats for item ${itemId}:`, JSON.stringify(stats, null, 2));
         
+        ppeSummary[itemId].total_received = stats.total_received;  // ✅ Lấy từ DB để chính xác
         ppeSummary[itemId].total_returned = stats.total_returned;
+        ppeSummary[itemId].remaining_in_hand = stats.remaining_in_hand;  // ✅ Số còn giữ sau khi trả Admin
         ppeSummary[itemId].total_issued_to_employees = stats.total_issued_to_employees;
-        ppeSummary[itemId].remaining = stats.total_received - stats.total_returned - stats.total_issued_to_employees;
+        ppeSummary[itemId].remaining = stats.remaining_in_hand - stats.total_issued_to_employees;  // ✅ Số còn lại thực tế
+        
+        // Transform issuances IDs from _id to id
+        ppeSummary[itemId].issuances = transformDocumentsId(ppeSummary[itemId].issuances, POPULATED_FIELDS.PPE_ISSUANCE);
+        
+        console.log(`[DEBUG] ppeSummary[${itemId}] after calculation:`, JSON.stringify(ppeSummary[itemId], null, 2));
       }
 
       return createResponse(200, 'Lấy danh sách PPE của Manager thành công', {
@@ -617,6 +772,27 @@ class PPEService {
           throw new Error('Tất cả các trường bắt buộc phải được điền');
         }
 
+        // If admin → manager, enforce recipient is department head (manager)
+        if (issuanceData.issuance_level === 'admin_to_manager') {
+          const recipientUser = await User.findById(issuanceData.user_id)
+            .populate('role_id', 'role_name')
+            .populate('department_id');
+          if (!recipientUser) {
+            throw new Error('Người nhận (Manager) không tồn tại');
+          }
+          const roleName = recipientUser.role_id && recipientUser.role_id.role_name ? recipientUser.role_id.role_name : null;
+          if (roleName !== 'manager') {
+            throw new Error('Chỉ được phát PPE cho người có vai trò Manager');
+          }
+          if (!recipientUser.department_id) {
+            throw new Error('Manager chưa được gán phòng ban');
+          }
+          const dept = await Department.findOne({ _id: recipientUser.department_id._id || recipientUser.department_id, manager_id: recipientUser._id });
+          if (!dept) {
+            throw new Error('Chỉ được phát PPE cho Trưởng phòng (department head)');
+          }
+        }
+
         // Check if enough stock is available
         const item = await ppeRepository.getItemById(issuanceData.item_id);
         if (!item) {
@@ -630,6 +806,11 @@ class PPEService {
         // Get issuer and recipient info for WebSocket
         issuer = await User.findById(issuanceData.issued_by);
         recipient = await User.findById(issuanceData.user_id);
+
+        // Initialize remaining_quantity for admin_to_manager issuances
+        if (issuanceData.issuance_level === 'admin_to_manager') {
+          issuanceData.remaining_quantity = issuanceData.quantity;
+        }
 
         // Create issuance
         issuance = await ppeRepository.createIssuance(issuanceData);
@@ -756,13 +937,14 @@ class PPEService {
         return createResponse(403, 'Bạn chỉ có thể trả PPE của chính mình');
       }
 
-      if (issuance.status === 'returned') {
+      if (issuance.status === 'returned' || issuance.status === 'pending_manager_return') {
         return createResponse(400, 'PPE đã được trả về');
       }
 
-      // Update issuance status with additional return data
+      // Employee returns to Manager - set status to pending_manager_return
+      // Manager will confirm and then return to Admin
       const updateData = {
-        status: 'returned',
+        status: 'pending_manager_return',
         actual_return_date: returnData.actual_return_date || new Date(),
         return_condition: returnData.return_condition,
         notes: returnData.notes
@@ -770,16 +952,8 @@ class PPEService {
 
       await ppeRepository.updateIssuance(id, updateData);
 
-      // Update item quantity - deallocate the quantity
-      const itemId = issuance.item_id._id || issuance.item_id.id || issuance.item_id;
-      const item = await ppeRepository.getItemById(itemId);
-      
-      if (item) {
-        await ppeRepository.updateItemQuantity(itemId, {
-          quantity_available: item.quantity_available + issuance.quantity,
-          quantity_allocated: item.quantity_allocated - issuance.quantity
-        });
-      }
+      // DO NOT update item quantity yet - wait for Manager to confirm
+      // Quantity will be deallocated when Manager returns to Admin
 
       // Get the updated issuance and returner info for WebSocket
       const updatedIssuance = await ppeRepository.getIssuanceById(id);
