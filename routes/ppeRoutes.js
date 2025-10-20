@@ -226,6 +226,12 @@ router.post('/issuances/to-employee',
   ppeController.issueToEmployee
 );
 
+// Employee xác nhận nhận PPE từ Manager
+router.post('/issuances/:id/confirm-received', 
+  authMiddleware.authorizeRole(['employee']),
+  ppeController.confirmReceivedPPE
+);
+
 // Employee trả PPE cho Manager
 router.post('/issuances/:id/return-to-manager', 
   authMiddleware.authorizeRole(['employee']),

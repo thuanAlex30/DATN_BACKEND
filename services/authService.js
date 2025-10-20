@@ -82,7 +82,31 @@ class AuthService {
   // User login
   static async login(identifier, password) {
     try {
-      const user = await UserRepository.findByUsernameOrEmail(identifier, ['role_id']);
+      const user = await UserRepository.findByUsernameOrEmail(identifier, ['role_id', 'department_id']);
+      
+      // Ensure role_id and department_id are fully populated
+      if (user && user.role_id && typeof user.role_id === 'object' && !user.role_id.role_name) {
+        await user.populate('role_id');
+      }
+      
+      if (user && user.department_id && typeof user.department_id === 'object' && !user.department_id.department_name) {
+        await user.populate('department_id');
+      }
+      
+      // Debug logging for role and department structure
+      if (user) {
+        console.log('🔍 Backend login - User debug:', {
+          role_id: user.role_id,
+          role_name: user.role_id?.role_name,
+          role_type: typeof user.role_id,
+          role_keys: user.role_id ? Object.keys(user.role_id) : null,
+          department_id: user.department_id,
+          department_name: user.department_id?.department_name,
+          department_type: typeof user.department_id,
+          department_keys: user.department_id ? Object.keys(user.department_id) : null
+        });
+      }
+      
       if (!user) {
         return createResponse(401, 'Thông tin đăng nhập không hợp lệ');
       }
@@ -100,31 +124,80 @@ class AuthService {
         return createResponse(401, 'Thông tin đăng nhập không hợp lệ');
       }
 
+      // Get role name for token
+      let roleName = null;
+      if (user.role_id && typeof user.role_id === 'object' && user.role_id.role_name) {
+        roleName = user.role_id.role_name;
+      } else if (user.role_id) {
+        const RoleRepository = require('../repository/RoleRepository');
+        const roleData = await RoleRepository.findById(user.role_id);
+        roleName = roleData ? roleData.role_name : null;
+      }
+
       const tokenPayload = {
         userId: user._id,
         username: user.username,
         email: user.email,
-        role: user.role_id.role_name
+        role: roleName
       };
       const tokens = JWTConfig.generateTokens(tokenPayload);
 
       await UserRepository.updateLastLogin(user._id);
 
+      // Ensure role is populated
+      let roleData = null;
+      if (user.role_id && typeof user.role_id === 'object' && user.role_id.role_name) {
+        // Role is already populated
+        roleData = user.role_id;
+      } else if (user.role_id) {
+        // Role is not populated, fetch it
+        const RoleRepository = require('../repository/RoleRepository');
+        roleData = await RoleRepository.findById(user.role_id);
+      }
+
+      // Get department data
+      let departmentData = null;
+      if (user.department_id && typeof user.department_id === 'object' && user.department_id.department_name) {
+        // Department is already populated
+        departmentData = user.department_id;
+      } else if (user.department_id) {
+        // Department is not populated, fetch it
+        const DepartmentRepository = require('../repository/DepartmentRepository');
+        departmentData = await DepartmentRepository.findById(user.department_id);
+      }
+
+      const userResponse = {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        full_name: user.full_name,
+        phone: user.phone,
+        role: roleData ? {
+          _id: roleData._id,
+          role_name: roleData.role_name,
+          permissions: roleData.permissions || {}
+        } : null,
+        department: departmentData ? {
+          id: departmentData._id,
+          department_name: departmentData.department_name
+        } : null,
+        department_id: departmentData ? {
+          id: departmentData._id,
+          department_name: departmentData.department_name
+        } : null,
+        is_active: user.is_active,
+        last_login: new Date()
+      };
+      
+      console.log('🔍 Backend login - Final user response:', {
+        role: userResponse.role,
+        role_name: userResponse.role?.role_name,
+        department: userResponse.department,
+        department_id: userResponse.department_id
+      });
+      
       return createResponse(200, 'Đăng nhập thành công', {
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email,
-          full_name: user.full_name,
-          phone: user.phone,
-          role: {
-            _id: user.role_id._id,
-            role_name: user.role_id.role_name,
-            permissions: user.role_id.permissions || {}
-          },
-          is_active: user.is_active,
-          last_login: new Date()
-        },
+        user: userResponse,
         tokens
       });
     } catch (error) {
@@ -256,8 +329,10 @@ class AuthService {
           updated_at: roleData.updated_at
         } : null,
         department: departmentData ? {
+          id: departmentData._id,
           _id: departmentData._id,
-          name: departmentData.name,
+          department_name: departmentData.department_name,
+          name: departmentData.department_name,
           description: departmentData.description,
           is_active: departmentData.is_active,
           created_at: departmentData.created_at,

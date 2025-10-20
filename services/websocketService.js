@@ -340,6 +340,53 @@ class WebSocketService {
     });
   }
 
+  /**
+   * Emit PPE confirmation notification
+   * @param {Object} issuance - PPE issuance data
+   * @param {Object} employee - Employee information
+   * @param {Object} manager - Manager information
+   */
+  emitPPEConfirmed(issuance, employee, manager) {
+    const notification = {
+      type: 'ppe_confirmed',
+      title: 'PPE Confirmed Received',
+      message: `${employee.full_name} đã xác nhận nhận PPE "${issuance.item_id.item_name}"`,
+      data: {
+        issuanceId: issuance._id,
+        itemName: issuance.item_id.item_name,
+        itemCode: issuance.item_id.item_code,
+        quantity: issuance.quantity,
+        confirmedBy: employee.full_name,
+        confirmedById: employee._id,
+        managerId: manager._id,
+        managerName: manager.full_name,
+        confirmedDate: issuance.confirmed_date,
+        confirmationNotes: issuance.confirmation_notes,
+        timestamp: new Date()
+      }
+    };
+
+    // Notify the manager who issued the PPE
+    this.emitToUser(manager._id, 'ppe_notification', notification);
+    
+    // Notify all managers and admins
+    this.emitToRole('manager', 'ppe_notification', notification);
+    this.emitToRole('admin', 'ppe_notification', notification);
+    
+    // Notify the employee about successful confirmation
+    this.emitToUser(employee._id, 'ppe_notification', {
+      type: 'ppe_confirmation_success',
+      title: 'PPE Confirmed Successfully',
+      message: `Bạn đã xác nhận nhận PPE "${issuance.item_id.item_name}" thành công`,
+      data: {
+        issuanceId: issuance._id,
+        itemName: issuance.item_id.item_name,
+        confirmedDate: issuance.confirmed_date,
+        timestamp: new Date()
+      }
+    });
+  }
+
   // ========================================
   // BATCH PROCESSING NOTIFICATIONS
   // ========================================

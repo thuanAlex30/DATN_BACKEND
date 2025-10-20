@@ -457,6 +457,58 @@ class TrainingEvents {
       throw error;
     }
   }
+
+  /**
+   * Emit training assignment event
+   */
+  static async emitTrainingAssignment(assignment, metadata = {}) {
+    try {
+      const eventData = {
+        eventType: 'TRAINING_ASSIGNMENT',
+        assignment: {
+          id: assignment._id || assignment.id,
+          courseId: assignment.course_id,
+          departmentId: assignment.department_id,
+          assignedBy: assignment.assigned_by,
+          assignedAt: assignment.assigned_at,
+          status: assignment.status,
+          notes: assignment.notes
+        },
+        metadata: {
+          timestamp: new Date().toISOString(),
+          userId: metadata.userId,
+          userRole: metadata.userRole,
+          userFullName: metadata.userFullName,
+          ipAddress: metadata.ipAddress,
+          userAgent: metadata.userAgent
+        }
+      };
+
+      // Send to Kafka
+      await kafkaProducer.sendTrainingEvent('training.assignment', eventData);
+
+      // Send WebSocket notification
+      await WebSocketService.broadcastToAll('training_assignment', {
+        message: `Course assigned to department`,
+        assignment: eventData.assignment,
+        assignedBy: metadata.userFullName || 'System'
+      });
+
+      // Notify department manager
+      if (assignment.department_id) {
+        await WebSocketService.emitToDepartment(assignment.department_id, 'course_assigned', {
+          message: `New course assigned to your department`,
+          assignment: eventData.assignment,
+          assignedBy: metadata.userFullName || 'System'
+        });
+      }
+
+      console.log('✅ Training assignment event emitted:', assignment.course_id, assignment.department_id);
+    } catch (error) {
+      console.error('❌ Error emitting training assignment event:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = TrainingEvents;

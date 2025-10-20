@@ -52,8 +52,8 @@ const ppeIssuanceSchema = new mongoose.Schema({
   // Trạng thái PPE
   status: {
     type: String,
-    enum: ['issued', 'returned', 'overdue', 'damaged', 'replacement_needed', 'pending_manager_return'],
-    default: 'issued'
+    enum: ['pending_confirmation', 'issued', 'returned', 'overdue', 'damaged', 'replacement_needed', 'pending_manager_return'],
+    default: 'pending_confirmation'
   },
   // Ngày trả thực tế
   actual_return_date: {
@@ -100,6 +100,15 @@ const ppeIssuanceSchema = new mongoose.Schema({
   remaining_quantity: {
     type: Number,
     min: 0
+  },
+  // Ngày xác nhận nhận PPE
+  confirmed_date: {
+    type: Date
+  },
+  // Ghi chú khi xác nhận nhận PPE
+  confirmation_notes: {
+    type: String,
+    maxlength: 500
   }
 }, {
   timestamps: true

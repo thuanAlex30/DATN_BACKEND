@@ -418,6 +418,60 @@ class PPEService {
     }
   }
 
+  // Employee xác nhận nhận PPE từ Manager
+  async confirmReceivedPPE(id, confirmationData) {
+    try {
+      console.log('🔍 confirmReceivedPPE - id:', id);
+      console.log('🔍 confirmReceivedPPE - confirmationData:', confirmationData);
+      
+      const issuance = await ppeRepository.getIssuanceById(id);
+      if (!issuance) {
+        return createResponse(404, 'Không tìm thấy bản ghi phát PPE');
+      }
+
+      // Kiểm tra trạng thái hiện tại
+      if (issuance.status !== 'pending_confirmation') {
+        return createResponse(400, 'PPE này không cần xác nhận hoặc đã được xác nhận');
+      }
+
+      // Kiểm tra quyền xác nhận - chỉ Employee nhận PPE mới có thể xác nhận
+      if (confirmationData.confirmed_by) {
+        const confirmedByStr = typeof confirmationData.confirmed_by === 'string' ? confirmationData.confirmed_by : confirmationData.confirmed_by.toString();
+        const issuanceUserIdStr = (issuance.user_id._id || issuance.user_id).toString();
+        if (confirmedByStr !== issuanceUserIdStr) {
+          return createResponse(403, 'Bạn chỉ có thể xác nhận PPE được phát cho chính mình');
+        }
+      }
+
+      // Kiểm tra issuance_level
+      if (issuance.issuance_level !== 'manager_to_employee') {
+        return createResponse(400, 'Chỉ có thể xác nhận PPE được phát từ Manager');
+      }
+
+      // Cập nhật trạng thái PPE
+      const updateData = {
+        status: 'issued',
+        confirmed_date: new Date(),
+        confirmation_notes: confirmationData.confirmation_notes || ''
+      };
+
+      const updatedIssuance = await ppeRepository.updateIssuance(id, updateData);
+      
+      // Lấy thông tin Employee và Manager để gửi WebSocket
+      const employee = await User.findById(issuance.user_id);
+      const manager = await User.findById(issuance.manager_id);
+
+      return createResponse(200, 'Xác nhận nhận PPE thành công', {
+        issuance: transformDocumentId(updatedIssuance, POPULATED_FIELDS.PPE_ISSUANCE),
+        employee: employee,
+        manager: manager
+      });
+    } catch (error) {
+      console.error('Error confirming received PPE:', error);
+      return createResponse(500, 'Lỗi khi xác nhận nhận PPE', null, error.message);
+    }
+  }
+
   // Employee trả PPE cho Manager
   async returnIssuanceToManager(id, returnData) {
     try {

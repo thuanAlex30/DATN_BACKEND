@@ -3,6 +3,8 @@ const Course = require('../models/course');
 const { TrainingSession, SessionStatus } = require('../models/trainingSession');
 const TrainingEnrollment = require('../models/trainingEnrollment');
 const { QuestionBank, Question } = require('../models/questionBank');
+const TrainingAssignment = require('../models/trainingAssignment');
+const User = require('../models/user');
 const mongoose = require('mongoose');
 
 class TrainingRepository {
@@ -61,9 +63,55 @@ class TrainingRepository {
             query.is_mandatory = filters.isMandatory;
         }
 
+        if (filters.isDeployed !== undefined) {
+            query.is_deployed = filters.isDeployed;
+        }
+
         return await Course.find(query)
             .populate('course_set_id', 'name')
+            .populate('deployed_by', 'full_name')
             .sort({ course_name: 1 });
+    }
+
+    async getAvailableCoursesForEmployee(userId, filters = {}) {
+        try {
+            // Get user's department
+            const user = await User.findById(userId).populate('department_id');
+            if (!user || !user.department_id) {
+                return [];
+            }
+
+            const departmentId = user.department_id._id;
+
+            // Get training assignments for user's department
+            const assignments = await TrainingAssignment.find({ 
+                department_id: departmentId,
+                status: 'active'
+            }).populate('course_id');
+
+            // Filter courses that are deployed
+            const availableCourses = [];
+            
+            for (const assignment of assignments) {
+                if (assignment.course_id && assignment.course_id.is_deployed) {
+                    // Apply additional filters
+                    if (filters.isMandatory !== undefined && 
+                        assignment.course_id.is_mandatory !== filters.isMandatory) {
+                        continue;
+                    }
+                    
+                    // Add assignment_id to course for reference
+                    const course = assignment.course_id.toObject();
+                    course.assignment_id = assignment._id;
+                    availableCourses.push(course);
+                }
+            }
+
+            return availableCourses;
+        } catch (error) {
+            console.error('Error in getAvailableCoursesForEmployee:', error);
+            throw error;
+        }
     }
 
     async getCourseById(courseId) {
@@ -124,6 +172,60 @@ class TrainingRepository {
 
     async getAllTrainingSessions(filters = {}) {
         return await this.getAllSessions(filters);
+    }
+
+    async getAvailableTrainingSessionsForEmployee(userId, filters = {}) {
+        try {
+            // Get user's department
+            const User = require('../models/user');
+            const user = await User.findById(userId).populate('department_id');
+            if (!user || !user.department_id) {
+                return [];
+            }
+
+            const departmentId = user.department_id._id;
+
+            // Get training assignments for user's department
+            const TrainingAssignment = require('../models/trainingAssignment');
+            const assignments = await TrainingAssignment.find({ 
+                department_id: departmentId,
+                status: 'active'
+            }).populate('course_id');
+
+            // Get course IDs that are assigned to user's department
+            const assignedCourseIds = assignments
+                .filter(assignment => assignment.course_id && assignment.course_id.is_deployed)
+                .map(assignment => assignment.course_id._id);
+
+            if (assignedCourseIds.length === 0) {
+                return [];
+            }
+
+            // Build query for training sessions
+            const query = {
+                course_id: { $in: assignedCourseIds },
+                status_code: 'SCHEDULED' // Only show scheduled sessions
+            };
+
+            // Apply additional filters
+            if (filters.courseId) {
+                query.course_id = filters.courseId;
+            }
+            
+            if (filters.statusCode) {
+                query.status_code = filters.statusCode;
+            }
+
+            // Get sessions with populated course data
+            const sessions = await TrainingSession.find(query)
+                .populate('course_id', 'course_name description is_mandatory')
+                .sort({ start_time: 1 });
+
+            return sessions;
+        } catch (error) {
+            console.error('Error in getAvailableTrainingSessionsForEmployee:', error);
+            throw error;
+        }
     }
 
     async getSessionById(sessionId) {
@@ -202,7 +304,14 @@ class TrainingRepository {
         }
 
         return await TrainingEnrollment.find(query)
-            .populate('session_id', 'session_name start_time end_time')
+            .populate({
+                path: 'session_id',
+                select: 'session_name start_time end_time course_id',
+                populate: {
+                    path: 'course_id',
+                    select: 'course_name description duration_hours is_mandatory validity_months course_set_id'
+                }
+            })
             .populate('user_id', 'full_name email')
             .sort({ enrolled_at: -1 });
     }
@@ -595,6 +704,245 @@ class TrainingRepository {
         return await Question.find({ bank_id: bankId })
             .select('content question_type options correct_answer difficulty_level points')
             .sort({ difficulty_level: 1, points: -1 });
+    }
+
+    // ========== Training Assignment Operations ==========
+    async getAllTrainingAssignments(filters = {}) {
+        let query = {};
+        
+        if (filters.department_id) {
+            query.department_id = filters.department_id;
+        }
+        
+        if (filters.course_id) {
+            query.course_id = filters.course_id;
+        }
+        
+        if (filters.status) {
+            query.status = filters.status;
+        }
+
+        return await TrainingAssignment.find(query)
+            .populate('course_id', 'course_name description duration_hours is_mandatory')
+            .populate('department_id', 'department_name')
+            .populate('assigned_by', 'full_name email')
+            .sort({ created_at: -1 });
+    }
+
+    async getTrainingAssignmentById(assignmentId) {
+        if (!mongoose.Types.ObjectId.isValid(assignmentId)) {
+            return null;
+        }
+        return await TrainingAssignment.findById(assignmentId)
+            .populate('course_id', 'course_name description duration_hours is_mandatory')
+            .populate('department_id', 'department_name')
+            .populate('assigned_by', 'full_name email');
+    }
+
+    async createTrainingAssignment(assignmentData) {
+        // Check if assignment already exists
+        const existingAssignment = await TrainingAssignment.findOne({
+            course_id: assignmentData.course_id,
+            department_id: assignmentData.department_id
+        });
+
+        if (existingAssignment) {
+            throw new Error('Course is already assigned to this department');
+        }
+
+        const assignment = new TrainingAssignment(assignmentData);
+        return await assignment.save();
+    }
+
+    async updateTrainingAssignment(assignmentId, assignmentData) {
+        if (!mongoose.Types.ObjectId.isValid(assignmentId)) {
+            throw new Error('Training assignment not found');
+        }
+        const assignment = await TrainingAssignment.findByIdAndUpdate(
+            assignmentId, 
+            assignmentData, 
+            { new: true, runValidators: true }
+        ).populate('course_id', 'course_name description duration_hours is_mandatory')
+         .populate('department_id', 'department_name')
+         .populate('assigned_by', 'full_name email');
+        
+        if (!assignment) {
+            throw new Error('Training assignment not found');
+        }
+        return assignment;
+    }
+
+    async deleteTrainingAssignment(assignmentId) {
+        if (!mongoose.Types.ObjectId.isValid(assignmentId)) {
+            throw new Error('Training assignment not found');
+        }
+        const assignment = await TrainingAssignment.findByIdAndDelete(assignmentId);
+        if (!assignment) {
+            throw new Error('Training assignment not found');
+        }
+        return assignment;
+    }
+
+    async getTrainingAssignmentsByDepartment(departmentId) {
+        return await TrainingAssignment.find({ 
+            department_id: departmentId,
+            status: 'active'
+        })
+        .populate({
+            path: 'course_id',
+            select: 'course_name description duration_hours is_mandatory validity_months is_deployed deployed_at deployed_by',
+            populate: {
+                path: 'deployed_by',
+                select: 'full_name email'
+            }
+        })
+        .populate('assigned_by', 'full_name email')
+        .sort({ created_at: -1 });
+    }
+
+    async getTrainingAssignmentsByCourse(courseId) {
+        return await TrainingAssignment.find({ 
+            course_id: courseId,
+            status: 'active'
+        })
+        .populate('department_id', 'department_name')
+        .populate('assigned_by', 'full_name email')
+        .sort({ created_at: -1 });
+    }
+
+    async getCoursesByDepartment(departmentId) {
+        const assignments = await this.getTrainingAssignmentsByDepartment(departmentId);
+        const courseIds = assignments
+            .filter(assignment => assignment.course_id && assignment.course_id._id)
+            .map(assignment => assignment.course_id._id);
+        
+        // Get full course data with deployment info
+        const courses = await Course.find({ _id: { $in: courseIds } })
+            .populate('deployed_by', 'full_name email')
+            .lean();
+        
+        const courseMap = {};
+        courses.forEach(course => {
+            courseMap[course._id.toString()] = course;
+        });
+        
+        return assignments
+            .filter(assignment => assignment.course_id && assignment.course_id._id)
+            .map(assignment => {
+                const courseId = assignment.course_id._id.toString();
+                const courseData = courseMap[courseId] || assignment.course_id.toObject();
+                
+                return {
+                    ...courseData,
+                    assignment_id: assignment._id,
+                    assigned_by: assignment.assigned_by,
+                    assigned_at: assignment.created_at,
+                    notes: assignment.notes,
+                    // Ensure deployment fields are included
+                    is_deployed: courseData.is_deployed || false,
+                    deployed_at: courseData.deployed_at,
+                    deployed_by: courseData.deployed_by
+                };
+            });
+    }
+
+    async getDepartmentsByCourse(courseId) {
+        const assignments = await this.getTrainingAssignmentsByCourse(courseId);
+        return assignments.map(assignment => assignment.department_id);
+    }
+
+    async getAssignmentStats() {
+        const totalAssignments = await TrainingAssignment.countDocuments();
+        const activeAssignments = await TrainingAssignment.countDocuments({ status: 'active' });
+        const inactiveAssignments = await TrainingAssignment.countDocuments({ status: 'inactive' });
+
+        return {
+            total: totalAssignments,
+            active: activeAssignments,
+            inactive: inactiveAssignments
+        };
+    }
+
+    // ========== Course Deployment Operations ==========
+    async deployCourse(courseId, userId) {
+        if (!mongoose.Types.ObjectId.isValid(courseId)) {
+            throw new Error('Course not found');
+        }
+        
+        const course = await Course.findByIdAndUpdate(
+            courseId,
+            {
+                is_deployed: true,
+                deployed_at: new Date(),
+                deployed_by: userId
+            },
+            { new: true, runValidators: true }
+        );
+        
+        if (!course) {
+            throw new Error('Course not found');
+        }
+        
+        return course;
+    }
+
+    async undeployCourse(courseId, userId) {
+        if (!mongoose.Types.ObjectId.isValid(courseId)) {
+            throw new Error('Course not found');
+        }
+        
+        const course = await Course.findByIdAndUpdate(
+            courseId,
+            {
+                is_deployed: false,
+                deployed_at: null,
+                deployed_by: null
+            },
+            { new: true, runValidators: true }
+        );
+        
+        if (!course) {
+            throw new Error('Course not found');
+        }
+        
+        return course;
+    }
+
+    // ========== Employee Training Methods ==========
+    async getEmployeeTrainingSessions(userId) {
+        // Get all deployed courses that the employee can access
+        const deployedCourses = await Course.find({
+            is_deployed: true,
+            status: 'active'
+        })
+        .populate('course_set_id', 'name description')
+        .populate('question_bank_id', 'name description')
+        .select('name description course_set_id question_bank_id duration_minutes created_at deployed_at')
+        .sort({ deployed_at: -1 });
+
+        // Get employee's training history
+        const trainingHistory = await TrainingHistory.find({
+            employee_id: userId
+        })
+        .populate('course_id', 'name description')
+        .select('course_id status score completion_percentage started_at completed_at')
+        .sort({ started_at: -1 });
+
+        // Get employee's assignments
+        const assignments = await TrainingAssignment.find({
+            employee_id: userId,
+            status: { $in: ['assigned', 'in_progress'] }
+        })
+        .populate('course_id', 'name description duration_minutes')
+        .populate('assigned_by', 'full_name email')
+        .select('course_id assigned_by assigned_at due_date status')
+        .sort({ assigned_at: -1 });
+
+        return {
+            availableCourses: deployedCourses,
+            trainingHistory: trainingHistory,
+            currentAssignments: assignments
+        };
     }
 }
 

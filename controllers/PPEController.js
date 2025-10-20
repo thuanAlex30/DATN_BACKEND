@@ -709,6 +709,41 @@ class PPEController {
     }
   });
 
+  // Employee xác nhận nhận PPE từ Manager
+  static confirmReceivedPPE = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const confirmationData = {
+      ...req.body,
+      confirmed_by: req.user.id || req.user._id
+    };
+    
+    console.log('🔍 confirmReceivedPPE - id:', id);
+    console.log('🔍 confirmReceivedPPE - confirmationData:', confirmationData);
+    
+    try {
+      const result = await ppeService.confirmReceivedPPE(id, confirmationData);
+      console.log('🔍 confirmReceivedPPE - result:', result);
+      
+      if (result.success) {
+        // Emit WebSocket notification for PPE confirmation
+        try {
+          const { issuance, employee, manager } = result.data;
+          websocketService.emitPPEConfirmed(issuance, employee, manager);
+          console.log(`🛡️ PPE confirmed WebSocket notification sent for manager: ${manager._id}`);
+        } catch (wsError) {
+          console.error('Failed to emit PPE confirmed WebSocket notification:', wsError);
+        }
+        
+        return ApiResponse.success(res, result.data, result.message, result.statusCode);
+      } else {
+        return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+      }
+    } catch (error) {
+      console.error('❌ confirmReceivedPPE - Error:', error);
+      return ApiResponse.error(res, error.message, 400, { error: error.message });
+    }
+  });
+
   // Employee trả PPE cho Manager
   static returnToManager = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
