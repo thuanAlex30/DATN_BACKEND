@@ -1,7 +1,7 @@
 const express = require('express');
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
-// const roleRoutes = require('./roleRoutes');
+const roleRoutes = require('./roleRoutes');
 const departmentRoutes = require('./departmentRoutes');
 const positionRoutes = require('./positionRoutes');
 const systemLogRoutes = require('./systemLogRoutes');
@@ -10,6 +10,7 @@ const ppeRoutes = require('./ppeRoutes');
 const projectRoutes = require('./projectRoutes');
 const incidentRoutes = require('./incidentRoutes');
 const trainingRoutes = require('./trainingRoutes');
+const certificateRoutes = require('./certificateRoutes');
 
 // Advanced Project Management Routes
 const projectTaskRoutes = require('./projectTaskRoutes');
@@ -22,6 +23,7 @@ const projectRiskRoutes = require('./projectRiskRoutes');
 const projectChangeRequestRoutes = require('./projectChangeRequestRoutes');
 const projectStatusReportRoutes = require('./projectStatusReportRoutes');
 const qualityCheckpointRoutes = require('./qualityCheckpointRoutes');
+
 
 console.log('Loading kafkaMonitor...');
 const kafkaMonitor = require('../services/kafkaMonitor');
@@ -124,7 +126,7 @@ router.get('/health', (req, res) => {
 // API routes
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
-// router.use('/roles', roleRoutes);
+router.use('/roles', roleRoutes);
 router.use('/departments', departmentRoutes);
 router.use('/positions', positionRoutes);
 router.use('/system-logs', systemLogRoutes);
@@ -132,6 +134,7 @@ router.use('/notifications', notificationRoutes);
 router.use('/ppe', ppeRoutes);
 router.use('/projects', projectRoutes);
 router.use('/incidents', incidentRoutes);
+router.use('/certificates', certificateRoutes);
 router.use('/training', trainingRoutes);
 
 // Advanced Project Management Routes
@@ -183,6 +186,11 @@ router.use('*', (req, res) => {
         'GET /api/sites/:id',
         'PUT /api/sites/:id',
         'DELETE /api/sites/:id',
+        'GET /api/certificates',
+        'POST /api/certificates',
+        'GET /api/certificates/stats',
+        'GET /api/certificates/search',
+        'GET /api/certificates/expiring',
         'GET /api/site-areas/site/:siteId/areas',
         'GET /api/site-areas/areas',
         'POST /api/site-areas/areas',

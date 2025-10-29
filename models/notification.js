@@ -118,10 +118,19 @@ notificationSchema.statics.formatDateTime = function(date) {
 
 notificationSchema.statics.getNotifications = async function(userId, filters = {}) {
     try {
-        console.log('getNotifications called with userId:', userId, 'filters:', filters);
+        console.log('🔍 getNotifications called with userId:', userId, 'filters:', filters);
         
         if (!userId) {
-            throw new Error('User ID is required');
+            console.log('❌ No userId provided, returning empty result');
+            return {
+                notifications: [],
+                pagination: {
+                    page: 1,
+                    limit: 10,
+                    total: 0,
+                    pages: 0
+                }
+            };
         }
 
         const {
@@ -132,7 +141,7 @@ notificationSchema.statics.getNotifications = async function(userId, filters = {
             search
         } = filters;
 
-        // Build query
+        // Build query - simplified for better performance
         const query = { user_id: mongoose.isValidObjectId(userId) ? new mongoose.Types.ObjectId(userId) : userId };
 
         if (type) query.type = type;
@@ -144,32 +153,41 @@ notificationSchema.statics.getNotifications = async function(userId, filters = {
             ];
         }
 
-        console.log('Final query:', JSON.stringify(query, null, 2));
+        console.log('🔍 Final query:', JSON.stringify(query, null, 2));
 
-        // Optimize query - remove populate for better performance
+        // Optimize query - use lean() and reduce timeout
         const notifications = await this.find(query)
             .sort({ created_at: -1 })
             .skip((page - 1) * limit)
             .limit(parseInt(limit))
             .lean()
-            .maxTimeMS(10000); // 10 second timeout
+            .maxTimeMS(3000); // Reduced to 3 seconds
 
-        const total = await this.countDocuments(query).maxTimeMS(5000); // 5 second timeout
+        const total = await this.countDocuments(query).maxTimeMS(2000); // Reduced to 2 seconds
 
-        console.log('Found notifications:', notifications.length, 'Total:', total);
+        console.log('✅ Found notifications:', notifications.length, 'Total:', total);
 
         return {
             notifications,
             pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total,
-                pages: Math.ceil(total / limit)
+                current_page: parseInt(page),
+                total_pages: Math.ceil(total / limit),
+                total_items: total,
+                items_per_page: parseInt(limit)
             }
         };
     } catch (error) {
-        console.error('Error in getNotifications:', error);
-        throw error;
+        console.error('❌ Error in getNotifications:', error);
+        // Return empty result instead of throwing error
+        return {
+            notifications: [],
+            pagination: {
+                current_page: 1,
+                total_pages: 0,
+                total_items: 0,
+                items_per_page: 10
+            }
+        };
     }
 };
 

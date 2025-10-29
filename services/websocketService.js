@@ -962,6 +962,210 @@ class WebSocketService {
             });
         });
     }
+
+    // ==================== CERTIFICATE EVENTS ====================
+
+    /**
+     * Emit certificate created event
+     */
+    emitCertificateCreated(certificate, creator) {
+        const eventData = {
+            certificate,
+            creator: {
+                id: creator._id,
+                name: creator.full_name
+            },
+            timestamp: new Date().toISOString()
+        };
+
+        // Notify all users about new certificate
+        this.emitToAll('certificate_created', eventData);
+        
+        // Notify specific roles
+        this.emitToRole('safety_officer', 'certificate_created', eventData);
+        this.emitToRole('manager', 'certificate_created', eventData);
+        this.emitToRoom('admin_room', 'certificate_created', eventData);
+    }
+
+    /**
+     * Emit certificate updated event
+     */
+    emitCertificateUpdated(certificate, updater) {
+        const eventData = {
+            certificate,
+            updater: {
+                id: updater._id,
+                name: updater.full_name
+            },
+            timestamp: new Date().toISOString()
+        };
+
+        // Notify users interested in this certificate
+        this.emitToAll('certificate_updated', eventData);
+        
+        // Notify specific roles
+        this.emitToRole('safety_officer', 'certificate_updated', eventData);
+        this.emitToRole('manager', 'certificate_updated', eventData);
+        this.emitToRoom('admin_room', 'certificate_updated', eventData);
+    }
+
+    /**
+     * Emit certificate deleted event
+     */
+    emitCertificateDeleted(certificate, deleter) {
+        const eventData = {
+            certificate,
+            deleter: {
+                id: deleter._id,
+                name: deleter.full_name
+            },
+            timestamp: new Date().toISOString()
+        };
+
+        // Notify all users about certificate deletion
+        this.emitToAll('certificate_deleted', eventData);
+        
+        // Notify specific roles
+        this.emitToRole('safety_officer', 'certificate_deleted', eventData);
+        this.emitToRole('manager', 'certificate_deleted', eventData);
+        this.emitToRoom('admin_room', 'certificate_deleted', eventData);
+    }
+
+    /**
+     * Emit certificate renewed event
+     */
+    emitCertificateRenewed(certificate, renewer) {
+        const eventData = {
+            certificate,
+            renewer: {
+                id: renewer._id,
+                name: renewer.full_name
+            },
+            timestamp: new Date().toISOString()
+        };
+
+        // Notify users about certificate renewal
+        this.emitToAll('certificate_renewed', eventData);
+        
+        // Notify specific roles
+        this.emitToRole('safety_officer', 'certificate_renewed', eventData);
+        this.emitToRole('manager', 'certificate_renewed', eventData);
+        this.emitToRoom('admin_room', 'certificate_renewed', eventData);
+    }
+
+    /**
+     * Emit certificate expiring soon event
+     */
+    emitCertificateExpiringSoon(certificate, daysUntilExpiry) {
+        const eventData = {
+            certificate,
+            daysUntilExpiry,
+            timestamp: new Date().toISOString(),
+            priority: certificate.priority || 'MEDIUM'
+        };
+
+        // Notify certificate owner if assigned
+        if (certificate.assignedTo) {
+            this.emitToUser(certificate.assignedTo, 'certificate_expiring_soon', eventData);
+        }
+
+        // Notify safety officers and managers
+        this.emitToRole('safety_officer', 'certificate_expiring_soon', eventData);
+        this.emitToRole('manager', 'certificate_expiring_soon', eventData);
+        this.emitToRoom('admin_room', 'certificate_expiring_soon', eventData);
+    }
+
+    /**
+     * Emit certificate expired event
+     */
+    emitCertificateExpired(certificate) {
+        const eventData = {
+            certificate,
+            timestamp: new Date().toISOString(),
+            priority: 'HIGH'
+        };
+
+        // Notify certificate owner if assigned
+        if (certificate.assignedTo) {
+            this.emitToUser(certificate.assignedTo, 'certificate_expired', eventData);
+        }
+
+        // Notify safety officers and managers with high priority
+        this.emitToRole('safety_officer', 'certificate_expired', eventData);
+        this.emitToRole('manager', 'certificate_expired', eventData);
+        this.emitToRoom('admin_room', 'certificate_expired', eventData);
+    }
+
+    /**
+     * Emit certificate reminder settings updated event
+     */
+    emitCertificateReminderSettingsUpdated(certificate, updater) {
+        const eventData = {
+            certificate,
+            updater: {
+                id: updater._id,
+                name: updater.full_name
+            },
+            timestamp: new Date().toISOString()
+        };
+
+        // Notify certificate owner if assigned
+        if (certificate.assignedTo) {
+            this.emitToUser(certificate.assignedTo, 'certificate_reminder_settings_updated', eventData);
+        }
+
+        // Notify safety officers and managers
+        this.emitToRole('safety_officer', 'certificate_reminder_settings_updated', eventData);
+        this.emitToRole('manager', 'certificate_reminder_settings_updated', eventData);
+    }
+
+    /**
+     * Emit certificate status changed event
+     */
+    emitCertificateStatusChanged(certificate, updater, oldStatus, newStatus) {
+        const eventData = {
+            certificate,
+            updater: {
+                id: updater._id,
+                name: updater.full_name
+            },
+            oldStatus,
+            newStatus,
+            timestamp: new Date().toISOString()
+        };
+
+        // Notify all users about status change
+        this.emitToAll('certificate_status_changed', eventData);
+        
+        // Notify specific roles
+        this.emitToRole('safety_officer', 'certificate_status_changed', eventData);
+        this.emitToRole('manager', 'certificate_status_changed', eventData);
+        this.emitToRoom('admin_room', 'certificate_status_changed', eventData);
+    }
+
+    /**
+     * Emit certificate bulk operation event
+     */
+    emitCertificateBulkOperation(operation, certificates, operator) {
+        const eventData = {
+            operation,
+            certificates,
+            operator: {
+                id: operator._id,
+                name: operator.full_name
+            },
+            count: certificates.length,
+            timestamp: new Date().toISOString()
+        };
+
+        // Notify all users about bulk operation
+        this.emitToAll('certificate_bulk_operation', eventData);
+        
+        // Notify specific roles
+        this.emitToRole('safety_officer', 'certificate_bulk_operation', eventData);
+        this.emitToRole('manager', 'certificate_bulk_operation', eventData);
+        this.emitToRoom('admin_room', 'certificate_bulk_operation', eventData);
+    }
 }
 
 // Export singleton instance

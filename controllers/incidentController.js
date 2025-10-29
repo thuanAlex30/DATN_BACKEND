@@ -1,4 +1,6 @@
 const incidentService = require('../services/incidentService');
+const websocketService = require('../services/websocketService');
+const User = require('../models/user');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 
@@ -11,6 +13,17 @@ class IncidentController {
     const result = await incidentService.createIncident(incidentData, userId);
     
     if (result.success) {
+      // Emit WebSocket notification for incident reported
+      try {
+        const reporter = await User.findById(userId).select('_id role full_name');
+        if (reporter) {
+          websocketService.emitIncidentReported(result.data, reporter);
+          console.log(`🚨 Incident reported WebSocket notification sent for user: ${reporter._id}`);
+        }
+      } catch (wsError) {
+        console.error('Failed to emit incident reported WebSocket notification:', wsError);
+      }
+      
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
@@ -49,6 +62,17 @@ class IncidentController {
     const result = await incidentService.classifyIncident(id, severity, userId);
     
     if (result.success) {
+      // Emit WebSocket notification for incident classified
+      try {
+        const classifier = await User.findById(userId).select('_id role full_name');
+        if (classifier) {
+          websocketService.emitIncidentClassified(result.data, classifier);
+          console.log(`🚨 Incident classified WebSocket notification sent for user: ${classifier._id}`);
+        }
+      } catch (wsError) {
+        console.error('Failed to emit incident classified WebSocket notification:', wsError);
+      }
+      
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
@@ -64,6 +88,18 @@ class IncidentController {
     const result = await incidentService.assignIncident(id, assignedTo, userId);
     
     if (result.success) {
+      // Emit WebSocket notification for incident assigned
+      try {
+        const assigner = await User.findById(userId).select('_id role full_name');
+        const assignee = await User.findById(assignedTo).select('_id role full_name');
+        if (assigner && assignee) {
+          websocketService.emitIncidentAssigned(result.data, assignee, assigner);
+          console.log(`🚨 Incident assigned WebSocket notification sent for user: ${assignee._id}`);
+        }
+      } catch (wsError) {
+        console.error('Failed to emit incident assigned WebSocket notification:', wsError);
+      }
+      
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
@@ -94,6 +130,17 @@ class IncidentController {
     const result = await incidentService.updateIncidentProgress(id, progressData, userId);
     
     if (result.success) {
+      // Emit WebSocket notification for incident progress updated
+      try {
+        const updater = await User.findById(userId).select('_id role full_name');
+        if (updater) {
+          websocketService.emitIncidentProgressUpdated(result.data, updater);
+          console.log(`🚨 Incident progress updated WebSocket notification sent for user: ${updater._id}`);
+        }
+      } catch (wsError) {
+        console.error('Failed to emit incident progress updated WebSocket notification:', wsError);
+      }
+      
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
@@ -109,6 +156,17 @@ class IncidentController {
     const result = await incidentService.closeIncident(id, closeData, userId);
     
     if (result.success) {
+      // Emit WebSocket notification for incident closed
+      try {
+        const closer = await User.findById(userId).select('_id role full_name');
+        if (closer) {
+          websocketService.emitIncidentClosed(result.data, closer);
+          console.log(`🚨 Incident closed WebSocket notification sent for user: ${closer._id}`);
+        }
+      } catch (wsError) {
+        console.error('Failed to emit incident closed WebSocket notification:', wsError);
+      }
+      
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
