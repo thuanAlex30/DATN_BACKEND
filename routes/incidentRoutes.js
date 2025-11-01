@@ -8,6 +8,7 @@ const incidentValidation = require('../validations/incidentValidation');
 // Ghi nhận sự cố
 router.post('/report', 
   AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(['manager']),
   ValidationMiddleware.validateBody(incidentValidation.createIncident),
   IncidentController.reportIncident
 );
