@@ -11,44 +11,44 @@ const RoleMiddleware = require('../middlewares/RoleMiddleware');
 router.use(AuthMiddleware.authenticate);
 
 // ========== Course Set Routes ==========
-// Admin only routes
+// Admin & Header Department routes
 router.get('/course-sets', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     trainingController.getAllCourseSets
 );
 
 router.get('/course-sets/:courseSetId', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.getCourseSetById,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getCourseSetById
 );
 
 router.post('/course-sets', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.createCourseSet,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.createCourseSet
 );
 
 router.put('/course-sets/:courseSetId', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.updateCourseSet,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.updateCourseSet
 );
 
 router.delete('/course-sets/:courseSetId', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.deleteCourseSet,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.deleteCourseSet
 );
 
 // ========== Course Routes ==========
-// Admin and Manager can view courses
+// Admin, Header Department and Manager can view courses
 router.get('/courses', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department']),
     ...trainingValidation.getAllCourses,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getAllCourses
@@ -92,16 +92,16 @@ router.delete('/courses/:courseId',
 );
 
 router.get('/courses/:courseId/stats', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department']),
     ...trainingValidation.getCourseStats,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getCourseStats
 );
 
 // ========== Training Session Routes ==========
-// Admin and Manager can view sessions
+// Admin, Header Department and Manager can view sessions
 router.get('/sessions', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department']),
     ...trainingValidation.getAllTrainingSessions,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getAllTrainingSessions
@@ -122,46 +122,46 @@ router.get('/sessions/:sessionId',
     trainingController.getTrainingSessionById
 );
 
-// Admin only routes
+// Admin & Header Department routes
 router.post('/sessions', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.createTrainingSession,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.createTrainingSession
 );
 
 router.put('/sessions/:sessionId', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.updateTrainingSession,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.updateTrainingSession
 );
 
 router.delete('/sessions/:sessionId', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.deleteTrainingSession,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.deleteTrainingSession
 );
 
 router.get('/sessions/:sessionId/enrollment-stats', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department']),
     ...trainingValidation.getSessionEnrollmentStats,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getSessionEnrollmentStats
 );
 
 // ========== Training Enrollment Routes ==========
-// Admin and Manager can view all enrollments, Employee can view their own
+// Admin, Header Department and Manager can view all enrollments, Employee can view their own
 router.get('/enrollments', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager', 'employee']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department', 'employee']),
     ...trainingValidation.getAllTrainingEnrollments,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getAllTrainingEnrollments
 );
 
 router.get('/enrollments/:enrollmentId', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager', 'employee']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department', 'employee']),
     ...trainingValidation.getTrainingEnrollmentById,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getTrainingEnrollmentById
@@ -169,21 +169,21 @@ router.get('/enrollments/:enrollmentId',
 
 // Manager can enroll employees, Admin can enroll anyone, Employee can self-enroll
 router.post('/enrollments', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager', 'employee']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department', 'employee']),
     ...trainingValidation.createTrainingEnrollment,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.createTrainingEnrollment
 );
 
 router.put('/enrollments/:enrollmentId', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department']),
     ...trainingValidation.updateTrainingEnrollment,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.updateTrainingEnrollment
 );
 
 router.delete('/enrollments/:enrollmentId', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department']),
     ...trainingValidation.deleteTrainingEnrollment,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.deleteTrainingEnrollment
@@ -213,93 +213,93 @@ router.post('/sessions/:sessionId/retake',
 );
 
 // ========== Question Bank Routes ==========
-// Admin only routes
+// Admin & Header Department routes
 router.get('/question-banks', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.getAllQuestionBanks,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getAllQuestionBanks
 );
 
 router.get('/question-banks/:bankId', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.getQuestionBankById,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getQuestionBankById
 );
 
 router.post('/question-banks', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.createQuestionBank,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.createQuestionBank
 );
 
 router.put('/question-banks/:bankId', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.updateQuestionBank,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.updateQuestionBank
 );
 
 router.delete('/question-banks/:bankId', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.deleteQuestionBank,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.deleteQuestionBank
 );
 
 router.get('/question-banks/:bankId/stats', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.getQuestionBankStats,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getQuestionBankStats
 );
 
 router.get('/question-banks/course/:courseId', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.getQuestionBanksByCourse,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getQuestionBanksByCourse
 );
 
 // ========== Questions Routes ==========
-// Admin only routes
+// Admin & Header Department routes
 router.get('/questions', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     trainingController.getAllQuestions
 );
 
 router.get('/questions/:questionId', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.getQuestionById,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getQuestionById
 );
 
 router.post('/questions', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.createQuestion,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.createQuestion
 );
 
 router.put('/questions/:questionId', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.updateQuestion,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.updateQuestion
 );
 
 router.delete('/questions/:questionId', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.deleteQuestion,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.deleteQuestion
 );
 
 router.post('/questions/import-excel', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     uploadMiddleware.single('excelFile'),
     ...trainingValidation.importQuestionsFromExcel,
     ExpressValidatorMiddleware.handleValidationErrors,
@@ -308,83 +308,83 @@ router.post('/questions/import-excel',
 
 
 // ========== Dashboard Routes ==========
-// Admin and Manager can view dashboard
+// Admin, Header Department and Manager can view dashboard
 router.get('/dashboard/stats', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department']),
     trainingController.getTrainingDashboardStats
 );
 
 // ========== Training Assignment Routes ==========
-// Admin and Manager can view assignments
+// Admin, Header Department and Manager can view assignments
 router.get('/assignments', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department']),
     trainingController.getAllTrainingAssignments
 );
 
 router.get('/assignments/:assignmentId', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department']),
     ...trainingValidation.getTrainingAssignmentById,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getTrainingAssignmentById
 );
 
-// Admin only routes
+// Admin & Header Department routes
 router.post('/assignments', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.createTrainingAssignment,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.createTrainingAssignment
 );
 
 router.put('/assignments/:assignmentId', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.updateTrainingAssignment,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.updateTrainingAssignment
 );
 
 router.delete('/assignments/:assignmentId', 
-    RoleMiddleware.requireRole('admin'),
+    RoleMiddleware.requireAnyRole(['admin', 'header_department']),
     ...trainingValidation.deleteTrainingAssignment,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.deleteTrainingAssignment
 );
 
 router.get('/assignments/department/:departmentId', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department']),
     ...trainingValidation.getTrainingAssignmentsByDepartment,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getTrainingAssignmentsByDepartment
 );
 
 router.get('/assignments/course/:courseId', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department']),
     ...trainingValidation.getTrainingAssignmentsByCourse,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getTrainingAssignmentsByCourse
 );
 
 router.get('/courses/department/:departmentId', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department']),
     ...trainingValidation.getCoursesByDepartment,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getCoursesByDepartment
 );
 
 router.get('/departments/course/:courseId', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department']),
     ...trainingValidation.getDepartmentsByCourse,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getDepartmentsByCourse
 );
 
 router.get('/assignments/stats', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department']),
     trainingController.getAssignmentStats
 );
 
 router.get('/dashboard/department/:departmentId', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department']),
     ...trainingValidation.getDepartmentTrainingDashboard,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.getDepartmentTrainingDashboard
@@ -392,14 +392,14 @@ router.get('/dashboard/department/:departmentId',
 
 // ========== Course Deployment Routes ==========
 router.post('/courses/:courseId/deploy', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department']),
     ...trainingValidation.deployCourse,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.deployCourse
 );
 
 router.post('/courses/:courseId/undeploy', 
-    RoleMiddleware.requireAnyRole(['admin', 'manager']),
+    RoleMiddleware.requireAnyRole(['admin', 'manager', 'header_department']),
     ...trainingValidation.undeployCourse,
     ExpressValidatorMiddleware.handleValidationErrors,
     trainingController.undeployCourse
