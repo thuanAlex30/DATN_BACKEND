@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const projectTaskController = require('../controllers/projectTaskController');
 const authMiddleware = require('../middlewares/AuthMiddleware');
+const ValidationMiddleware = require('../middlewares/ValidationMiddleware');
+const projectValidation = require('../validations/projectValidation');
 
 // Apply authentication middleware to all routes
 router.use(authMiddleware.authenticate);
@@ -14,8 +16,10 @@ router.get('/tasks', projectTaskController.getAllTasks);
 // Get tasks by project ID
 router.get('/tasks/project', projectTaskController.getProjectTasks);
 
-// Get tasks assigned to a specific user
-router.get('/tasks/assigned/:userId', projectTaskController.getTasksByUser);
+// Get tasks assigned to a specific user in a project
+router.get('/project/:projectId/tasks/assigned/:userId', 
+  ValidationMiddleware.validateParams(projectValidation.projectUserParams),
+  projectTaskController.getTasksByUser);
 
 // Get task by ID
 router.get('/tasks/:id', projectTaskController.getTaskById);

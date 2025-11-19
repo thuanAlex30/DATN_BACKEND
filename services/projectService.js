@@ -67,7 +67,13 @@ class ProjectService {
         }
       }
 
-      const project = await projectRepository.createProject(projectData);
+      // Add created_by field
+      const projectDataWithCreatedBy = {
+        ...projectData,
+        created_by: userId
+      };
+      
+      const project = await projectRepository.createProject(projectDataWithCreatedBy);
       
       return createResponse(201, 'Tạo dự án thành công',
         transformDocumentId(project, POPULATED_FIELDS.PROJECT));

@@ -4,12 +4,15 @@ class ValidationMiddleware {
   // Validate request body
   static validateBody(schema) {
     return (req, res, next) => {
+      console.log('🔍 ValidationMiddleware - req.body BEFORE validation:', req.body);
+      
       const { error, value } = schema.validate(req.body, {
         abortEarly: false,
-        stripUnknown: true
+        stripUnknown: false
       });
 
       if (error) {
+        console.log('❌ ValidationMiddleware - Validation error:', error.details);
         const errors = error.details.map(detail => ({
           field: detail.path.join('.'),
           message: detail.message
@@ -18,6 +21,7 @@ class ValidationMiddleware {
         return ApiResponse.validationError(res, errors);
       }
 
+      console.log('✅ ValidationMiddleware - req.body AFTER validation:', value);
       req.body = value;
       next();
     };

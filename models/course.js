@@ -29,6 +29,17 @@ const courseSchema = new mongoose.Schema({
     validity_months: {
         type: Number,
         min: 1
+    },
+    is_deployed: {
+        type: Boolean,
+        default: false
+    },
+    deployed_at: {
+        type: Date
+    },
+    deployed_by: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     }
 }, {
     timestamps: {
@@ -42,6 +53,7 @@ const courseSchema = new mongoose.Schema({
 courseSchema.index({ course_set_id: 1 });
 courseSchema.index({ course_name: 1 });
 courseSchema.index({ is_mandatory: 1 });
+courseSchema.index({ is_deployed: 1 });
 
 const Course = mongoose.model('Course', courseSchema);
 

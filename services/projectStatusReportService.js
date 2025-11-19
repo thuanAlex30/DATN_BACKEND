@@ -53,7 +53,7 @@ class ProjectStatusReportService {
 
   async createStatusReport(reportData, userId) {
     try {
-      const requiredFields = ['project_id', 'overall_progress', 'budget_utilization', 'status_summary'];
+      const requiredFields = ['project_id', 'overall_progress', 'status_summary'];
       for (const field of requiredFields) {
         if (!reportData[field]) {
           return {
@@ -200,7 +200,6 @@ class ProjectStatusReportService {
     try {
       const template = {
         overall_progress: 0,
-        budget_utilization: 0,
         tasks_completed: 0,
         tasks_in_progress: 0,
         tasks_overdue: 0,

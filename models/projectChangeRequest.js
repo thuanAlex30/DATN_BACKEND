@@ -18,13 +18,8 @@ const projectChangeRequestSchema = new mongoose.Schema({
   },
   change_type: {
     type: String,
-    enum: ['SCOPE', 'SCHEDULE', 'BUDGET', 'RESOURCE', 'QUALITY', 'TECHNICAL'],
+    enum: ['SCOPE', 'SCHEDULE', 'RESOURCE', 'QUALITY', 'TECHNICAL'],
     required: true
-  },
-  cost_impact: {
-    type: Number,
-    min: 0,
-    default: 0
   },
   schedule_impact_days: {
     type: Number,

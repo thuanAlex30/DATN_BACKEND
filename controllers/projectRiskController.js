@@ -260,8 +260,8 @@ class ProjectRiskController {
   });
 
   static getAssignedRisks = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { userId } = req.params;
-    const result = await projectRiskService.getAssignedRisks(userId);
+    const { projectId, userId } = req.params;
+    const result = await projectRiskService.getAssignedRisks(userId, { project_id: projectId });
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

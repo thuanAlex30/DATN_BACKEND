@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const PPECategory = require('../models/ppeCategory');
 const PPEItem = require('../models/ppeItem');
 const PPEIssuance = require('../models/ppeIssuance');
@@ -177,7 +178,8 @@ class PPERepository {
                   $expr: {
                     $and: [
                       { $eq: ['$item_id', '$$itemId'] },
-                      { $eq: ['$status', 'issued'] }
+                      { $eq: ['$issuance_level', 'admin_to_manager'] },
+                      { $ne: ['$status', 'returned'] }
                     ]
                   }
                 }
@@ -185,7 +187,7 @@ class PPERepository {
               {
                 $group: {
                   _id: null,
-                  total_allocated: { $sum: '$quantity' }
+                  total_allocated: { $sum: { $ifNull: ['$remaining_quantity', '$quantity'] } }
                 }
               }
             ],
@@ -370,6 +372,172 @@ class PPERepository {
   async createIssuance(issuanceData) {
     const issuance = new PPEIssuance(issuanceData);
     return await issuance.save();
+  }
+
+  // Lấy danh sách PPE của user theo filters
+  async getIssuancesByUser(userId, filters = {}) {
+    const query = { user_id: userId, ...filters };
+    return await PPEIssuance.find(query)
+      .populate('item_id', 'item_name item_code brand model')
+      .populate('user_id', 'full_name email department')
+      .populate('issued_by', 'full_name email')
+      .populate('manager_id', 'full_name email')
+      .sort({ issued_date: -1 });
+  }
+
+  // Lấy danh sách PPE của nhiều users theo filters
+  async getIssuancesByUsers(userIds, filters = {}) {
+    const query = { user_id: { $in: userIds }, ...filters };
+    return await PPEIssuance.find(query)
+      .populate('item_id', 'item_name item_code brand model')
+      .populate('user_id', 'full_name email department_id')
+      .populate('issued_by', 'full_name email')
+      .populate('manager_id', 'full_name email')
+      .sort({ issued_date: -1 });
+  }
+
+  // Lấy danh sách PPE mà Manager đã phát cho employees
+  async getIssuancesByManager(managerId, filters = {}) {
+    const query = { manager_id: managerId, ...filters };
+    return await PPEIssuance.find(query)
+      .populate('item_id', 'item_name item_code brand model')
+      .populate('user_id', 'full_name email department_id')
+      .populate('issued_by', 'full_name email')
+      .populate('manager_id', 'full_name email')
+      .sort({ issued_date: -1 });
+  }
+
+  // Lấy số lượng PPE đã trả của Manager
+  async getManagerReturnedQuantity(managerId, itemId) {
+    const returnedIssuances = await PPEIssuance.find({
+      user_id: managerId,
+      item_id: itemId,
+      issuance_level: 'admin_to_manager',
+      status: 'returned'
+    });
+    
+    return returnedIssuances.reduce((sum, issuance) => {
+      return sum + (issuance.quantity || 0);
+    }, 0);
+  }
+
+  // Lấy thống kê PPE của Manager cho một item cụ thể - Sử dụng aggregation
+  async getManagerPPEStats(managerId, itemId) {
+    const pipeline = [
+      {
+        $match: {
+          user_id: new mongoose.Types.ObjectId(managerId),
+          item_id: new mongoose.Types.ObjectId(itemId),
+          issuance_level: 'admin_to_manager'  // Chỉ lấy PPE Manager nhận từ Admin
+        }
+      },
+      {
+        $lookup: {
+          from: 'ppeissuances',
+          let: { 
+            managerId: '$user_id',
+            itemId: '$item_id'
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$manager_id', '$$managerId'] },
+                    { $eq: ['$item_id', '$$itemId'] },
+                    { $eq: ['$issuance_level', 'manager_to_employee'] }
+                  ]
+                }
+              }
+            },
+            {
+              $project: {
+                quantity: 1,
+                status: 1
+              }
+            }
+          ],
+          as: 'employee_issuances'
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total_received: {
+            $sum: '$quantity'  // ✅ TỔNG SỐ NHẬN = SUM tất cả quantity, không phụ thuộc status
+          },
+          total_returned: {
+            $sum: {
+              // Tính số đã trả = quantity - remaining_quantity (hoặc toàn bộ quantity nếu status='returned')
+              $cond: [
+                { $eq: ['$status', 'returned'] },
+                '$quantity',  // Đã trả toàn bộ
+                { $subtract: ['$quantity', { $ifNull: ['$remaining_quantity', '$quantity'] }] }  // Trả một phần
+              ]
+            }
+          },
+          remaining_in_hand: {
+            $sum: {
+              $cond: [
+                { $ne: ['$status', 'returned'] },
+                { $ifNull: ['$remaining_quantity', '$quantity'] },  // ✅ Dùng remaining_quantity
+                0
+              ]
+            }
+          },
+          employee_issuances_all: { $push: '$employee_issuances' }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          total_received: 1,
+          total_returned: 1,
+          remaining_in_hand: 1,  // ✅ Thêm field này
+          total_issued_to_employees: {
+            $sum: {
+              $reduce: {
+                input: {
+                  $reduce: {
+                    input: '$employee_issuances_all',
+                    initialValue: [],
+                    in: { $concatArrays: ['$$value', '$$this'] }
+                  }
+                },
+                initialValue: 0,
+                in: {
+                  $cond: [
+                    { $ne: ['$$this.status', 'returned'] },
+                    { $add: ['$$value', '$$this.quantity'] },
+                    '$$value'
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    ];
+
+    const result = await PPEIssuance.aggregate(pipeline);
+    return result.length > 0 ? result[0] : { 
+      total_received: 0, 
+      total_returned: 0, 
+      remaining_in_hand: 0,  // ✅ Thêm field này
+      total_issued_to_employees: 0 
+    };
+  }
+
+  // Lấy danh sách PPE đang chờ Manager xác nhận trả
+  async getPendingManagerReturns(managerId) {
+    return await PPEIssuance.find({
+      manager_id: managerId,
+      status: 'pending_manager_return'
+    })
+    .populate('item_id', 'item_name item_code brand model')
+    .populate('user_id', 'full_name email department')
+    .populate('issued_by', 'full_name email')
+    .sort({ actual_return_date: -1 });
   }
 
   async updateIssuance(id, issuanceData) {

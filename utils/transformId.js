@@ -130,6 +130,12 @@ function transformDocumentId(doc, populatedFields = []) {
       }
     }
   });
+
+  // Special handling for USER model - transform department_id to department
+  if (populatedFields.includes('department_id') && docObj.department_id) {
+    docObj.department = docObj.department_id;
+    delete docObj.department_id;
+  }
   
   // Also transform direct ObjectId fields (like category_id) - but skip populated fields
   Object.keys(docObj).forEach(key => {
@@ -167,7 +173,7 @@ function transformDocumentsId(docs, populatedFields = []) {
  * Common populated fields for different models
  */
 const POPULATED_FIELDS = {
-  PROJECT: ['leader_id', 'site_id'],
+  PROJECT: ['leader_id', 'site_id', 'created_by'],
   PROJECT_PHASE: ['project_id', 'responsible_user_id'],
   PROJECT_TASK: ['phase_id', 'area_id', 'location_id'],
   PROJECT_MILESTONE: ['project_id', 'responsible_user_id', 'created_by', 'updated_by'],
@@ -183,7 +189,7 @@ const POPULATED_FIELDS = {
   PPE_ITEM: ['category_id'],
   PPE_ISSUANCE: ['user_id', 'item_id'],
   PPE_ASSIGNMENT: ['user_id', 'item_id'],
-  USER: []
+  USER: ['department_id', 'position_id', 'role_id']
 };
 
 module.exports = {

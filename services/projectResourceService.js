@@ -73,7 +73,6 @@ class ProjectResourceService {
       // Set default values for optional fields
       const resourceDataWithDefaults = {
         ...mappedData,
-        unit_cost: mappedData.unit_cost || 0,
         actual_quantity: mappedData.actual_quantity || 0,
         status: mappedData.status || 'PLANNED'
       };
@@ -432,7 +431,6 @@ class ProjectResourceService {
       const resources = await ProjectResource.insertMany(
         resourcesData.map(data => ({
           ...data,
-          unit_cost: data.unit_cost || 0,
           actual_quantity: data.actual_quantity || 0,
           status: data.status || 'PLANNED'
         }))

@@ -36,13 +36,13 @@ const trainingValidation = {
 
     getCourseSetById: [
         param('courseSetId')
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Invalid course set ID')
     ],
 
     deleteCourseSet: [
         param('courseSetId')
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Invalid course set ID')
     ],
 
@@ -61,14 +61,18 @@ const trainingValidation = {
             .isLength({ max: 1000 })
             .withMessage('Description must not exceed 1000 characters'),
         body('duration_hours')
-            .isInt({ min: 1 })
+            .isNumeric()
+            .withMessage('Duration must be a number')
+            .custom((value) => value >= 1)
             .withMessage('Duration must be at least 1 hour'),
         body('is_mandatory')
             .isBoolean()
             .withMessage('is_mandatory must be a boolean value'),
         body('validity_months')
             .optional()
-            .isInt({ min: 1 })
+            .isNumeric()
+            .withMessage('Validity months must be a number')
+            .custom((value) => value >= 1)
             .withMessage('Validity months must be at least 1')
     ],
 
@@ -78,7 +82,7 @@ const trainingValidation = {
             .withMessage('Invalid course ID'),
         body('course_set_id')
             .optional()
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Valid course set ID is required'),
         body('course_name')
             .optional()
@@ -90,7 +94,7 @@ const trainingValidation = {
             .withMessage('Description must not exceed 1000 characters'),
         body('duration_hours')
             .optional()
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Duration must be at least 1 hour'),
         body('is_mandatory')
             .optional()
@@ -98,25 +102,27 @@ const trainingValidation = {
             .withMessage('is_mandatory must be a boolean value'),
         body('validity_months')
             .optional()
-            .isInt({ min: 1 })
+            .isNumeric()
+            .withMessage('Validity months must be a number')
+            .custom((value) => value >= 1)
             .withMessage('Validity months must be at least 1')
     ],
 
     getCourseById: [
         param('courseId')
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Invalid course ID')
     ],
 
     deleteCourse: [
         param('courseId')
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Invalid course ID')
     ],
 
     getCourseStats: [
         param('courseId')
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Invalid course ID')
     ],
 
@@ -138,10 +144,10 @@ const trainingValidation = {
             .withMessage('Valid end time is required'),
         body('instructor_id')
             .optional()
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Valid instructor ID is required'),
         body('max_participants')
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Max participants must be at least 1'),
         body('location')
             .optional()
@@ -174,11 +180,11 @@ const trainingValidation = {
             .withMessage('Valid end time is required'),
         body('instructor_id')
             .optional()
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Valid instructor ID is required'),
         body('max_participants')
             .optional()
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Max participants must be at least 1'),
         body('location')
             .optional()
@@ -192,19 +198,19 @@ const trainingValidation = {
 
     getTrainingSessionById: [
         param('sessionId')
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Invalid session ID')
     ],
 
     deleteTrainingSession: [
         param('sessionId')
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Invalid session ID')
     ],
 
     getSessionEnrollmentStats: [
         param('sessionId')
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Invalid session ID')
     ],
 
@@ -292,25 +298,25 @@ const trainingValidation = {
 
     getQuestionBankById: [
         param('bankId')
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Invalid question bank ID')
     ],
 
     deleteQuestionBank: [
         param('bankId')
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Invalid question bank ID')
     ],
 
     getQuestionBankStats: [
         param('bankId')
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Invalid question bank ID')
     ],
 
     getQuestionBanksByCourse: [
         param('courseId')
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Invalid course ID')
     ],
 
@@ -353,7 +359,7 @@ const trainingValidation = {
             .withMessage('Invalid status'),
         query('userId')
             .optional()
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Invalid user ID')
     ],
 
@@ -475,7 +481,7 @@ const trainingValidation = {
             .withMessage('Limit must be between 1 and 100'),
         query('page')
             .optional()
-            .isInt({ min: 1 })
+            .custom(isValidObjectId)
             .withMessage('Page must be at least 1')
     ],
 
@@ -513,6 +519,91 @@ const trainingValidation = {
         param('sessionId')
             .custom(isValidObjectId)
             .withMessage('Valid session ID is required')
+    ],
+
+    // ========== Training Assignment Validations ==========
+    createTrainingAssignment: [
+        body('course_id')
+            .custom(isValidObjectId)
+            .withMessage('Valid course ID is required'),
+        body('department_id')
+            .custom(isValidObjectId)
+            .withMessage('Valid department ID is required'),
+        body('notes')
+            .optional()
+            .isString()
+            .isLength({ max: 500 })
+            .withMessage('Notes must be a string with maximum 500 characters')
+    ],
+
+    updateTrainingAssignment: [
+        param('assignmentId')
+            .custom(isValidObjectId)
+            .withMessage('Invalid assignment ID'),
+        body('status')
+            .optional()
+            .isIn(['active', 'inactive'])
+            .withMessage('Status must be active or inactive'),
+        body('notes')
+            .optional()
+            .isString()
+            .isLength({ max: 500 })
+            .withMessage('Notes must be a string with maximum 500 characters')
+    ],
+
+    getTrainingAssignmentById: [
+        param('assignmentId')
+            .custom(isValidObjectId)
+            .withMessage('Invalid assignment ID')
+    ],
+
+    deleteTrainingAssignment: [
+        param('assignmentId')
+            .custom(isValidObjectId)
+            .withMessage('Invalid assignment ID')
+    ],
+
+    getTrainingAssignmentsByDepartment: [
+        param('departmentId')
+            .custom(isValidObjectId)
+            .withMessage('Invalid department ID')
+    ],
+
+    getTrainingAssignmentsByCourse: [
+        param('courseId')
+            .custom(isValidObjectId)
+            .withMessage('Invalid course ID')
+    ],
+
+    getCoursesByDepartment: [
+        param('departmentId')
+            .custom(isValidObjectId)
+            .withMessage('Invalid department ID')
+    ],
+
+    getDepartmentsByCourse: [
+        param('courseId')
+            .custom(isValidObjectId)
+            .withMessage('Invalid course ID')
+    ],
+
+    getDepartmentTrainingDashboard: [
+        param('departmentId')
+            .custom(isValidObjectId)
+            .withMessage('Invalid department ID')
+    ],
+
+    // Course Deployment Validations
+    deployCourse: [
+        param('courseId')
+            .custom(isValidObjectId)
+            .withMessage('Invalid course ID')
+    ],
+
+    undeployCourse: [
+        param('courseId')
+            .custom(isValidObjectId)
+            .withMessage('Invalid course ID')
     ]
 };
 

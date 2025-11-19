@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const projectMilestoneController = require('../controllers/projectMilestoneController');
 const authMiddleware = require('../middlewares/AuthMiddleware');
+const ValidationMiddleware = require('../middlewares/ValidationMiddleware');
+const projectValidation = require('../validations/projectValidation');
 
 // Apply authentication middleware to all routes
 router.use(authMiddleware.authenticate);
@@ -11,8 +13,10 @@ router.use(authMiddleware.authenticate);
 // Get all milestones for a project
 router.get('/project/:projectId/milestones', projectMilestoneController.getProjectMilestones);
 
-// Get milestones assigned to a specific user
-router.get('/milestones/assigned/:userId', projectMilestoneController.getMilestonesByUser);
+// Get milestones assigned to a specific user in a project
+router.get('/project/:projectId/milestones/assigned/:userId', 
+  ValidationMiddleware.validateParams(projectValidation.projectUserParams),
+  projectMilestoneController.getMilestonesByUser);
 
 // Get milestone by ID
 router.get('/milestones/:id', projectMilestoneController.getMilestoneById);

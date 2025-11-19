@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const projectRiskController = require('../controllers/projectRiskController');
 const authMiddleware = require('../middlewares/AuthMiddleware');
+const ValidationMiddleware = require('../middlewares/ValidationMiddleware');
+const projectValidation = require('../validations/projectValidation');
 
 // Apply authentication middleware to all routes
 router.use(authMiddleware.authenticate);
@@ -32,8 +34,10 @@ router.get('/project/:projectId/stats', projectRiskController.getRiskStats);
 // Get all risks with filters
 router.get('/risks', projectRiskController.getAllRisks);
 
-// Get risks assigned to a specific user
-router.get('/risks/assigned/:userId', projectRiskController.getAssignedRisks);
+// Get risks assigned to a specific user in a project
+router.get('/project/:projectId/risks/assigned/:userId', 
+  ValidationMiddleware.validateParams(projectValidation.projectUserParams),
+  projectRiskController.getAssignedRisks);
 
 // Search risks
 router.get('/risks/search', projectRiskController.searchRisks);

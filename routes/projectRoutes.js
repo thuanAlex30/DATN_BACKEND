@@ -9,8 +9,8 @@ const projectValidation = require('../validations/projectValidation');
 // Apply authentication middleware to all routes
 router.use(authMiddleware.authenticate);
 
-// Apply admin authorization to all project management routes
-router.use(authMiddleware.authorizeRole('admin'));
+// Apply authorization to all project management routes - allow both admin and manager
+router.use(authMiddleware.authorizeRole(['admin', 'manager']));
 
 // ========== PROJECT MANAGEMENT ROUTES ==========
 // GET /api/v1/projects - Get all projects with filters

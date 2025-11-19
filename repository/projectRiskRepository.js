@@ -282,7 +282,7 @@ class ProjectRiskRepository {
       }
 
       // Check if risk category is valid
-      const validRiskCategories = ['TECHNICAL', 'SCHEDULE', 'BUDGET', 'RESOURCE', 'QUALITY', 'EXTERNAL', 'OTHER'];
+      const validRiskCategories = ['TECHNICAL', 'SCHEDULE', 'RESOURCE', 'QUALITY', 'EXTERNAL', 'OTHER'];
       if (riskData.risk_category && !validRiskCategories.includes(riskData.risk_category)) {
         errors.push('Invalid risk category');
       }

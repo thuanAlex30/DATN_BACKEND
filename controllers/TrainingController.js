@@ -129,6 +129,18 @@ class TrainingController {
         }
     });
 
+    static getAvailableCoursesForEmployee = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const filters = req.query;
+        const userId = req.user.id;
+        const result = await trainingService.getAvailableCoursesForEmployee(userId, filters);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
     static getCourseById = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseId } = req.params;
         const result = await trainingService.getCourseById(courseId);
@@ -189,6 +201,18 @@ class TrainingController {
     static getAllTrainingSessions = ErrorMiddleware.asyncHandler(async (req, res) => {
         const filters = req.query;
         const result = await trainingService.getAllTrainingSessions(filters);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getAvailableTrainingSessionsForEmployee = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const userId = req.user?.id;
+        const filters = req.query;
+        const result = await trainingService.getAvailableTrainingSessionsForEmployee(userId, filters);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -311,6 +335,13 @@ class TrainingController {
     // ========== Training Enrollment Controllers ==========
     static getAllTrainingEnrollments = ErrorMiddleware.asyncHandler(async (req, res) => {
         const filters = req.query;
+        const userRole = req.user?.role?.role_name;
+        
+        // If user is employee, only show their own enrollments
+        if (userRole === 'employee') {
+            filters.userId = req.user.id;
+        }
+        
         const result = await trainingService.getAllTrainingEnrollments(filters);
         
         if (result.success) {
@@ -322,9 +353,16 @@ class TrainingController {
 
     static getTrainingEnrollmentById = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { enrollmentId } = req.params;
+        const userRole = req.user?.role?.role_name;
+        
         const result = await trainingService.getTrainingEnrollmentById(enrollmentId);
         
         if (result.success) {
+            // If user is employee, check if they own this enrollment
+            if (userRole === 'employee' && result.data.user_id.toString() !== req.user.id.toString()) {
+                return ApiResponse.forbidden(res, 'Access denied: You can only view your own enrollments');
+            }
+            
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
         } else {
             return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
@@ -333,6 +371,13 @@ class TrainingController {
 
     static createTrainingEnrollment = ErrorMiddleware.asyncHandler(async (req, res) => {
         const enrollmentData = req.body;
+        const userRole = req.user?.role?.role_name;
+        
+        // If user is employee, they can only enroll themselves
+        if (userRole === 'employee') {
+            enrollmentData.user_id = req.user.id;
+        }
+        
         const result = await trainingService.createTrainingEnrollment(enrollmentData);
         
         if (result.success) {
@@ -593,6 +638,202 @@ class TrainingController {
                 // Don't fail the request if event emission fails
             }
             
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    // ========== Training Assignment Controllers ==========
+    static getAllTrainingAssignments = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const filters = req.query;
+        const result = await trainingService.getAllTrainingAssignments(filters);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getTrainingAssignmentById = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { assignmentId } = req.params;
+        const result = await trainingService.getTrainingAssignmentById(assignmentId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static createTrainingAssignment = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const assignmentData = {
+            ...req.body,
+            assigned_by: req.user._id
+        };
+        
+        const result = await trainingService.createTrainingAssignment(assignmentData);
+        
+        if (result.success) {
+            // Emit training assignment event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                await TrainingEvents.emitTrainingAssignment(result.data, metadata);
+            } catch (error) {
+                console.error('❌ Error emitting training assignment event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static updateTrainingAssignment = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { assignmentId } = req.params;
+        const assignmentData = req.body;
+        
+        const result = await trainingService.updateTrainingAssignment(assignmentId, assignmentData);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static deleteTrainingAssignment = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { assignmentId } = req.params;
+        const result = await trainingService.deleteTrainingAssignment(assignmentId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getTrainingAssignmentsByDepartment = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { departmentId } = req.params;
+        const result = await trainingService.getTrainingAssignmentsByDepartment(departmentId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getTrainingAssignmentsByCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const result = await trainingService.getTrainingAssignmentsByCourse(courseId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getCoursesByDepartment = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { departmentId } = req.params;
+        const result = await trainingService.getCoursesByDepartment(departmentId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getDepartmentsByCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const result = await trainingService.getDepartmentsByCourse(courseId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getAssignmentStats = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const result = await trainingService.getAssignmentStats();
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getDepartmentTrainingDashboard = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { departmentId } = req.params;
+        const result = await trainingService.getDepartmentTrainingDashboard(departmentId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    // ========== Course Deployment Controllers ==========
+    static deployCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const userId = req.user._id || req.user.id;
+        
+        const result = await trainingService.deployCourse(courseId, userId);
+        
+        if (result.success) {
+            // Emit course deployed event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                await TrainingEvents.emitCourseDeployed(result.data, metadata);
+            } catch (error) {
+                console.error('❌ Error emitting course deployed event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static undeployCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const userId = req.user._id || req.user.id;
+        
+        const result = await trainingService.undeployCourse(courseId, userId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    // ========== Employee Training Routes ==========
+    static getEmployeeTrainingSessions = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const userId = req.user._id || req.user.id;
+        const result = await trainingService.getEmployeeTrainingSessions(userId);
+        
+        if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
         } else {
             return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);

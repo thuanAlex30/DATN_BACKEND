@@ -91,16 +91,6 @@ const projectTaskSchema = new mongoose.Schema({
     ref: 'User',
     required: false
   },
-  estimated_cost: {
-    type: Number,
-    min: 0,
-    default: 0
-  },
-  actual_cost: {
-    type: Number,
-    min: 0,
-    default: 0
-  },
   completion_criteria: {
     type: String,
     trim: true

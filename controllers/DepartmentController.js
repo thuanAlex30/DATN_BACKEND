@@ -427,9 +427,26 @@ class DepartmentController {
 
     console.log('UserRepository options:', options);
 
-    // Get employees from the department
-    const employees = await UserRepository.findByDepartment(id, options);
-    console.log('Found employees:', employees.length);
+    // Get all users from the department
+    const allUsers = await UserRepository.findByDepartment(id, options);
+    console.log('Found all users:', allUsers.length);
+
+    // Filter out managers, only keep employees
+    const employees = allUsers.filter(user => {
+      const roleName = user.role_id?.role_name;
+      const isEmployee = roleName === 'employee';
+      
+      if (!isEmployee) {
+        console.log('Filtered out non-employee:', {
+          name: user.full_name,
+          role: roleName
+        });
+      }
+      
+      return isEmployee;
+    });
+    
+    console.log('Found employees after filtering:', employees.length);
 
     // Format employee data
     const formattedEmployees = employees.map(employee => ({
@@ -446,6 +463,11 @@ class DepartmentController {
       role: employee.role_id ? {
         id: employee.role_id._id,
         name: employee.role_id.role_name
+      } : null,
+      department: employee.department_id ? {
+        id: employee.department_id._id,
+        name: employee.department_id.department_name,
+        department_name: employee.department_id.department_name
       } : null,
       is_active: employee.is_active,
       created_at: employee.created_at,

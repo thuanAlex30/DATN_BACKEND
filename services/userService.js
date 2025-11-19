@@ -83,7 +83,10 @@ class UserService {
         birth_date: user.birth_date,
         address: user.address,
         role: user.role_id,
-        department: user.department_id,
+        department: user.department_id ? {
+          id: user.department_id._id || user.department_id.id,
+          department_name: user.department_id.department_name
+        } : null,
         position: user.position_id,
         is_active: user.is_active,
         last_login: user.last_login,

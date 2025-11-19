@@ -139,7 +139,7 @@ class AuthController {
   static me = ErrorMiddleware.asyncHandler(async (req, res) => {
     const userId = req.user._id || req.user.id;
     const result = await AuthService.getProfile(userId);
-    return ApiResponse.success(res, result, 'Current user info retrieved successfully');
+    return ApiResponse.success(res, result.data, 'Current user info retrieved successfully');
   });
 }
 

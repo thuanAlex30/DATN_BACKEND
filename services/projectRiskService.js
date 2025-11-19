@@ -256,9 +256,16 @@ class ProjectRiskService {
     }
   }
 
-  async getAssignedRisks(userId) {
+  async getAssignedRisks(userId, filters = {}) {
     try {
-      const risks = await ProjectRisk.find({ owner_id: userId })
+      const query = { owner_id: userId };
+      
+      // Add project filter if provided
+      if (filters.project_id) {
+        query.project_id = filters.project_id;
+      }
+      
+      const risks = await ProjectRisk.find(query)
         .populate('project_id', 'project_name')
         .populate('phase_id', 'phase_name')
         .populate('owner_id', 'full_name email')
