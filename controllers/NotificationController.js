@@ -3,17 +3,29 @@ const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 const mongoose = require('mongoose');
 const websocketService = require('../services/websocketService');
+const NotificationEvents = require('../events/notificationEvents');
 
 class NotificationController {
     // Get notifications for current user
     static getNotifications = ErrorMiddleware.asyncHandler(async (req, res) => {
         try {
+            console.log('📥 Getting notifications for user...');
             console.log('req.user:', JSON.stringify(req.user, null, 2));
+            
             const userId = req.user._id || req.user.id;
             console.log('userId extracted:', userId);
             
             if (!userId) {
-                return ApiResponse.error(res, 'User ID không hợp lệ', 400);
+                console.log('❌ No user ID found, returning empty notifications');
+                return ApiResponse.success(res, {
+                    notifications: [],
+                    pagination: {
+                        current_page: 1,
+                        total_pages: 0,
+                        total_items: 0,
+                        items_per_page: 10
+                    }
+                }, 'No notifications found');
             }
             
             const {
@@ -24,30 +36,38 @@ class NotificationController {
                 search
             } = req.query;
 
-            const filters = {};
-            
-            if (type) filters.type = type;
-            if (is_read !== undefined) filters.is_read = is_read === 'true';
-            if (search) filters.search = search;
+            console.log('Query params:', { page, limit, type, is_read, search });
 
-            // Add timeout wrapper
+            // Simple timeout wrapper - reduced to 5 seconds
             const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Request timeout')), 15000); // 15 second timeout
+                setTimeout(() => reject(new Error('Request timeout')), 5000);
             });
 
             const resultPromise = Notification.getNotifications(userId, {
                 page: parseInt(page),
                 limit: parseInt(limit),
-                ...filters
+                type,
+                is_read,
+                search
             });
 
             const result = await Promise.race([resultPromise, timeoutPromise]);
             
+            console.log('✅ Notifications retrieved successfully:', result.notifications?.length || 0);
             ApiResponse.success(res, result, 'Lấy danh sách thông báo thành công');
         } catch (error) {
-            console.error('Error getting notifications:', error);
+            console.error('❌ Error getting notifications:', error);
             if (error.message === 'Request timeout') {
-                ApiResponse.error(res, 'Yêu cầu quá thời gian chờ', 408, 'Timeout');
+                console.log('⏰ Request timeout, returning empty notifications');
+                return ApiResponse.success(res, {
+                    notifications: [],
+                    pagination: {
+                        current_page: 1,
+                        total_pages: 0,
+                        total_items: 0,
+                        items_per_page: 10
+                    }
+                }, 'No notifications found (timeout)');
             } else {
                 ApiResponse.error(res, 'Lỗi khi lấy danh sách thông báo', 500, error.message);
             }
@@ -167,6 +187,13 @@ class NotificationController {
             // Emit WebSocket event for notification created
             websocketService.emitNotificationCreated(notification);
             
+            // Emit Kafka event for notification sent
+            try {
+                await NotificationEvents.emitNotificationSent(notification, req.user || { _id: 'system', role: 'admin', full_name: 'System' });
+            } catch (eventError) {
+                console.error('Failed to emit notification sent event:', eventError);
+            }
+            
             ApiResponse.success(res, notification, 'Tạo thông báo thành công', 201);
         } catch (error) {
             console.error('Error creating notification:', error);
@@ -184,6 +211,13 @@ class NotificationController {
             
             // Emit WebSocket event for notification read
             websocketService.emitNotificationRead(notification, req.user);
+            
+            // Emit Kafka event for notification read
+            try {
+                await NotificationEvents.emitNotificationRead(notification, req.user);
+            } catch (eventError) {
+                console.error('Failed to emit notification read event:', eventError);
+            }
             
             ApiResponse.success(res, notification, 'Đánh dấu thông báo đã đọc thành công');
         } catch (error) {
@@ -280,6 +314,13 @@ class NotificationController {
                 
                 // Emit WebSocket event for each notification
                 websocketService.emitNotificationCreated(notification);
+                
+                // Emit Kafka event for each notification
+                try {
+                    await NotificationEvents.emitNotificationSent(notification, req.user || { _id: 'system', role: 'admin', full_name: 'System' });
+                } catch (eventError) {
+                    console.error('Failed to emit notification sent event:', eventError);
+                }
             }
             
             ApiResponse.success(res, {

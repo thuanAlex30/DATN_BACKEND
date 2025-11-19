@@ -67,6 +67,15 @@ class TrainingService {
         }
     }
 
+    async getAvailableCoursesForEmployee(userId, filters = {}) {
+        try {
+            const courses = await trainingRepository.getAvailableCoursesForEmployee(userId, filters);
+            return createResponse(200, 'Available courses for employee retrieved successfully', courses);
+        } catch (error) {
+            throw error;
+        }
+    }
+
     async getCourseById(courseId) {
         try {
             const course = await trainingRepository.getCourseById(courseId);
@@ -129,6 +138,15 @@ class TrainingService {
         try {
             const sessions = await trainingRepository.getAllTrainingSessions(filters);
             return createResponse(200, 'Training sessions retrieved successfully', sessions);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async getAvailableTrainingSessionsForEmployee(userId, filters = {}) {
+        try {
+            const sessions = await trainingRepository.getAvailableTrainingSessionsForEmployee(userId, filters);
+            return createResponse(200, 'Available training sessions retrieved successfully', sessions);
         } catch (error) {
             throw error;
         }
@@ -714,6 +732,212 @@ class TrainingService {
                     retakeDate: new Date()
                 }
             });
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // ========== Training Assignment Services ==========
+    async getAllTrainingAssignments(filters = {}) {
+        try {
+            const assignments = await trainingRepository.getAllTrainingAssignments(filters);
+            return createResponse(200, 'Training assignments retrieved successfully', assignments);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async getTrainingAssignmentById(assignmentId) {
+        try {
+            const assignment = await trainingRepository.getTrainingAssignmentById(assignmentId);
+            if (!assignment) {
+                return createResponse(404, 'Training assignment not found');
+            }
+            return createResponse(200, 'Training assignment retrieved successfully', assignment);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async createTrainingAssignment(assignmentData) {
+        try {
+            const assignment = await trainingRepository.createTrainingAssignment(assignmentData);
+            return createResponse(201, 'Training assignment created successfully', assignment);
+        } catch (error) {
+            if (error.message === 'Course is already assigned to this department') {
+                return createResponse(400, error.message);
+            }
+            throw error;
+        }
+    }
+
+    async updateTrainingAssignment(assignmentId, assignmentData) {
+        try {
+            const assignment = await trainingRepository.updateTrainingAssignment(assignmentId, assignmentData);
+            return createResponse(200, 'Training assignment updated successfully', assignment);
+        } catch (error) {
+            if (error.message === 'Training assignment not found') {
+                return createResponse(404, error.message);
+            }
+            throw error;
+        }
+    }
+
+    async deleteTrainingAssignment(assignmentId) {
+        try {
+            await trainingRepository.deleteTrainingAssignment(assignmentId);
+            return createResponse(200, 'Training assignment deleted successfully');
+        } catch (error) {
+            if (error.message === 'Training assignment not found') {
+                return createResponse(404, error.message);
+            }
+            throw error;
+        }
+    }
+
+    async getTrainingAssignmentsByDepartment(departmentId) {
+        try {
+            const assignments = await trainingRepository.getTrainingAssignmentsByDepartment(departmentId);
+            return createResponse(200, 'Department training assignments retrieved successfully', assignments);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async getTrainingAssignmentsByCourse(courseId) {
+        try {
+            const assignments = await trainingRepository.getTrainingAssignmentsByCourse(courseId);
+            return createResponse(200, 'Course training assignments retrieved successfully', assignments);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async getCoursesByDepartment(departmentId) {
+        try {
+            const courses = await trainingRepository.getCoursesByDepartment(departmentId);
+            return createResponse(200, 'Department courses retrieved successfully', courses);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async getDepartmentsByCourse(courseId) {
+        try {
+            const departments = await trainingRepository.getDepartmentsByCourse(courseId);
+            return createResponse(200, 'Course departments retrieved successfully', departments);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async getAssignmentStats() {
+        try {
+            const stats = await trainingRepository.getAssignmentStats();
+            return createResponse(200, 'Assignment statistics retrieved successfully', stats);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // ========== Department-based Training Services ==========
+    async getDepartmentTrainingDashboard(departmentId) {
+        try {
+            // Get assigned courses for department
+            const assignments = await trainingRepository.getTrainingAssignmentsByDepartment(departmentId);
+            const courseIds = assignments.map(a => a.course_id._id);
+            
+            // Get all enrollments for these courses
+            const enrollments = await trainingRepository.getAllTrainingEnrollments({
+                courseIds: courseIds
+            });
+
+            // Get department employees
+            const User = require('../models/user');
+            const departmentEmployees = await User.find({ 
+                department_id: departmentId,
+                role_id: { $ne: null }
+            }).populate('role_id', 'role_name');
+
+            const employees = departmentEmployees.filter(user => 
+                user.role_id && user.role_id.role_name === 'employee'
+            );
+
+            // Calculate statistics
+            const totalEmployees = employees.length;
+            const totalCourses = assignments.length;
+            const completedEnrollments = enrollments.filter(e => e.status === 'completed').length;
+            const inProgressEnrollments = enrollments.filter(e => e.status === 'enrolled').length;
+            const failedEnrollments = enrollments.filter(e => e.status === 'failed').length;
+
+            const completionRate = totalEmployees > 0 ? (completedEnrollments / totalEmployees) * 100 : 0;
+
+            return createResponse(200, 'Department training dashboard retrieved successfully', {
+                department: {
+                    _id: departmentId,
+                    totalEmployees,
+                    totalCourses
+                },
+                statistics: {
+                    completedEnrollments,
+                    inProgressEnrollments,
+                    failedEnrollments,
+                    completionRate: Math.round(completionRate * 100) / 100
+                },
+                assignments,
+                employees: employees.map(emp => ({
+                    _id: emp._id,
+                    full_name: emp.full_name,
+                    email: emp.email
+                }))
+            });
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // ========== Course Deployment Services ==========
+    async deployCourse(courseId, userId) {
+        try {
+            const course = await trainingRepository.getCourseById(courseId);
+            if (!course) {
+                return createResponse(404, 'Course not found');
+            }
+
+            if (course.is_deployed) {
+                return createResponse(200, 'Course is already deployed', course);
+            }
+
+            const deployedCourse = await trainingRepository.deployCourse(courseId, userId);
+            return createResponse(200, 'Course deployed successfully', deployedCourse);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async undeployCourse(courseId, userId) {
+        try {
+            const course = await trainingRepository.getCourseById(courseId);
+            if (!course) {
+                return createResponse(404, 'Course not found');
+            }
+
+            if (!course.is_deployed) {
+                return createResponse(200, 'Course is not deployed', course);
+            }
+
+            const undeployedCourse = await trainingRepository.undeployCourse(courseId, userId);
+            return createResponse(200, 'Course undeployed successfully', undeployedCourse);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // ========== Employee Training Methods ==========
+    async getEmployeeTrainingSessions(userId) {
+        try {
+            const sessions = await trainingRepository.getEmployeeTrainingSessions(userId);
+            return createResponse(200, 'Employee training sessions retrieved successfully', sessions);
         } catch (error) {
             throw error;
         }

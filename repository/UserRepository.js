@@ -8,7 +8,15 @@ class UserRepository {
       
       if (populate.length > 0) {
         populate.forEach(field => {
-          query = query.populate(field);
+          if (field === 'role_id') {
+            query = query.populate('role_id', 'role_name permissions is_active');
+          } else if (field === 'department_id') {
+            query = query.populate('department_id', 'department_name is_active');
+          } else if (field === 'position_id') {
+            query = query.populate('position_id', 'position_name level is_active');
+          } else {
+            query = query.populate(field);
+          }
         });
       } else {
         // Default population
@@ -136,7 +144,11 @@ class UserRepository {
       
       if (populate.length > 0) {
         populate.forEach(field => {
-          query = query.populate(field);
+          if (field === 'role_id') {
+            query = query.populate('role_id', 'role_name permissions is_active');
+          } else {
+            query = query.populate(field);
+          }
         });
       } else {
         query = query.populate('role_id', 'role_name permissions is_active');
@@ -270,7 +282,7 @@ class UserRepository {
       // Filter users with management permissions or high-level positions
       return users.filter(user => {
         const hasManagementRole = user.role_id && 
-          (user.role_id.role_name === 'admin' || user.role_id.role_name === 'leader');
+          (user.role_id.role_name === 'admin' || user.role_id.role_name === 'manager');
         
         const hasManagementLevel = user.position_id && user.position_id.level >= 6;
         

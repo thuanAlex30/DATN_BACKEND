@@ -19,12 +19,23 @@ const projectSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
+  actual_start_date: {
+    type: Date
+  },
+  actual_end_date: {
+    type: Date
+  },
   status: {
     type: String,
-    enum: ['pending', 'active', 'completed', 'cancelled'],
-    default: 'pending'
+    enum: ['PLANNING', 'ACTIVE', 'COMPLETED', 'CANCELLED', 'ON_HOLD'],
+    default: 'PLANNING'
   },
   leader_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  created_by: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
@@ -32,7 +43,7 @@ const projectSchema = new mongoose.Schema({
   site_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Site',
-    required: true
+    required: false  // ✅ Không bắt buộc để có thể tạo project trước
   },
   progress: {
     type: Number,
@@ -40,15 +51,24 @@ const projectSchema = new mongoose.Schema({
     max: 100,
     default: 0
   },
-  budget: {
-    type: Number,
-    min: 0,
-    default: 0
-  },
   priority: {
     type: String,
-    enum: ['low', 'medium', 'high', 'urgent'],
-    default: 'medium'
+    enum: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'],
+    default: 'MEDIUM'
+  },
+  project_type: {
+    type: String,
+    enum: ['CONSTRUCTION', 'MAINTENANCE', 'RENOVATION', 'INSPECTION', 'SAFETY', 'TRAINING'],
+    default: 'CONSTRUCTION'
+  },
+  client_name: {
+    type: String,
+    trim: true
+  },
+  client_contact: {
+    name: String,
+    email: String,
+    phone: String
   },
   created_at: {
     type: Date,
@@ -66,7 +86,8 @@ const projectSchema = new mongoose.Schema({
 projectSchema.index({ project_name: 'text', description: 'text' });
 projectSchema.index({ status: 1 });
 projectSchema.index({ leader_id: 1 });
+projectSchema.index({ created_by: 1 });
 projectSchema.index({ site_id: 1 });
 projectSchema.index({ start_date: 1, end_date: 1 });
 
-module.exports = mongoose.model('Project', projectSchema);
+module.exports = mongoose.models.Project || mongoose.model('Project', projectSchema);

@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const siteSchema = new mongoose.Schema({
+  project_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Project',
+    required: true
+  },
   site_name: {
     type: String,
     required: true,
@@ -54,6 +59,8 @@ const siteSchema = new mongoose.Schema({
 });
 
 // Index for better performance
+siteSchema.index({ project_id: 1, site_name: 1 });
+siteSchema.index({ project_id: 1 });
 siteSchema.index({ site_name: 'text', address: 'text' });
 siteSchema.index({ is_active: 1 });
 

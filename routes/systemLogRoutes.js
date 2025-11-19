@@ -118,6 +118,17 @@ router.get('/severity-levels',
 );
 
 /**
+ * @route GET /api/v1/system-logs/recent
+ * @desc Get recent system logs
+ * @access Private (Admin only)
+ */
+router.get('/recent',
+    AuthMiddleware.authenticate,
+    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    SystemLogController.getLogs
+);
+
+/**
  * @route GET /api/v1/system-logs/analytics
  * @desc Get analytics data
  * @access Private (Admin only)

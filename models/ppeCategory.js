@@ -21,6 +21,9 @@ const ppeCategorySchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Add indexes for better performance
+ppeCategorySchema.index({ category_name: 1 }, { unique: true });
+
 const PPECategory = mongoose.model('PPECategory', ppeCategorySchema);
 
 module.exports = PPECategory;

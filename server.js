@@ -1,13 +1,20 @@
 // Load .env with fallback values
 require('dotenv').config();
 
-// Set JWT_SECRET if not provided
+// Set environment variables if not provided
 if (!process.env.JWT_SECRET) {
   process.env.JWT_SECRET = 'your_super_secret_jwt_key_here_2024_safety_management_system';
   console.log('⚠️  JWT_SECRET not found in .env, using default value');
 }
 
+// Set Kafka environment variables
+if (!process.env.KAFKAJS_NO_PARTITIONER_WARNING) {
+  process.env.KAFKAJS_NO_PARTITIONER_WARNING = '1';
+}
+
 const express = require('express');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -18,9 +25,47 @@ const ErrorMiddleware = require('./middlewares/ErrorMiddleware');
 const LoggingMiddleware = require('./middlewares/LoggingMiddleware');
 const initializeTrainingData = require('./database/initializeTrainingData');
 const websocketService = require('./services/websocketService');
+const kafkaMonitor = require('./services/kafkaMonitor');
+const expiryCheckJob = require('./jobs/expiryCheckJob');
 
 const app = express();
+const server = createServer(app);
 const PORT = process.env.PORT || 3000;
+
+// Initialize Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: function (origin, callback) {
+      // Allow all local development origins
+      const allowedOrigins = [
+        'http://localhost:3000',
+        'http://localhost:3001', 
+        'http://localhost:5173',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:3001',
+        'http://127.0.0.1:5173'
+      ];
+      
+      // Add production origins if in production
+      if (process.env.NODE_ENV === 'production') {
+        allowedOrigins.push(process.env.FRONTEND_URL);
+      }
+      
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.log('Socket.IO CORS blocked origin:', origin);
+        callback(new Error('Not allowed by Socket.IO CORS'));
+      }
+    },
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  allowEIO3: true // Allow Engine.IO v3 clients
+});
 
 // Debugging startup environment
 console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
@@ -141,6 +186,10 @@ app.use(LoggingMiddleware.logAllRequests);
 // Routes
 app.use('/api', routes);
 
+// Health check routes
+const healthRoutes = require('./routes/healthRoutes');
+app.use('/api/health', healthRoutes);
+
 app.get('/', (req, res) => {
   res.json({
     success: true,
@@ -168,7 +217,7 @@ app.use(ErrorMiddleware.handle);
     // Initialize training data
     await initializeTrainingData();
 
-    const server = app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`
 🚀 Safety Management System API is running!
 📍 Environment: ${process.env.NODE_ENV || 'development'}
@@ -181,10 +230,34 @@ app.use(ErrorMiddleware.handle);
     });
 
     // Initialize WebSocket server
-    websocketService.initialize(server);
+    websocketService.initialize(io);
     
-    // Setup test handlers for development
-    websocketService.setupTestHandlers();
+    // Start PPE expiry check job
+    expiryCheckJob.start();
+    console.log('✅ PPE expiry check job started');
+    
+    // Initialize Kafka services
+    try {
+      const kafkaProducer = require('./services/kafkaProducer');
+      const kafkaConsumer = require('./services/kafkaConsumer');
+      const eventAggregator = require('./services/eventAggregator');
+      const analyticsService = require('./services/analyticsService');
+      const auditService = require('./services/auditService');
+      
+      // Initialize Kafka services
+      await kafkaProducer.initialize();
+      await kafkaConsumer.initialize();
+      await eventAggregator.initialize();
+      await analyticsService.initialize();
+      await auditService.initialize();
+      
+      // Start Kafka monitoring
+      await kafkaMonitor.startMonitoring();
+      console.log('✅ Kafka services initialized and monitoring started');
+    } catch (error) {
+      console.log('⚠️ Kafka services initialization failed:', error.message);
+      console.log('⚠️ Kafka monitoring not started due to initialization failure');
+    }
 
     // Set server timeout to 2 minutes for better performance
     server.timeout = 120000; // 2 minutes
@@ -194,6 +267,8 @@ app.use(ErrorMiddleware.handle);
     // Graceful shutdown
     process.on('SIGTERM', () => {
       console.log('SIGTERM received. Shutting down gracefully...');
+      expiryCheckJob.stop();
+      kafkaMonitor.stopMonitoring();
       server.close(() => {
         console.log('✅ Server shutdown complete.');
         process.exit(0);
@@ -202,6 +277,8 @@ app.use(ErrorMiddleware.handle);
 
     process.on('SIGINT', () => {
       console.log('SIGINT received. Shutting down gracefully...');
+      expiryCheckJob.stop();
+      kafkaMonitor.stopMonitoring();
       server.close(() => {
         console.log('✅ Server shutdown complete.');
         process.exit(0);

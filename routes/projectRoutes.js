@@ -1,13 +1,16 @@
 const express = require('express');
 const router = express.Router();
+const Joi = require('joi');
 const projectController = require('../controllers/projectController');
 const authMiddleware = require('../middlewares/AuthMiddleware');
+const ValidationMiddleware = require('../middlewares/ValidationMiddleware');
+const projectValidation = require('../validations/projectValidation');
 
 // Apply authentication middleware to all routes
 router.use(authMiddleware.authenticate);
 
-// Apply admin authorization to all project management routes
-router.use(authMiddleware.authorizeRole('admin'));
+// Apply authorization to all project management routes - allow both admin and manager
+router.use(authMiddleware.authorizeRole(['admin', 'manager']));
 
 // ========== PROJECT MANAGEMENT ROUTES ==========
 // GET /api/v1/projects - Get all projects with filters
@@ -30,10 +33,20 @@ router.get('/sites', projectController.getAllSites);
 router.get('/sites/:id', projectController.getSiteById);
 
 // POST /api/v1/projects/sites - Create new site
-router.post('/sites', projectController.createSite);
+router.post('/sites', ValidationMiddleware.validateBody(projectValidation.createSite), projectController.createSite);
 
 // PUT /api/v1/projects/sites/:id - Update site
-router.put('/sites/:id', projectController.updateSite);
+router.put('/sites/:id', ValidationMiddleware.validate({
+  params: Joi.object({
+    id: Joi.string().custom((value, helpers) => {
+      if (!require('mongoose').Types.ObjectId.isValid(value)) {
+        return helpers.error('any.invalid');
+      }
+      return value;
+    }).required()
+  }),
+  body: projectValidation.updateSite
+}), projectController.updateSite);
 
 // DELETE /api/v1/projects/sites/:id - Delete site
 router.delete('/sites/:id', projectController.deleteSite);
@@ -45,16 +58,22 @@ router.get('/available-employees', projectController.getAvailableEmployees);
 router.get('/:id', projectController.getProjectById);
 
 // POST /api/v1/projects - Create new project
-router.post('/', projectController.createProject);
+router.post('/', ValidationMiddleware.validateBody(projectValidation.createProject), projectController.createProject);
 
 // PUT /api/v1/projects/:id - Update project
-router.put('/:id', projectController.updateProject);
+router.put('/:id', ValidationMiddleware.validate({
+  params: projectValidation.projectId,
+  body: projectValidation.updateProject
+}), projectController.updateProject);
 
 // DELETE /api/v1/projects/:id - Delete project
-router.delete('/:id', projectController.deleteProject);
+router.delete('/:id', ValidationMiddleware.validateParams(projectValidation.projectId), projectController.deleteProject);
 
 // PUT /api/v1/projects/:id/progress - Update project progress
-router.put('/:id/progress', projectController.updateProjectProgress);
+router.put('/:id/progress', ValidationMiddleware.validate({
+  params: projectValidation.projectId,
+  body: projectValidation.updateProgress
+}), projectController.updateProjectProgress);
 
 // ========== PROJECT ASSIGNMENT ROUTES ==========
 // GET /api/v1/projects/:projectId/assignments - Get project assignments

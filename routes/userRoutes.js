@@ -40,6 +40,12 @@ router.get('/all',
   UserController.getAllUsers
 );
 
+// Get potential managers
+router.get('/managers', 
+  AuthMiddleware.authorize(PERMISSIONS.USER_LIST),
+  UserController.getPotentialManagers
+);
+
 // Get user statistics
 router.get('/stats', 
   AuthMiddleware.authorize(PERMISSIONS.USER_LIST),

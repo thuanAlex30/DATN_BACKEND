@@ -2,6 +2,7 @@ const DepartmentRepository = require('../repository/DepartmentRepository');
 const UserRepository = require('../repository/UserRepository');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
+const DepartmentEvents = require('../events/departmentEvents');
 
 class DepartmentController {
   
@@ -65,6 +66,21 @@ class DepartmentController {
 
     const department = await DepartmentRepository.create(departmentData);
 
+    // Emit department created event
+    try {
+      const metadata = {
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        userFullName: req.user?.full_name,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      };
+      await DepartmentEvents.emitDepartmentCreated(department, metadata);
+    } catch (error) {
+      console.error('❌ Error emitting department created event:', error);
+      // Don't fail the request if event emission fails
+    }
+
     return ApiResponse.success(res, department, 'Department created successfully', 201);
   });
 
@@ -116,6 +132,21 @@ class DepartmentController {
 
     const department = await DepartmentRepository.updateById(id, updateData);
 
+    // Emit department updated event
+    try {
+      const metadata = {
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        userFullName: req.user?.full_name,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      };
+      await DepartmentEvents.emitDepartmentUpdated(department, existingDepartment, metadata);
+    } catch (error) {
+      console.error('❌ Error emitting department updated event:', error);
+      // Don't fail the request if event emission fails
+    }
+
     return ApiResponse.success(res, department, 'Department updated successfully');
   });
 
@@ -137,6 +168,21 @@ class DepartmentController {
     }
 
     await DepartmentRepository.deleteById(id);
+
+    // Emit department deleted event
+    try {
+      const metadata = {
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        userFullName: req.user?.full_name,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      };
+      await DepartmentEvents.emitDepartmentDeleted(department, metadata);
+    } catch (error) {
+      console.error('❌ Error emitting department deleted event:', error);
+      // Don't fail the request if event emission fails
+    }
 
     return ApiResponse.success(res, null, 'Department deleted successfully');
   });
@@ -381,9 +427,26 @@ class DepartmentController {
 
     console.log('UserRepository options:', options);
 
-    // Get employees from the department
-    const employees = await UserRepository.findByDepartment(id, options);
-    console.log('Found employees:', employees.length);
+    // Get all users from the department
+    const allUsers = await UserRepository.findByDepartment(id, options);
+    console.log('Found all users:', allUsers.length);
+
+    // Filter out managers, only keep employees
+    const employees = allUsers.filter(user => {
+      const roleName = user.role_id?.role_name;
+      const isEmployee = roleName === 'employee';
+      
+      if (!isEmployee) {
+        console.log('Filtered out non-employee:', {
+          name: user.full_name,
+          role: roleName
+        });
+      }
+      
+      return isEmployee;
+    });
+    
+    console.log('Found employees after filtering:', employees.length);
 
     // Format employee data
     const formattedEmployees = employees.map(employee => ({
@@ -400,6 +463,11 @@ class DepartmentController {
       role: employee.role_id ? {
         id: employee.role_id._id,
         name: employee.role_id.role_name
+      } : null,
+      department: employee.department_id ? {
+        id: employee.department_id._id,
+        name: employee.department_id.department_name,
+        department_name: employee.department_id.department_name
       } : null,
       is_active: employee.is_active,
       created_at: employee.created_at,

@@ -1,499 +1,844 @@
 const trainingService = require('../services/trainingService');
-const { createResponse } = require('../utils/response');
+const { ApiResponse } = require('../utils/response');
+const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 const path = require('path');
 const websocketService = require('../services/websocketService');
+const TrainingEvents = require('../events/trainingEvents');
 
 class TrainingController {
     // ========== Course Set Controllers ==========
-    async getAllCourseSets(req, res) {
-        try {
-            const result = await trainingService.getAllCourseSets();
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in getAllCourseSets:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static getAllCourseSets = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const result = await trainingService.getAllCourseSets();
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async getCourseSetById(req, res) {
-        try {
-            const { courseSetId } = req.params;
-            const result = await trainingService.getCourseSetById(courseSetId);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in getCourseSetById:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static getCourseSetById = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseSetId } = req.params;
+        const result = await trainingService.getCourseSetById(courseSetId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async createCourseSet(req, res) {
-        try {
-            const courseSetData = req.body;
-            const result = await trainingService.createCourseSet(courseSetData);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in createCourseSet:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static createCourseSet = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const courseSetData = req.body;
+        const result = await trainingService.createCourseSet(courseSetData);
+        
+        if (result.success) {
+            // Emit course set created event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                await TrainingEvents.emitCourseSetCreated(result.data, metadata);
+            } catch (error) {
+                console.error('❌ Error emitting course set created event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async updateCourseSet(req, res) {
-        try {
-            const { courseSetId } = req.params;
-            const courseSetData = req.body;
-            const result = await trainingService.updateCourseSet(courseSetId, courseSetData);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in updateCourseSet:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static updateCourseSet = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseSetId } = req.params;
+        const courseSetData = req.body;
+        
+        // Get old course set data for comparison
+        const oldCourseSetResult = await trainingService.getCourseSetById(courseSetId);
+        const result = await trainingService.updateCourseSet(courseSetId, courseSetData);
+        
+        if (result.success) {
+            // Emit course set updated event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                if (oldCourseSetResult.success) {
+                    await TrainingEvents.emitCourseSetUpdated(result.data, oldCourseSetResult.data, metadata);
+                }
+            } catch (error) {
+                console.error('❌ Error emitting course set updated event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async deleteCourseSet(req, res) {
-        try {
-            const { courseSetId } = req.params;
-            const result = await trainingService.deleteCourseSet(courseSetId);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in deleteCourseSet:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static deleteCourseSet = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseSetId } = req.params;
+        
+        // Get course set data before deletion
+        const oldCourseSetResult = await trainingService.getCourseSetById(courseSetId);
+        const result = await trainingService.deleteCourseSet(courseSetId);
+        
+        if (result.success) {
+            // Emit course set deleted event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                if (oldCourseSetResult.success) {
+                    await TrainingEvents.emitCourseSetDeleted(oldCourseSetResult.data, metadata);
+                }
+            } catch (error) {
+                console.error('❌ Error emitting course set deleted event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
     // ========== Course Controllers ==========
-    async getAllCourses(req, res) {
-        try {
-            const filters = req.query;
-            const result = await trainingService.getAllCourses(filters);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in getAllCourses:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static getAllCourses = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const filters = req.query;
+        const result = await trainingService.getAllCourses(filters);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async getCourseById(req, res) {
-        try {
-            const { courseId } = req.params;
-            const result = await trainingService.getCourseById(courseId);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in getCourseById:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static getAvailableCoursesForEmployee = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const filters = req.query;
+        const userId = req.user.id;
+        const result = await trainingService.getAvailableCoursesForEmployee(userId, filters);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async createCourse(req, res) {
-        try {
-            const courseData = req.body;
-            const result = await trainingService.createCourse(courseData);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in createCourse:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static getCourseById = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const result = await trainingService.getCourseById(courseId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async updateCourse(req, res) {
-        try {
-            const { courseId } = req.params;
-            const courseData = req.body;
-            const result = await trainingService.updateCourse(courseId, courseData);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in updateCourse:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static createCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const courseData = req.body;
+        const result = await trainingService.createCourse(courseData);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async deleteCourse(req, res) {
-        try {
-            const { courseId } = req.params;
-            const result = await trainingService.deleteCourse(courseId);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in deleteCourse:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static updateCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const courseData = req.body;
+        const result = await trainingService.updateCourse(courseId, courseData);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async getCourseStats(req, res) {
-        try {
-            const { courseId } = req.params;
-            const result = await trainingService.getCourseStats(courseId);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in getCourseStats:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static deleteCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const result = await trainingService.deleteCourse(courseId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
+
+    static getCourseStats = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const result = await trainingService.getCourseStats(courseId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
 
     // ========== Training Session Controllers ==========
-    async getAllTrainingSessions(req, res) {
-        try {
-            const filters = req.query;
-            const result = await trainingService.getAllTrainingSessions(filters);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in getAllTrainingSessions:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static getAllTrainingSessions = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const filters = req.query;
+        const result = await trainingService.getAllTrainingSessions(filters);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async getTrainingSessionById(req, res) {
-        try {
-            const { sessionId } = req.params;
-            const result = await trainingService.getTrainingSessionById(sessionId);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in getTrainingSessionById:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static getAvailableTrainingSessionsForEmployee = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const userId = req.user?.id;
+        const filters = req.query;
+        const result = await trainingService.getAvailableTrainingSessionsForEmployee(userId, filters);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async createTrainingSession(req, res) {
-        try {
-            const sessionData = req.body;
-            console.log('Received session data:', sessionData);
-            const result = await trainingService.createTrainingSession(sessionData);
-            
-            // Emit WebSocket event for training session created
-            if (result.statusCode === 201 && result.data) {
-                websocketService.emitTrainingSessionCreated(result.data, req.user);
+    static getTrainingSessionById = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { sessionId } = req.params;
+        const result = await trainingService.getTrainingSessionById(sessionId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static createTrainingSession = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const sessionData = req.body;
+        const result = await trainingService.createTrainingSession(sessionData);
+        
+        if (result.success) {
+            // Emit training session created event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                await TrainingEvents.emitTrainingSessionCreated(result.data, metadata);
+            } catch (error) {
+                console.error('❌ Error emitting training session created event:', error);
+                // Don't fail the request if event emission fails
             }
             
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in createTrainingSession:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async updateTrainingSession(req, res) {
-        try {
-            const { sessionId } = req.params;
-            const sessionData = req.body;
-            const result = await trainingService.updateTrainingSession(sessionId, sessionData);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in updateTrainingSession:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static updateTrainingSession = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { sessionId } = req.params;
+        const sessionData = req.body;
+        
+        // Get old session data for comparison
+        const oldSessionResult = await trainingService.getTrainingSessionById(sessionId);
+        const result = await trainingService.updateTrainingSession(sessionId, sessionData);
+        
+        if (result.success) {
+            // Emit training session updated event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                if (oldSessionResult.success) {
+                    await TrainingEvents.emitTrainingSessionUpdated(result.data, oldSessionResult.data, metadata);
+                }
+            } catch (error) {
+                console.error('❌ Error emitting training session updated event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async deleteTrainingSession(req, res) {
-        try {
-            const { sessionId } = req.params;
-            const result = await trainingService.deleteTrainingSession(sessionId);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in deleteTrainingSession:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static deleteTrainingSession = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { sessionId } = req.params;
+        
+        // Get session data before deletion
+        const oldSessionResult = await trainingService.getTrainingSessionById(sessionId);
+        const result = await trainingService.deleteTrainingSession(sessionId);
+        
+        if (result.success) {
+            // Emit training session deleted event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                if (oldSessionResult.success) {
+                    await TrainingEvents.emitTrainingSessionDeleted(oldSessionResult.data, metadata);
+                }
+            } catch (error) {
+                console.error('❌ Error emitting training session deleted event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async getSessionEnrollmentStats(req, res) {
-        try {
-            const { sessionId } = req.params;
-            const result = await trainingService.getSessionEnrollmentStats(sessionId);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in getSessionEnrollmentStats:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static getSessionEnrollmentStats = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { sessionId } = req.params;
+        const result = await trainingService.getSessionEnrollmentStats(sessionId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
     // ========== Training Enrollment Controllers ==========
-    async getAllTrainingEnrollments(req, res) {
-        try {
-            const filters = req.query;
-            const result = await trainingService.getAllTrainingEnrollments(filters);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in getAllTrainingEnrollments:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static getAllTrainingEnrollments = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const filters = req.query;
+        const userRole = req.user?.role?.role_name;
+        
+        // If user is employee, only show their own enrollments
+        if (userRole === 'employee') {
+            filters.userId = req.user.id;
         }
-    }
-
-    async getTrainingEnrollmentById(req, res) {
-        try {
-            const { enrollmentId } = req.params;
-            const result = await trainingService.getTrainingEnrollmentById(enrollmentId);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in getTrainingEnrollmentById:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+        
+        const result = await trainingService.getAllTrainingEnrollments(filters);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async createTrainingEnrollment(req, res) {
-        try {
-            const enrollmentData = req.body;
-            const result = await trainingService.createTrainingEnrollment(enrollmentData);
-            
-            // Emit WebSocket event for training enrollment
-            if (result.statusCode === 201 && result.data) {
-                websocketService.emitTrainingEnrolled(result.data, req.user);
+    static getTrainingEnrollmentById = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { enrollmentId } = req.params;
+        const userRole = req.user?.role?.role_name;
+        
+        const result = await trainingService.getTrainingEnrollmentById(enrollmentId);
+        
+        if (result.success) {
+            // If user is employee, check if they own this enrollment
+            if (userRole === 'employee' && result.data.user_id.toString() !== req.user.id.toString()) {
+                return ApiResponse.forbidden(res, 'Access denied: You can only view your own enrollments');
             }
             
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in createTrainingEnrollment:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async updateTrainingEnrollment(req, res) {
-        try {
-            const { enrollmentId } = req.params;
-            const enrollmentData = req.body;
-            const result = await trainingService.updateTrainingEnrollment(enrollmentId, enrollmentData);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in updateTrainingEnrollment:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static createTrainingEnrollment = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const enrollmentData = req.body;
+        const userRole = req.user?.role?.role_name;
+        
+        // If user is employee, they can only enroll themselves
+        if (userRole === 'employee') {
+            enrollmentData.user_id = req.user.id;
         }
-    }
+        
+        const result = await trainingService.createTrainingEnrollment(enrollmentData);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
 
-    async deleteTrainingEnrollment(req, res) {
-        try {
-            const { enrollmentId } = req.params;
-            const result = await trainingService.deleteTrainingEnrollment(enrollmentId);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in deleteTrainingEnrollment:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static updateTrainingEnrollment = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { enrollmentId } = req.params;
+        const enrollmentData = req.body;
+        const result = await trainingService.updateTrainingEnrollment(enrollmentId, enrollmentData);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
+
+    static deleteTrainingEnrollment = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { enrollmentId } = req.params;
+        const result = await trainingService.deleteTrainingEnrollment(enrollmentId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
 
     // ========== Question Bank Controllers ==========
-    async getAllQuestionBanks(req, res) {
-        try {
-            const filters = req.query;
-            const result = await trainingService.getAllQuestionBanks(filters);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in getAllQuestionBanks:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static getAllQuestionBanks = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const filters = req.query;
+        const result = await trainingService.getAllQuestionBanks(filters);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async getQuestionBankById(req, res) {
-        try {
-            const { bankId } = req.params;
-            const result = await trainingService.getQuestionBankById(bankId);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in getQuestionBankById:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static getQuestionBankById = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { bankId } = req.params;
+        const result = await trainingService.getQuestionBankById(bankId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async createQuestionBank(req, res) {
-        try {
-            const bankData = req.body;
-            const result = await trainingService.createQuestionBank(bankData);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in createQuestionBank:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static createQuestionBank = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const bankData = req.body;
+        const result = await trainingService.createQuestionBank(bankData);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async updateQuestionBank(req, res) {
-        try {
-            const { bankId } = req.params;
-            const bankData = req.body;
-            const result = await trainingService.updateQuestionBank(bankId, bankData);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in updateQuestionBank:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static updateQuestionBank = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { bankId } = req.params;
+        const bankData = req.body;
+        const result = await trainingService.updateQuestionBank(bankId, bankData);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async deleteQuestionBank(req, res) {
-        try {
-            const { bankId } = req.params;
-            const result = await trainingService.deleteQuestionBank(bankId);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in deleteQuestionBank:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static deleteQuestionBank = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { bankId } = req.params;
+        const result = await trainingService.deleteQuestionBank(bankId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async getQuestionBankStats(req, res) {
-        try {
-            const { bankId } = req.params;
-            const result = await trainingService.getQuestionBankStats(bankId);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in getQuestionBankStats:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static getQuestionBankStats = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { bankId } = req.params;
+        const result = await trainingService.getQuestionBankStats(bankId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async getQuestionBanksByCourse(req, res) {
-        try {
-            const { courseId } = req.params;
-            const result = await trainingService.getQuestionBanksByCourse(courseId);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in getQuestionBanksByCourse:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static getQuestionBanksByCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const result = await trainingService.getQuestionBanksByCourse(courseId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
     // ========== Questions Controllers ==========
-    async getAllQuestions(req, res) {
-        try {
-            const filters = req.query;
-            const result = await trainingService.getAllQuestions(filters);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in getAllQuestions:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static getAllQuestions = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const filters = req.query;
+        const result = await trainingService.getAllQuestions(filters);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async getQuestionById(req, res) {
-        try {
-            const { questionId } = req.params;
-            const result = await trainingService.getQuestionById(questionId);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in getQuestionById:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static getQuestionById = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { questionId } = req.params;
+        const result = await trainingService.getQuestionById(questionId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async createQuestion(req, res) {
-        try {
-            const questionData = req.body;
-            const result = await trainingService.createQuestion(questionData);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in createQuestion:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static createQuestion = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const questionData = req.body;
+        const result = await trainingService.createQuestion(questionData);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async updateQuestion(req, res) {
-        try {
-            const { questionId } = req.params;
-            const questionData = req.body;
-            const result = await trainingService.updateQuestion(questionId, questionData);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in updateQuestion:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static updateQuestion = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { questionId } = req.params;
+        const questionData = req.body;
+        const result = await trainingService.updateQuestion(questionId, questionData);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async deleteQuestion(req, res) {
-        try {
-            const { questionId } = req.params;
-            const result = await trainingService.deleteQuestion(questionId);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in deleteQuestion:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static deleteQuestion = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { questionId } = req.params;
+        const result = await trainingService.deleteQuestion(questionId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async importQuestionsFromExcel(req, res) {
-        try {
-            const { bank_id } = req.body;
-            const file = req.file;
-            
-            if (!file) {
-                return res.status(400).json(createResponse(400, 'Excel file is required'));
-            }
-
-            const result = await trainingService.importQuestionsFromExcel(bank_id, file);
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in importQuestionsFromExcel:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static importQuestionsFromExcel = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { bankId } = req.params;
+        
+        if (!req.file) {
+            return ApiResponse.error(res, 'No file uploaded', 400);
         }
-    }
 
-
-    // ========== Start Training Controllers ==========
-    async startTraining(req, res) {
-        try {
-            const { sessionId } = req.params;
-            const userId = req.user.id; // Get user ID from auth middleware
-            
-            const result = await trainingService.startTraining(sessionId, userId);
-            
-            // Emit WebSocket event for training started
-            if (result.statusCode === 200 && result.data) {
-                websocketService.emitTrainingStarted(result.data.session, req.user);
-            }
-            
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in startTraining:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+        const result = await trainingService.importQuestionsFromExcel(bankId, req.file);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async submitTraining(req, res) {
-        try {
-            const { sessionId } = req.params;
-            const userId = req.user.id;
-            const { answers, score, completion_time } = req.body;
-            
-            const result = await trainingService.submitTraining(sessionId, userId, answers, score, completion_time);
-            
-            // Emit WebSocket event for training submitted
-            if (result.statusCode === 200 && result.data) {
-                websocketService.emitTrainingSubmitted(result.data.enrollment, req.user);
-                
-                // If training is completed, emit completion event
-                if (result.data.enrollment.status === 'completed') {
-                    websocketService.emitTrainingCompleted(result.data.enrollment, req.user);
-                }
-            }
-            
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in submitTraining:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    // ========== Dashboard Statistics ==========
+    static getTrainingDashboardStats = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const result = await trainingService.getTrainingDashboardStats();
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    async retakeTraining(req, res) {
-        try {
-            const { sessionId } = req.params;
-            const userId = req.user.id;
-            
-            const result = await trainingService.retakeTraining(sessionId, userId);
-            
-            // Emit WebSocket event for training retake
-            if (result.statusCode === 200 && result.data) {
-                websocketService.emitTrainingStarted(result.data.session, req.user);
+    // ========== Training Actions ==========
+    static startTraining = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { sessionId } = req.params;
+        const userId = req.user._id || req.user.id;
+        
+        const result = await trainingService.startTraining(sessionId, userId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static submitTraining = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { sessionId } = req.params;
+        const userId = req.user._id || req.user.id;
+        const { answers, score, completionTime } = req.body;
+        
+        const result = await trainingService.submitTraining(sessionId, userId, answers, score, completionTime);
+        
+        if (result.success) {
+            // Emit training completion event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                await TrainingEvents.emitTrainingCompletion(result.data, metadata);
+            } catch (error) {
+                console.error('❌ Error emitting training completion event:', error);
+                // Don't fail the request if event emission fails
             }
             
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in retakeTraining:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
 
-    // ========== Dashboard Controllers ==========
-    async getTrainingDashboardStats(req, res) {
-        try {
-            const result = await trainingService.getTrainingDashboardStats();
-            res.status(result.statusCode).json(result);
-        } catch (error) {
-            console.error('Error in getTrainingDashboardStats:', error);
-            res.status(500).json(createResponse(500, 'Internal server error'));
+    static retakeTraining = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { sessionId } = req.params;
+        const userId = req.user._id || req.user.id;
+        
+        const result = await trainingService.retakeTraining(sessionId, userId);
+        
+        if (result.success) {
+            // Emit training retake event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                await TrainingEvents.emitTrainingRetake(result.data, metadata);
+            } catch (error) {
+                console.error('❌ Error emitting training retake event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
-    }
+    });
+
+    // ========== Training Assignment Controllers ==========
+    static getAllTrainingAssignments = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const filters = req.query;
+        const result = await trainingService.getAllTrainingAssignments(filters);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getTrainingAssignmentById = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { assignmentId } = req.params;
+        const result = await trainingService.getTrainingAssignmentById(assignmentId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static createTrainingAssignment = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const assignmentData = {
+            ...req.body,
+            assigned_by: req.user._id
+        };
+        
+        const result = await trainingService.createTrainingAssignment(assignmentData);
+        
+        if (result.success) {
+            // Emit training assignment event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                await TrainingEvents.emitTrainingAssignment(result.data, metadata);
+            } catch (error) {
+                console.error('❌ Error emitting training assignment event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static updateTrainingAssignment = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { assignmentId } = req.params;
+        const assignmentData = req.body;
+        
+        const result = await trainingService.updateTrainingAssignment(assignmentId, assignmentData);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static deleteTrainingAssignment = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { assignmentId } = req.params;
+        const result = await trainingService.deleteTrainingAssignment(assignmentId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getTrainingAssignmentsByDepartment = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { departmentId } = req.params;
+        const result = await trainingService.getTrainingAssignmentsByDepartment(departmentId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getTrainingAssignmentsByCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const result = await trainingService.getTrainingAssignmentsByCourse(courseId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getCoursesByDepartment = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { departmentId } = req.params;
+        const result = await trainingService.getCoursesByDepartment(departmentId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getDepartmentsByCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const result = await trainingService.getDepartmentsByCourse(courseId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getAssignmentStats = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const result = await trainingService.getAssignmentStats();
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getDepartmentTrainingDashboard = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { departmentId } = req.params;
+        const result = await trainingService.getDepartmentTrainingDashboard(departmentId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    // ========== Course Deployment Controllers ==========
+    static deployCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const userId = req.user._id || req.user.id;
+        
+        const result = await trainingService.deployCourse(courseId, userId);
+        
+        if (result.success) {
+            // Emit course deployed event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                await TrainingEvents.emitCourseDeployed(result.data, metadata);
+            } catch (error) {
+                console.error('❌ Error emitting course deployed event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static undeployCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const userId = req.user._id || req.user.id;
+        
+        const result = await trainingService.undeployCourse(courseId, userId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    // ========== Employee Training Routes ==========
+    static getEmployeeTrainingSessions = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const userId = req.user._id || req.user.id;
+        const result = await trainingService.getEmployeeTrainingSessions(userId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
 }
 
-module.exports = new TrainingController();
+module.exports = TrainingController;

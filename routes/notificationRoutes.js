@@ -76,6 +76,27 @@ const updateSettingsValidation = [
 
 // Routes
 /**
+ * @route GET /api/v1/notifications/test
+ * @desc Test notifications endpoint
+ * @access Public
+ */
+router.get('/test', (req, res) => {
+    res.json({
+        success: true,
+        message: 'Notifications endpoint is working',
+        data: {
+            notifications: [],
+            pagination: {
+                current_page: 1,
+                total_pages: 0,
+                total_items: 0,
+                items_per_page: 10
+            }
+        }
+    });
+});
+
+/**
  * @route GET /api/v1/notifications
  * @desc Get notifications for current user
  * @access Private

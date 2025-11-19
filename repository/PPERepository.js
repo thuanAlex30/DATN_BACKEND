@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const PPECategory = require('../models/ppeCategory');
 const PPEItem = require('../models/ppeItem');
 const PPEIssuance = require('../models/ppeIssuance');
@@ -135,101 +136,119 @@ class PPERepository {
 
   // PPE Items
   async getAllItems(filters = {}) {
-    const query = {};
-    
-    if (filters.category_id) {
-      query.category_id = filters.category_id;
-    }
-    
-    if (filters.search) {
-      query.$or = [
-        { item_name: { $regex: filters.search, $options: 'i' } },
-        { item_code: { $regex: filters.search, $options: 'i' } },
-        { brand: { $regex: filters.search, $options: 'i' } }
-      ];
-    }
+    try {
+      const query = {};
+      
+      if (filters.category_id) {
+        query.category_id = filters.category_id;
+      }
+      
+      if (filters.search) {
+        query.$or = [
+          { item_name: { $regex: filters.search, $options: 'i' } },
+          { item_code: { $regex: filters.search, $options: 'i' } },
+          { brand: { $regex: filters.search, $options: 'i' } }
+        ];
+      }
 
-    // Use aggregation pipeline for better performance
-    const pipeline = [
-      { $match: query },
-      {
-        $lookup: {
-          from: 'ppecategories',
-          localField: 'category_id',
-          foreignField: '_id',
-          as: 'category'
-        }
-      },
-      {
-        $unwind: {
-          path: '$category',
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      {
-        $lookup: {
-          from: 'ppeissuances',
-          let: { itemId: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$item_id', '$$itemId'] },
-                    { $eq: ['$status', 'issued'] }
-                  ]
+      // Use aggregation pipeline for better performance
+      const pipeline = [
+        { $match: query },
+        {
+          $lookup: {
+            from: 'ppecategories',
+            localField: 'category_id',
+            foreignField: '_id',
+            as: 'category'
+          }
+        },
+        {
+          $unwind: {
+            path: '$category',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $lookup: {
+            from: 'ppeissuances',
+            let: { itemId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$item_id', '$$itemId'] },
+                      { $eq: ['$issuance_level', 'admin_to_manager'] },
+                      { $ne: ['$status', 'returned'] }
+                    ]
+                  }
+                }
+              },
+              {
+                $group: {
+                  _id: null,
+                  total_allocated: { $sum: { $ifNull: ['$remaining_quantity', '$quantity'] } }
                 }
               }
-            },
-            {
-              $group: {
-                _id: null,
-                total_allocated: { $sum: '$quantity' }
-              }
-            }
-          ],
-          as: 'allocations'
-        }
-      },
-      {
-        $addFields: {
-          total_quantity: { $add: ['$quantity_available', '$quantity_allocated'] },
-          actual_allocated_quantity: {
-            $ifNull: [{ $arrayElemAt: ['$allocations.total_allocated', 0] }, 0]
+            ],
+            as: 'allocations'
           }
-        }
-      },
-      {
-        $addFields: {
-          remaining_quantity: { $subtract: ['$total_quantity', '$actual_allocated_quantity'] }
-        }
-      },
-      {
-        $project: {
-          category_id: 1,
-          item_name: 1,
-          item_code: 1,
-          brand: 1,
-          model: 1,
-          quantity_available: 1,
-          quantity_allocated: 1,
-          minimum_stock: 1,
-          unit: 1,
-          description: 1,
-          is_active: 1,
-          created_at: 1,
-          updated_at: 1,
-          'category.category_name': 1,
-          'category.description': 1,
-          total_quantity: 1,
-          remaining_quantity: 1,
-          actual_allocated_quantity: 1
-        }
-      },
-      { $sort: { item_name: 1 } }
-    ];
+        },
+        {
+          $addFields: {
+            total_quantity: { $add: ['$quantity_available', '$quantity_allocated'] },
+            actual_allocated_quantity: {
+              $ifNull: [{ $arrayElemAt: ['$allocations.total_allocated', 0] }, 0]
+            }
+          }
+        },
+        {
+          $addFields: {
+            remaining_quantity: { $subtract: ['$total_quantity', '$actual_allocated_quantity'] }
+          }
+        },
+        {
+          $project: {
+            _id: 1,
+            category_id: 1,
+            item_name: 1,
+            item_code: 1,
+            brand: 1,
+            model: 1,
+            reorder_level: 1,
+            quantity_available: 1,
+            quantity_allocated: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            'category.category_name': 1,
+            'category.description': 1,
+            total_quantity: 1,
+            remaining_quantity: 1,
+            actual_allocated_quantity: 1
+          }
+        },
+        { $sort: { item_name: 1 } }
+      ];
 
-    return await PPEItem.aggregate(pipeline);
+      const result = await PPEItem.aggregate(pipeline);
+      
+      // Filter out any documents with invalid ObjectIds
+      return result.filter(doc => {
+        try {
+          // Test if _id can be converted to string
+          if (doc._id) {
+            doc._id.toString();
+          }
+          return true;
+        } catch (error) {
+          console.error('Invalid ObjectId found in document:', doc._id, error);
+          return false;
+        }
+      });
+    } catch (error) {
+      console.error('Error in getAllItems:', error);
+      throw error;
+    }
   }
 
   async getItemById(id) {
@@ -355,6 +374,172 @@ class PPERepository {
     return await issuance.save();
   }
 
+  // Lấy danh sách PPE của user theo filters
+  async getIssuancesByUser(userId, filters = {}) {
+    const query = { user_id: userId, ...filters };
+    return await PPEIssuance.find(query)
+      .populate('item_id', 'item_name item_code brand model')
+      .populate('user_id', 'full_name email department')
+      .populate('issued_by', 'full_name email')
+      .populate('manager_id', 'full_name email')
+      .sort({ issued_date: -1 });
+  }
+
+  // Lấy danh sách PPE của nhiều users theo filters
+  async getIssuancesByUsers(userIds, filters = {}) {
+    const query = { user_id: { $in: userIds }, ...filters };
+    return await PPEIssuance.find(query)
+      .populate('item_id', 'item_name item_code brand model')
+      .populate('user_id', 'full_name email department_id')
+      .populate('issued_by', 'full_name email')
+      .populate('manager_id', 'full_name email')
+      .sort({ issued_date: -1 });
+  }
+
+  // Lấy danh sách PPE mà Manager đã phát cho employees
+  async getIssuancesByManager(managerId, filters = {}) {
+    const query = { manager_id: managerId, ...filters };
+    return await PPEIssuance.find(query)
+      .populate('item_id', 'item_name item_code brand model')
+      .populate('user_id', 'full_name email department_id')
+      .populate('issued_by', 'full_name email')
+      .populate('manager_id', 'full_name email')
+      .sort({ issued_date: -1 });
+  }
+
+  // Lấy số lượng PPE đã trả của Manager
+  async getManagerReturnedQuantity(managerId, itemId) {
+    const returnedIssuances = await PPEIssuance.find({
+      user_id: managerId,
+      item_id: itemId,
+      issuance_level: 'admin_to_manager',
+      status: 'returned'
+    });
+    
+    return returnedIssuances.reduce((sum, issuance) => {
+      return sum + (issuance.quantity || 0);
+    }, 0);
+  }
+
+  // Lấy thống kê PPE của Manager cho một item cụ thể - Sử dụng aggregation
+  async getManagerPPEStats(managerId, itemId) {
+    const pipeline = [
+      {
+        $match: {
+          user_id: new mongoose.Types.ObjectId(managerId),
+          item_id: new mongoose.Types.ObjectId(itemId),
+          issuance_level: 'admin_to_manager'  // Chỉ lấy PPE Manager nhận từ Admin
+        }
+      },
+      {
+        $lookup: {
+          from: 'ppeissuances',
+          let: { 
+            managerId: '$user_id',
+            itemId: '$item_id'
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$manager_id', '$$managerId'] },
+                    { $eq: ['$item_id', '$$itemId'] },
+                    { $eq: ['$issuance_level', 'manager_to_employee'] }
+                  ]
+                }
+              }
+            },
+            {
+              $project: {
+                quantity: 1,
+                status: 1
+              }
+            }
+          ],
+          as: 'employee_issuances'
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total_received: {
+            $sum: '$quantity'  // ✅ TỔNG SỐ NHẬN = SUM tất cả quantity, không phụ thuộc status
+          },
+          total_returned: {
+            $sum: {
+              // Tính số đã trả = quantity - remaining_quantity (hoặc toàn bộ quantity nếu status='returned')
+              $cond: [
+                { $eq: ['$status', 'returned'] },
+                '$quantity',  // Đã trả toàn bộ
+                { $subtract: ['$quantity', { $ifNull: ['$remaining_quantity', '$quantity'] }] }  // Trả một phần
+              ]
+            }
+          },
+          remaining_in_hand: {
+            $sum: {
+              $cond: [
+                { $ne: ['$status', 'returned'] },
+                { $ifNull: ['$remaining_quantity', '$quantity'] },  // ✅ Dùng remaining_quantity
+                0
+              ]
+            }
+          },
+          employee_issuances_all: { $push: '$employee_issuances' }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          total_received: 1,
+          total_returned: 1,
+          remaining_in_hand: 1,  // ✅ Thêm field này
+          total_issued_to_employees: {
+            $sum: {
+              $reduce: {
+                input: {
+                  $reduce: {
+                    input: '$employee_issuances_all',
+                    initialValue: [],
+                    in: { $concatArrays: ['$$value', '$$this'] }
+                  }
+                },
+                initialValue: 0,
+                in: {
+                  $cond: [
+                    { $ne: ['$$this.status', 'returned'] },
+                    { $add: ['$$value', '$$this.quantity'] },
+                    '$$value'
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    ];
+
+    const result = await PPEIssuance.aggregate(pipeline);
+    return result.length > 0 ? result[0] : { 
+      total_received: 0, 
+      total_returned: 0, 
+      remaining_in_hand: 0,  // ✅ Thêm field này
+      total_issued_to_employees: 0 
+    };
+  }
+
+  // Lấy danh sách PPE đang chờ Manager xác nhận trả
+  async getPendingManagerReturns(managerId) {
+    return await PPEIssuance.find({
+      manager_id: managerId,
+      status: 'pending_manager_return'
+    })
+    .populate('item_id', 'item_name item_code brand model')
+    .populate('user_id', 'full_name email department')
+    .populate('issued_by', 'full_name email')
+    .sort({ actual_return_date: -1 });
+  }
+
   async updateIssuance(id, issuanceData) {
     return await PPEIssuance.findByIdAndUpdate(id, issuanceData, { new: true });
   }
@@ -366,51 +551,67 @@ class PPERepository {
 
   // Statistics
   async getStockStatus() {
-    const items = await PPEItem.find()
-      .populate('category_id', 'category_name description')
-      .sort({ item_name: 1 });
+    try {
+      const items = await PPEItem.find()
+        .populate('category_id', 'category_name description')
+        .sort({ item_name: 1 });
 
-    const itemsWithTotals = await Promise.all(items.map(async (item) => {
-      // Calculate total quantity (available + allocated)
-      const total_quantity = item.quantity_available + item.quantity_allocated;
-      
-      // Get actual allocated quantity from issuances (for verification)
-      const actualAllocated = await PPEIssuance.aggregate([
-        {
-          $match: {
-            item_id: item._id,
-            status: 'issued'
+      const itemsWithTotals = await Promise.all(items.map(async (item) => {
+        try {
+          // Test if item._id is valid
+          if (item._id) {
+            item._id.toString();
           }
-        },
-        {
-          $group: {
-            _id: null,
-            total_allocated: { $sum: '$quantity' }
-          }
+          
+          // Calculate total quantity (available + allocated)
+          const total_quantity = item.quantity_available + item.quantity_allocated;
+          
+          // Get actual allocated quantity from issuances (for verification)
+          const actualAllocated = await PPEIssuance.aggregate([
+            {
+              $match: {
+                item_id: item._id,
+                status: 'issued'
+              }
+            },
+            {
+              $group: {
+                _id: null,
+                total_allocated: { $sum: '$quantity' }
+              }
+            }
+          ]);
+
+          const actual_allocated_quantity = actualAllocated.length > 0 ? actualAllocated[0].total_allocated : 0;
+          
+          // Calculate remaining quantity
+          const remaining_quantity = total_quantity - actual_allocated_quantity;
+
+          return {
+            item: {
+              ...item.toObject(),
+              total_quantity,
+              remaining_quantity,
+              actual_allocated_quantity
+            },
+            total_available: item.quantity_available,
+            total_allocated: item.quantity_allocated,
+            total_quantity,
+            remaining_quantity,
+            actual_allocated_quantity
+          };
+        } catch (error) {
+          console.error('Error processing item in getStockStatus:', item._id, error);
+          return null; // Skip invalid items
         }
-      ]);
+      }));
 
-      const actual_allocated_quantity = actualAllocated.length > 0 ? actualAllocated[0].total_allocated : 0;
-      
-      // Calculate remaining quantity
-      const remaining_quantity = total_quantity - actual_allocated_quantity;
-
-      return {
-        item: {
-          ...item.toObject(),
-          total_quantity,
-          remaining_quantity,
-          actual_allocated_quantity
-        },
-        total_available: item.quantity_available,
-        total_allocated: item.quantity_allocated,
-        total_quantity,
-        remaining_quantity,
-        actual_allocated_quantity
-      };
-    }));
-
-    return itemsWithTotals;
+      // Filter out null values (invalid items)
+      return itemsWithTotals.filter(item => item !== null);
+    } catch (error) {
+      console.error('Error in getStockStatus:', error);
+      throw error;
+    }
   }
 
   async getOverdueIssuances() {
@@ -425,7 +626,7 @@ class PPERepository {
 
   async getLowStockItems() {
     return await PPEItem.find({
-      quantity_available: { $lte: { $expr: "$reorder_level" } }
+      $expr: { $lte: ["$quantity_available", "$reorder_level"] }
     })
       .populate('category_id', 'category_name description');
   }
@@ -514,6 +715,61 @@ class PPERepository {
       items: statistics,
       overall: overallStats
     };
+  }
+
+  // PPE Assignments
+  async getAllAssignments(filters = {}) {
+    const query = {};
+    
+    if (filters.user_id) {
+      query.user_id = filters.user_id;
+    }
+    if (filters.item_id) {
+      query.item_id = filters.item_id;
+    }
+    if (filters.status) {
+      query.status = filters.status;
+    }
+    if (filters.search) {
+      query.$or = [
+        { 'user_id.full_name': { $regex: filters.search, $options: 'i' } },
+        { 'item_id.item_name': { $regex: filters.search, $options: 'i' } }
+      ];
+    }
+
+    return await PPEIssuance.find(query)
+      .populate('user_id', 'full_name email employee_id')
+      .populate('item_id', 'item_name category_id')
+      .sort({ issued_date: -1 });
+  }
+
+  async getAssignmentById(id) {
+    return await PPEIssuance.findById(id)
+      .populate('user_id', 'full_name email employee_id')
+      .populate('item_id', 'item_name category_id');
+  }
+
+  async createAssignment(assignmentData) {
+    const assignment = new PPEIssuance(assignmentData);
+    return await assignment.save();
+  }
+
+  async updateAssignment(id, assignmentData) {
+    return await PPEIssuance.findByIdAndUpdate(id, assignmentData, { new: true })
+      .populate('user_id', 'full_name email employee_id')
+      .populate('item_id', 'item_name category_id');
+  }
+
+  async deleteAssignment(id) {
+    const result = await PPEIssuance.findByIdAndDelete(id);
+    return !!result;
+  }
+
+  async getUserAssignments(userId) {
+    return await PPEIssuance.find({ user_id: userId })
+      .populate('user_id', 'full_name email employee_id')
+      .populate('item_id', 'item_name category_id')
+      .sort({ issued_date: -1 });
   }
 }
 

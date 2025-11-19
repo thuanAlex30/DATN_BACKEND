@@ -4,7 +4,8 @@ const ROLES = {
   MANAGER: 'manager',
   EMPLOYEE: 'employee',
   TRAINER: 'trainer',
-  SAFETY_OFFICER: 'safety_officer'
+  SAFETY_OFFICER: 'safety_officer',
+  HEADER_DEPARTMENT: 'header_department' // Trưởng bộ phận (Header Department)
 };
 
 const PERMISSIONS = {
@@ -35,7 +36,17 @@ const PERMISSIONS = {
   SAFETY_REPORT_UPDATE: 'safety_report:update',
   SAFETY_REPORT_DELETE: 'safety_report:delete',
   SAFETY_REPORT_LIST: 'safety_report:list',
-  SAFETY_REPORT_APPROVE: 'safety_report:approve'
+  SAFETY_REPORT_APPROVE: 'safety_report:approve',
+
+  // Training management
+  TRAINING_CREATE: 'training:create',
+  TRAINING_READ: 'training:read',
+  TRAINING_UPDATE: 'training:update',
+  TRAINING_DELETE: 'training:delete',
+  TRAINING_LIST: 'training:list',
+  TRAINING_ENROLL: 'training:enroll',
+  TRAINING_ENROLLMENT_READ: 'training_enrollment:read',
+  TRAINING_ENROLLMENT_CREATE: 'training_enrollment:create'
 };
 
 const ROLE_PERMISSIONS = {
@@ -61,7 +72,16 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.SAFETY_REPORT_UPDATE,
     PERMISSIONS.SAFETY_REPORT_DELETE,
     PERMISSIONS.SAFETY_REPORT_LIST,
-    PERMISSIONS.SAFETY_REPORT_APPROVE
+    PERMISSIONS.SAFETY_REPORT_APPROVE,
+    // Training management - full access
+    PERMISSIONS.TRAINING_CREATE,
+    PERMISSIONS.TRAINING_READ,
+    PERMISSIONS.TRAINING_UPDATE,
+    PERMISSIONS.TRAINING_DELETE,
+    PERMISSIONS.TRAINING_LIST,
+    PERMISSIONS.TRAINING_ENROLL,
+    PERMISSIONS.TRAINING_ENROLLMENT_READ,
+    PERMISSIONS.TRAINING_ENROLLMENT_CREATE
   ],
   
   [ROLES.LEADER]: [
@@ -107,7 +127,16 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.SAFETY_REPORT_READ,
     PERMISSIONS.SAFETY_REPORT_UPDATE,
     PERMISSIONS.SAFETY_REPORT_LIST,
-    PERMISSIONS.SAFETY_REPORT_APPROVE
+    PERMISSIONS.SAFETY_REPORT_APPROVE,
+    
+    // Training management - can manage training for their department
+    PERMISSIONS.TRAINING_CREATE,
+    PERMISSIONS.TRAINING_READ,
+    PERMISSIONS.TRAINING_UPDATE,
+    PERMISSIONS.TRAINING_LIST,
+    PERMISSIONS.TRAINING_ENROLL,
+    PERMISSIONS.TRAINING_ENROLLMENT_READ,
+    PERMISSIONS.TRAINING_ENROLLMENT_CREATE
   ],
   
   [ROLES.TRAINER]: [
@@ -143,7 +172,42 @@ const ROLE_PERMISSIONS = {
     // Safety reports - can create and view their own
     PERMISSIONS.SAFETY_REPORT_CREATE,
     PERMISSIONS.SAFETY_REPORT_READ, // Only their own
-    PERMISSIONS.SAFETY_REPORT_LIST // Only their own
+    PERMISSIONS.SAFETY_REPORT_LIST, // Only their own
+    
+    // Training - can view and enroll in training
+    PERMISSIONS.TRAINING_READ,
+    PERMISSIONS.TRAINING_LIST,
+    PERMISSIONS.TRAINING_ENROLL,
+    PERMISSIONS.TRAINING_ENROLLMENT_READ, // Only their own enrollments
+    PERMISSIONS.TRAINING_ENROLLMENT_CREATE // Only for themselves
+  ],
+
+  // Header Department (trưởng bộ phận) - quản lý an toàn & đào tạo trong phạm vi bộ phận
+  [ROLES.HEADER_DEPARTMENT]: [
+    // User read access trong bộ phận
+    PERMISSIONS.USER_READ,
+    PERMISSIONS.USER_LIST,
+
+    // Department read access
+    PERMISSIONS.DEPARTMENT_READ,
+    PERMISSIONS.DEPARTMENT_LIST,
+
+    // Safety reports - xem và phê duyệt trong bộ phận
+    PERMISSIONS.SAFETY_REPORT_CREATE,
+    PERMISSIONS.SAFETY_REPORT_READ,
+    PERMISSIONS.SAFETY_REPORT_UPDATE,
+    PERMISSIONS.SAFETY_REPORT_LIST,
+    PERMISSIONS.SAFETY_REPORT_APPROVE,
+
+    // Training management - quản lý training cho nhân viên trong bộ phận
+    PERMISSIONS.TRAINING_CREATE,
+    PERMISSIONS.TRAINING_READ,
+    PERMISSIONS.TRAINING_UPDATE,
+    PERMISSIONS.TRAINING_DELETE,
+    PERMISSIONS.TRAINING_LIST,
+    PERMISSIONS.TRAINING_ENROLL,
+    PERMISSIONS.TRAINING_ENROLLMENT_READ,
+    PERMISSIONS.TRAINING_ENROLLMENT_CREATE
   ]
 };
 
