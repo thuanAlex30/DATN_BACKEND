@@ -1,6 +1,13 @@
 const mongoose = require('mongoose');
+const { getDefaultTenantObjectId } = require('../utils/tenancy');
 
 const ppeItemSchema = new mongoose.Schema({
+  tenant_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tenant',
+    required: true,
+    default: getDefaultTenantObjectId
+  },
   category_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'PPECategory',
@@ -92,8 +99,10 @@ const ppeItemSchema = new mongoose.Schema({
 });
 
 // Add indexes for better performance
+ppeItemSchema.index({ tenant_id: 1 });
 ppeItemSchema.index({ item_code: 1 }, { unique: true });
 ppeItemSchema.index({ category_id: 1 });
+pperItem? need check patch to ensure spelled? appareled? Wait we need to add index for tenant_id. Continue patch to add.
 ppeItemSchema.index({ item_name: 'text', brand: 'text', model: 'text' });
 ppeItemSchema.index({ expiry_date: 1 });
 ppeItemSchema.index({ condition_status: 1 });

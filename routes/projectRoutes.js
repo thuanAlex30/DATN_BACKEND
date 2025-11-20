@@ -10,7 +10,13 @@ const projectValidation = require('../validations/projectValidation');
 router.use(authMiddleware.authenticate);
 
 // Apply authorization to all project management routes - allow both admin and manager
-router.use(authMiddleware.authorizeRole(['admin', 'manager']));
+// Using new authorizeScope with permission matrix (modules + action)
+router.use(authMiddleware.authorizeScope({ 
+  modules: 'project',
+  action: ['read', 'list'],
+  tenantScope: 'tenant',
+  departmentScope: 'hierarchy'
+}));
 
 // ========== PROJECT MANAGEMENT ROUTES ==========
 // GET /api/v1/projects - Get all projects with filters

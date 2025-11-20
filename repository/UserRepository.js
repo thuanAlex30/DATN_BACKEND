@@ -9,7 +9,7 @@ class UserRepository {
       if (populate.length > 0) {
         populate.forEach(field => {
           if (field === 'role_id') {
-            query = query.populate('role_id', 'role_name permissions is_active');
+            query = query.populate('role_id', 'role_name role_code role_level scope_rules permissions is_active');
           } else if (field === 'department_id') {
             query = query.populate('department_id', 'department_name is_active');
           } else if (field === 'position_id') {
@@ -21,7 +21,7 @@ class UserRepository {
       } else {
         // Default population
         query = query
-          .populate('role_id', 'role_name permissions is_active')
+          .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
           .populate('department_id', 'department_name is_active')
           .populate('position_id', 'position_name level is_active');
       }
@@ -69,7 +69,9 @@ class UserRepository {
 
       const [users, total] = await Promise.all([
         User.find(filter)
-          .populate('role_id', 'role_name permissions is_active')
+          .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active'),
+        User.find(filter)
+          .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
           .populate('department_id', 'department_name is_active')
           .populate('position_id', 'position_name level is_active')
           .sort(sortObj)
@@ -124,7 +126,7 @@ class UserRepository {
         { ...updateData, updated_at: new Date() },
         { new: true, runValidators: true }
       )
-        .populate('role_id', 'role_name permissions is_active')
+        .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
         .populate('department_id', 'department_name is_active')
         .populate('position_id', 'position_name level is_active');
     } catch (error) {
@@ -145,13 +147,13 @@ class UserRepository {
       if (populate.length > 0) {
         populate.forEach(field => {
           if (field === 'role_id') {
-            query = query.populate('role_id', 'role_name permissions is_active');
+            query = query.populate('role_id', 'role_name role_code role_level scope_rules permissions is_active');
           } else {
             query = query.populate(field);
           }
         });
       } else {
-        query = query.populate('role_id', 'role_name permissions is_active');
+        query = query.populate('role_id', 'role_name role_code role_level scope_rules permissions is_active');
       }
       
       return await query.exec();
@@ -209,7 +211,7 @@ class UserRepository {
       const sortObj = { [sort_by]: sortOrder };
 
       const result = await User.find(filter)
-        .populate('role_id', 'role_name permissions is_active')
+        .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
         .populate('position_id', 'position_name level is_active')
         .sort(sortObj)
         .exec();
@@ -234,7 +236,7 @@ class UserRepository {
       const sortObj = { [sort_by]: sortOrder };
 
       return await User.find(filter)
-        .populate('role_id', 'role_name permissions is_active')
+        .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
         .populate('department_id', 'department_name is_active')
         .sort(sortObj)
         .exec();
@@ -274,7 +276,7 @@ class UserRepository {
       }
 
       const users = await User.find(filter)
-        .populate('role_id', 'role_name permissions')
+        .populate('role_id', 'role_name role_code role_level scope_rules permissions')
         .populate('position_id', 'position_name level')
         .sort({ full_name: 1 })
         .exec();
@@ -580,7 +582,7 @@ class UserRepository {
       const sortObj = { [sort_by]: sortOrder };
 
       return await User.find(filter)
-        .populate('role_id', 'role_name permissions is_active')
+        .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
         .populate('department_id', 'department_name is_active')
         .populate('position_id', 'position_name level is_active')
         .sort(sortObj)

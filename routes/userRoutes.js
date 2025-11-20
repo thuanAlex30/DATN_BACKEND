@@ -30,39 +30,39 @@ router.use(AuthMiddleware.authenticate);
 // Get users with pagination and filters
 router.get('/', 
   ValidationMiddleware.validateQuery(userValidation.query),
-  AuthMiddleware.authorize(PERMISSIONS.USER_LIST),
+  AuthMiddleware.authorizeScope({ modules: 'user', action: 'list', tenantScope: 'tenant' }),
   UserController.getUsers
 );
 
 // Get all active users (for dropdowns, etc.)
 router.get('/all', 
-  AuthMiddleware.authorize(PERMISSIONS.USER_LIST),
+  AuthMiddleware.authorizeScope({ modules: 'user', action: 'list', tenantScope: 'tenant' }),
   UserController.getAllUsers
 );
 
 // Get potential managers
 router.get('/managers', 
-  AuthMiddleware.authorize(PERMISSIONS.USER_LIST),
+  AuthMiddleware.authorizeScope({ modules: 'user', action: 'read', tenantScope: 'tenant' }),
   UserController.getPotentialManagers
 );
 
 // Get user statistics
 router.get('/stats', 
-  AuthMiddleware.authorize(PERMISSIONS.USER_LIST),
+  AuthMiddleware.authorizeScope({ modules: 'user', action: 'read', tenantScope: 'tenant' }),
   UserController.getUserStats
 );
 
 // Create new user
 router.post('/', 
   ValidationMiddleware.validateBody(userValidation.create),
-  AuthMiddleware.authorize(PERMISSIONS.USER_CREATE),
+  AuthMiddleware.authorizeScope({ modules: 'user', action: 'create', tenantScope: 'tenant' }),
   UserController.createUser
 );
 
 // Import users from Excel
 router.post('/import', 
   upload.single('file'),
-  AuthMiddleware.authorize(PERMISSIONS.USER_CREATE),
+  AuthMiddleware.authorizeScope({ modules: 'user', action: 'create', tenantScope: 'tenant' }),
   (req, res, next) => {
     // Set timeout for this specific route
     req.setTimeout(300000); // 5 minutes
@@ -74,7 +74,7 @@ router.post('/import',
 // Get user by ID
 router.get('/:id', 
   ValidationMiddleware.validateParams(userValidation.id),
-  AuthMiddleware.authorize(PERMISSIONS.USER_READ),
+  AuthMiddleware.authorizeScope({ modules: 'user', action: 'read', tenantScope: 'tenant' }),
   UserController.getUserById
 );
 
@@ -84,14 +84,14 @@ router.put('/:id',
     params: userValidation.id,
     body: userValidation.update
   }),
-  AuthMiddleware.authorize(PERMISSIONS.USER_UPDATE),
+  AuthMiddleware.authorizeScope({ modules: 'user', action: 'update', tenantScope: 'tenant' }),
   UserController.updateUser
 );
 
 // Delete user (soft delete)
 router.delete('/:id', 
   ValidationMiddleware.validateParams(userValidation.id),
-  AuthMiddleware.authorize(PERMISSIONS.USER_DELETE),
+  AuthMiddleware.authorizeScope({ modules: 'user', action: 'delete', tenantScope: 'tenant' }),
   UserController.deleteUser
 );
 

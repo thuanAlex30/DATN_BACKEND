@@ -1,6 +1,14 @@
 const mongoose = require('mongoose');
 
+const { getDefaultTenantObjectId } = require('../utils/tenancy');
+
 const trainingAssignmentSchema = new mongoose.Schema({
+    tenant_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tenant',
+        required: true,
+        default: getDefaultTenantObjectId
+    },
     course_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Course',
@@ -42,7 +50,8 @@ trainingAssignmentSchema.index({ course_id: 1 });
 trainingAssignmentSchema.index({ department_id: 1 });
 trainingAssignmentSchema.index({ assigned_by: 1 });
 trainingAssignmentSchema.index({ status: 1 });
-trainingAssignmentSchema.index({ course_id: 1, department_id: 1 }, { unique: true });
+trainingAssignmentSchema.index({ tenant_id: 1 });
+trainingAssignmentSchema.index({ course_id: 1, department_id: 1, tenant_id: 1 }, { unique: true });
 
 // Virtual populate
 trainingAssignmentSchema.virtual('course', {

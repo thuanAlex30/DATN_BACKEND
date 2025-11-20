@@ -147,7 +147,7 @@ router.get('/:id',
  */
 router.post('/',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     createNotificationValidation,
     NotificationController.createNotification
 );
@@ -159,7 +159,7 @@ router.post('/',
  */
 router.post('/bulk',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     createBulkNotificationsValidation,
     NotificationController.createBulkNotifications
 );
@@ -205,7 +205,7 @@ router.delete('/:id',
  */
 router.delete('/cleanup/expired',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     NotificationController.cleanupExpiredNotifications
 );
 
@@ -238,7 +238,7 @@ router.get('/settings',
  */
 router.put('/settings',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     updateSettingsValidation,
     ValidationMiddleware.validate,
     NotificationController.updateNotificationSettings

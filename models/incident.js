@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { getDefaultTenantObjectId } = require('../utils/tenancy');
 
 const IncidentHistorySchema = new mongoose.Schema({
   action: String,
@@ -8,6 +9,12 @@ const IncidentHistorySchema = new mongoose.Schema({
 });
 
 const IncidentSchema = new mongoose.Schema({
+  tenant_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tenant',
+    required: true,
+    default: getDefaultTenantObjectId
+  },
   title: { type: String, required: true },
   description: String,
   images: [String],
@@ -21,5 +28,7 @@ const IncidentSchema = new mongoose.Schema({
   histories: [IncidentHistorySchema],
   createdAt: { type: Date, default: Date.now }
 });
+
+IncidentSchema.index({ tenant_id: 1 });
 
 module.exports = mongoose.model('Incident', IncidentSchema);

@@ -1,6 +1,13 @@
 const mongoose = require('mongoose');
+const { getDefaultTenantObjectId } = require('../utils/tenancy');
 require('./employee');
 const departmentSchema = new mongoose.Schema({
+  tenant_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tenant',
+    required: true,
+    default: getDefaultTenantObjectId
+  },
   department_name: {
     type: String,
     required: true,
@@ -26,6 +33,7 @@ const departmentSchema = new mongoose.Schema({
 });
 
 // Indexes
+departmentSchema.index({ tenant_id: 1 });
 departmentSchema.index({ department_name: 1 });
 departmentSchema.index({ is_active: 1 });
 

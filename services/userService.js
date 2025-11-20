@@ -424,7 +424,7 @@ class UserService {
             const position = positions.find(pos => pos._id.toString() === positionId.toString());
             if (position) {
               if (position.position_name.toLowerCase() === 'manager') {
-                roleId = roleMap.get('leader');
+                roleId = roleMap.get('manager');
               } else {
                 roleId = roleMap.get('employee');
               }
