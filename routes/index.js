@@ -25,6 +25,7 @@ const projectChangeRequestRoutes = require('./projectChangeRequestRoutes');
 const projectStatusReportRoutes = require('./projectStatusReportRoutes');
 const qualityCheckpointRoutes = require('./qualityCheckpointRoutes');
 const projectCommunicationRoutes = require('./projectCommunicationRoutes');
+const chatbotRoutes = require('./chatbotRoutes');
 
 
 console.log('Loading kafkaMonitor...');
@@ -90,7 +91,8 @@ router.get('/health', (req, res) => {
         projectChangeRequests: '/api/project-change-requests',
         projectStatusReports: '/api/project-status-reports',
         qualityCheckpoints: '/api/quality-checkpoints',
-        projectCommunication: '/api/project-communication'
+        projectCommunication: '/api/project-communication',
+        chatbot: '/api/chatbot'
       }
     });
   } catch (error) {
@@ -156,6 +158,7 @@ router.use('/project-change-requests', projectChangeRequestRoutes);
 router.use('/project-status-reports', projectStatusReportRoutes);
 router.use('/quality-checkpoints', qualityCheckpointRoutes);
 router.use('/project-communication', projectCommunicationRoutes);
+router.use('/chatbot', chatbotRoutes);
 
 // Global 404 handler for API routes
 router.use('*', (req, res) => {
