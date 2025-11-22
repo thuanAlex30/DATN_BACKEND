@@ -1,7 +1,7 @@
-export declare type CommonReaderOptions = {
+export type CommonReaderOptions = {
     timeoutMillis?: number;
 };
-export declare type CollectionOptions = CommonReaderOptions;
-export declare type ShutdownOptions = CommonReaderOptions;
-export declare type ForceFlushOptions = CommonReaderOptions;
+export type CollectionOptions = CommonReaderOptions;
+export type ShutdownOptions = CommonReaderOptions;
+export type ForceFlushOptions = CommonReaderOptions;
 //# sourceMappingURL=types.d.ts.map
