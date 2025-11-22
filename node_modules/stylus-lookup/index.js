@@ -45,7 +45,7 @@ module.exports = function({ dependency, filename, directory } = {}) {
 
   if (fs.existsSync(sameDir)) return sameDir;
 
-  debug('resolved file does not exist');
+  debug(`resolved file does not exist: ${sameDir}`);
 
   // Check for dependency/index.styl file
   const indexFile = path.join(path.resolve(fileDir, dependency), 'index.styl');
@@ -53,7 +53,7 @@ module.exports = function({ dependency, filename, directory } = {}) {
 
   if (fs.existsSync(indexFile)) return indexFile;
 
-  debug('resolved file does not exist');
+  debug(`resolved file does not exist: ${indexFile}`);
   debug('could not resolve the dependency');
 
   return '';
