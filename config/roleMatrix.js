@@ -177,7 +177,7 @@ const ROLE_DEFINITIONS = [
     description: 'Huấn luyện viên nội bộ',
     scope_rules: {
       tenant_scope: 'tenant',
-      department_scope: 'assigned',
+      department_scope: 'own',
       data_scope: 'department',
       can_assign_lower_roles: false
     },
@@ -195,7 +195,7 @@ const ROLE_DEFINITIONS = [
     description: 'Cán bộ an toàn',
     scope_rules: {
       tenant_scope: 'tenant',
-      department_scope: 'assigned',
+      department_scope: 'own',
       data_scope: 'department',
       can_assign_lower_roles: false
     },
@@ -214,7 +214,7 @@ const ROLE_DEFINITIONS = [
     description: 'Nhân viên kho PPE',
     scope_rules: {
       tenant_scope: 'tenant',
-      department_scope: 'assigned',
+      department_scope: 'own',
       data_scope: 'department',
       can_assign_lower_roles: false
     },
@@ -232,7 +232,7 @@ const ROLE_DEFINITIONS = [
     description: 'Nhân viên bảo trì',
     scope_rules: {
       tenant_scope: 'tenant',
-      department_scope: 'assigned',
+      department_scope: 'own',
       data_scope: 'department',
       can_assign_lower_roles: false
     },
