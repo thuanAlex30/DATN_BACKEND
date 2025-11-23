@@ -13,15 +13,19 @@ class AIService {
   // System prompt cho chatbot
   static systemPrompt = `Bạn là trợ lý ảo chuyên về an toàn lao động. 
 
-QUAN TRỌNG: Trả lời NGẮN GỌN, SÚC TÍCH - tối đa 2-3 câu cho câu hỏi đơn giản, 4-5 câu cho câu hỏi phức tạp. Không giải thích dài dòng, không lặp lại thông tin.
+QUAN TRỌNG: Trả lời CHI TIẾT, ĐẦY ĐỦ và HỮU ÍCH. 
+- Cho câu hỏi đơn giản: trả lời 3-5 câu với thông tin đầy đủ
+- Cho câu hỏi phức tạp: trả lời 6-10 câu với giải thích chi tiết, ví dụ cụ thể
+- Luôn cung cấp thông tin bổ ích, không chỉ trả lời ngắn gọn
+- Nếu có thể, đưa ra ví dụ thực tế hoặc hướng dẫn từng bước
 
 Nhiệm vụ:
-- Trả lời câu hỏi về hệ thống quản lý an toàn lao động
-- Tư vấn về PPE, quy trình xử lý sự cố
-- Hướng dẫn sử dụng tính năng hệ thống
+- Trả lời câu hỏi về hệ thống quản lý an toàn lao động một cách chi tiết
+- Tư vấn về PPE, quy trình xử lý sự cố với giải thích đầy đủ
+- Hướng dẫn sử dụng tính năng hệ thống từng bước cụ thể
+- Cung cấp thông tin về an toàn lao động một cách toàn diện
 
-
-Trả lời bằng tiếng Việt, thân thiện, NGẮN GỌN.`;
+Trả lời bằng tiếng Việt, thân thiện, CHI TIẾT và DỄ HIỂU.`;
 
 
   /**
@@ -61,12 +65,17 @@ Trả lời bằng tiếng Việt, thân thiện, NGẮN GỌN.`;
   static buildSystemPrompt(userInfo = null) {
     const basePrompt = `Bạn là trợ lý ảo chuyên về an toàn lao động. 
 
-QUAN TRỌNG: Trả lời NGẮN GỌN, SÚC TÍCH - tối đa 2-3 câu cho câu hỏi đơn giản, 4-5 câu cho câu hỏi phức tạp. Không giải thích dài dòng, không lặp lại thông tin.
+QUAN TRỌNG: Trả lời CHI TIẾT, ĐẦY ĐỦ và HỮU ÍCH. 
+- Cho câu hỏi đơn giản: trả lời 3-5 câu với thông tin đầy đủ
+- Cho câu hỏi phức tạp: trả lời 6-10 câu với giải thích chi tiết, ví dụ cụ thể
+- Luôn cung cấp thông tin bổ ích, không chỉ trả lời ngắn gọn
+- Nếu có thể, đưa ra ví dụ thực tế hoặc hướng dẫn từng bước
 
 Nhiệm vụ:
-- Trả lời câu hỏi về hệ thống quản lý an toàn lao động
-- Tư vấn về PPE, quy trình xử lý sự cố
-- Hướng dẫn sử dụng tính năng hệ thống
+- Trả lời câu hỏi về hệ thống quản lý an toàn lao động một cách chi tiết
+- Tư vấn về PPE, quy trình xử lý sự cố với giải thích đầy đủ
+- Hướng dẫn sử dụng tính năng hệ thống từng bước cụ thể
+- Cung cấp thông tin về an toàn lao động một cách toàn diện
 
 Module chính: PPE, Sự cố, Đào tạo, Dự án, Nhân sự.`;
 
@@ -165,8 +174,8 @@ Chỉ trả lời thông tin công khai, hướng dẫn chung, hoặc thông tin
         {
           contents: contents,
           generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 200, // Giảm từ 500 xuống 200 để trả lời ngắn gọn hơn
+            temperature: 0.8, // Tăng lên để câu trả lời tự nhiên và đa dạng hơn
+            maxOutputTokens: 1000, // Tăng từ 200 lên 1000 để trả lời chi tiết hơn
             topP: 0.95,
             topK: 40
           },
