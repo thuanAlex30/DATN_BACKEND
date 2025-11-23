@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { getDefaultTenantObjectId } = require('../utils/tenancy');
 
 const sessionStatusSchema = new mongoose.Schema({
     status_code: {
@@ -19,6 +20,17 @@ const sessionStatusSchema = new mongoose.Schema({
 const SessionStatus = mongoose.model('SessionStatus', sessionStatusSchema);
 
 const trainingSessionSchema = new mongoose.Schema({
+    tenant_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tenant',
+        required: true,
+        default: getDefaultTenantObjectId
+    },
+    department_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Department',
+        required: true
+    },
     course_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Course',
@@ -72,8 +84,10 @@ trainingSessionSchema.pre('save', function(next) {
 
 // Add indexes
 trainingSessionSchema.index({ course_id: 1 });
+trainingSessionSchema.index({ department_id: 1 });
 trainingSessionSchema.index({ status_code: 1 });
 trainingSessionSchema.index({ start_time: 1 });
+trainingSessionSchema.index({ tenant_id: 1 });
 
 const TrainingSession = mongoose.model('TrainingSession', trainingSessionSchema);
 

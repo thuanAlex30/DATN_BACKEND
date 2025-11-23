@@ -32,7 +32,7 @@ router.get('/bson-test',
 // Reset error statistics endpoint (admin only)
 router.post('/reset-error-stats',
   authMiddleware.authenticate,
-  authMiddleware.authorizeRole(['admin']),
+  authMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
   HealthController.resetErrorStats
 );
 

@@ -22,6 +22,8 @@
     "service:audit": "node scripts/start-audit-service.js",
     "service:analytics": "node scripts/start-analytics-service.js",
     "service:event-aggregator": "node scripts/start-event-aggregator.js",
+    "db:seed:tenants": "node scripts/seed-tenants-and-roles.js",
+    "db:seed:full": "node scripts/seed-full-tenants.js",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
@@ -73,6 +75,7 @@
     "eslint-plugin-import": "^2.28.1",
     "eslint-plugin-jest": "^27.4.2",
     "jest": "^29.6.2",
+    "mongodb-memory-server": "^10.3.0",
     "nodemon": "^3.0.1",
     "supertest": "^6.3.3"
   },

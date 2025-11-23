@@ -1,7 +1,14 @@
 const mongoose = require('mongoose');
 const HashUtils = require('../utils/hash');
+const { getDefaultTenantObjectId } = require('../utils/tenancy');
 
 const userSchema = new mongoose.Schema({
+  tenant_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tenant',
+    required: true,
+    default: getDefaultTenantObjectId
+  },
   username: { 
     type: String, 
     required: true, 
@@ -69,6 +76,7 @@ const userSchema = new mongoose.Schema({
 });
 
 // Add indexes
+userSchema.index({ tenant_id: 1 });
 userSchema.index({ username: 1 });
 userSchema.index({ email: 1 });
 userSchema.index({ role_id: 1 });
