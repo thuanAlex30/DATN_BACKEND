@@ -8,16 +8,22 @@ class ChatbotController {
   // Gửi tin nhắn và nhận phản hồi
   static sendMessage = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { message, sessionId } = req.body;
-    const userId = req.user._id;
     
-    if (!message || !message.trim()) {
-      return ApiResponse.error(res, 'Tin nhắn không được để trống', 400);
-    }
+    // Xử lý trường hợp chưa đăng nhập (cho landing page)
+    const userId = req.user?._id || null;
+    
+    // Lấy thông tin user để kiểm tra quyền (có thể null nếu chưa đăng nhập)
+    const userInfo = {
+      userId: userId,
+      role: req.user?.role?.role_name || null,
+      isAuthenticated: !!req.user, // true nếu đã đăng nhập, false nếu chưa
+      permissions: req.user?.permissions || {}
+    };
     
     // Tạo sessionId mới nếu chưa có
     const currentSessionId = sessionId || uuidv4();
     
-    const result = await chatbotService.processMessage(userId, message, currentSessionId);
+    const result = await chatbotService.processMessage(userId, message, currentSessionId, userInfo);
     
     if (result.success) {
       return ApiResponse.success(res, {
@@ -33,10 +39,6 @@ class ChatbotController {
   static getChatHistory = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { sessionId } = req.query;
     const userId = req.user._id;
-    
-    if (!sessionId) {
-      return ApiResponse.error(res, 'SessionId là bắt buộc', 400);
-    }
     
     const result = await chatbotService.getChatHistory(userId, sessionId);
     
@@ -54,10 +56,6 @@ class ChatbotController {
   static clearChatHistory = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { sessionId } = req.body;
     const userId = req.user._id;
-    
-    if (!sessionId) {
-      return ApiResponse.error(res, 'SessionId là bắt buộc', 400);
-    }
     
     const result = await chatbotService.clearChatHistory(userId, sessionId);
     

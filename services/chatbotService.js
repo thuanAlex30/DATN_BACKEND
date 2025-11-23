@@ -101,7 +101,7 @@ class ChatbotService {
   };
 
   // Phân tích câu hỏi và tìm câu trả lời phù hợp
-  static async processMessage(userId, message, sessionId) {
+  static async processMessage(userId, message, sessionId, userInfo = null) {
     try {
       const lowerMessage = message.toLowerCase().trim();
       
@@ -113,8 +113,8 @@ class ChatbotService {
         // Tìm kiếm trong knowledge base
         let response = this.findAnswerInKnowledgeBase(userMsg.toLowerCase().trim());
         
-        // Nếu không tìm thấy, tìm kiếm trong database
-        if (!response) {
+        // Nếu không tìm thấy và user đã đăng nhập, tìm kiếm trong database
+        if (!response && userId) {
           response = await this.searchInDatabase(userId, userMsg.toLowerCase().trim());
         }
         
@@ -129,7 +129,7 @@ class ChatbotService {
       // Thử sử dụng AI service trước, fallback về knowledge base nếu không khả dụng
       let response;
       try {
-        response = await AIService.getAIResponse(message, chatHistory, fallbackHandler);
+        response = await AIService.getAIResponse(message, chatHistory, fallbackHandler, userInfo);
       } catch (error) {
         console.log('AI service error, using fallback:', error.message);
         // Nếu AI service lỗi, sử dụng fallback
@@ -158,7 +158,12 @@ class ChatbotService {
   // Lấy lịch sử chat để truyền vào AI service
   static async getChatHistoryForAI(userId, sessionId) {
     try {
-      const chatHistory = await ChatHistory.findOne({ userId, sessionId })
+      // Nếu chưa đăng nhập, chỉ lấy lịch sử theo sessionId
+      const query = userId 
+        ? { userId, sessionId }
+        : { sessionId, userId: { $exists: false } }; // Session không có userId
+      
+      const chatHistory = await ChatHistory.findOne(query)
         .sort({ 'messages.timestamp': 1 });
       
       if (chatHistory && chatHistory.messages) {
@@ -209,8 +214,13 @@ class ChatbotService {
     return null;
   }
 
-  // Tìm kiếm trong database
+  // Tìm kiếm trong database (chỉ khi đã đăng nhập)
   static async searchInDatabase(userId, message) {
+    // Không tìm kiếm trong database nếu chưa đăng nhập
+    if (!userId) {
+      return null;
+    }
+    
     try {
       // Tìm kiếm sự cố của user
       if (message.includes('sự cố của tôi') || message.includes('incident của tôi')) {
@@ -348,11 +358,16 @@ class ChatbotService {
   // Lưu lịch sử chat
   static async saveChatHistory(userId, sessionId, userMessage, assistantResponse) {
     try {
-      let chatHistory = await ChatHistory.findOne({ userId, sessionId });
+      // Nếu chưa đăng nhập, lưu với userId null hoặc không có userId
+      const query = userId 
+        ? { userId, sessionId }
+        : { sessionId, userId: { $exists: false } };
+      
+      let chatHistory = await ChatHistory.findOne(query);
       
       if (!chatHistory) {
         chatHistory = new ChatHistory({
-          userId,
+          userId: userId || undefined, // Không lưu userId nếu null
           sessionId,
           messages: []
         });
