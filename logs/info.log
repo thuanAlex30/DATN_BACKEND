@@ -141,3 +141,56 @@
 {"timestamp":"2025-11-22T03:55:09.107Z","level":"INFO","message":"User connected","metadata":{"socketId":"rHPaNWThnEbY2CSnAAAt"},"pid":21104,"hostname":"MSI"}
 {"timestamp":"2025-11-22T03:55:09.109Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"rHPaNWThnEbY2CSnAAAt"},"pid":21104,"hostname":"MSI"}
 {"timestamp":"2025-11-22T03:56:44.581Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":21104,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:46:20.808Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:46:20.825Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:52:12.580Z","level":"INFO","message":"User connected","metadata":{"socketId":"uZeD3_aKgUz5cXvCAAAC"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:52:12.583Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e74630e9b140cd73d320cb","role":"manager","socketId":"uZeD3_aKgUz5cXvCAAAC"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:52:17.527Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e74630e9b140cd73d320cb","socketId":"uZeD3_aKgUz5cXvCAAAC"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:52:17.545Z","level":"INFO","message":"User connected","metadata":{"socketId":"zvoClPXWR69dCaa1AAAF"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:52:17.547Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e74630e9b140cd73d320cb","role":"manager","socketId":"zvoClPXWR69dCaa1AAAF"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:52:20.919Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e74630e9b140cd73d320cb","socketId":"zvoClPXWR69dCaa1AAAF"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:52:25.217Z","level":"INFO","message":"User connected","metadata":{"socketId":"g9o_89majlxZJBbMAAAK"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:52:25.221Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e74630e9b140cd73d320cb","role":"manager","socketId":"g9o_89majlxZJBbMAAAK"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:52:55.672Z","level":"INFO","message":"User connected","metadata":{"socketId":"KNb4jF9kejkBcJUiAAAN"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:52:55.674Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e74630e9b140cd73d320cb","role":"manager","socketId":"KNb4jF9kejkBcJUiAAAN"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:53:01.809Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e74630e9b140cd73d320cb","socketId":"KNb4jF9kejkBcJUiAAAN"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:53:01.825Z","level":"INFO","message":"User connected","metadata":{"socketId":"2wfahNjZHDhqMGycAAAQ"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:53:01.826Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"2wfahNjZHDhqMGycAAAQ"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:53:02.001Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","socketId":"2wfahNjZHDhqMGycAAAQ"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:53:02.079Z","level":"INFO","message":"User connected","metadata":{"socketId":"pyPA1p3_q8mQS8sAAAAT"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:53:02.082Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"pyPA1p3_q8mQS8sAAAAT"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:53:02.319Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","socketId":"pyPA1p3_q8mQS8sAAAAT"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:53:02.781Z","level":"INFO","message":"User connected","metadata":{"socketId":"RP1MlWOqdWMcvl4OAAAW"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:53:02.783Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"RP1MlWOqdWMcvl4OAAAW"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:53:02.798Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e74630e9b140cd73d320cb","socketId":"g9o_89majlxZJBbMAAAK"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:53:06.586Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","socketId":"RP1MlWOqdWMcvl4OAAAW"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:53:06.929Z","level":"INFO","message":"User connected","metadata":{"socketId":"ODlESegi0UIR-p-6AAAZ"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:53:06.931Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"ODlESegi0UIR-p-6AAAZ"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:01.713Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","socketId":"ODlESegi0UIR-p-6AAAZ"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:02.234Z","level":"INFO","message":"User connected","metadata":{"socketId":"CrR0IeawRuIAr9QPAAAe"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:02.237Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"CrR0IeawRuIAr9QPAAAe"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:05.708Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","socketId":"CrR0IeawRuIAr9QPAAAe"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:05.726Z","level":"INFO","message":"User connected","metadata":{"socketId":"hrV9Ix-G5S2iDOgqAAAh"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:05.729Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"hrV9Ix-G5S2iDOgqAAAh"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:06.732Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","socketId":"hrV9Ix-G5S2iDOgqAAAh"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:07.236Z","level":"INFO","message":"User connected","metadata":{"socketId":"T7VAANs6x8jnrW9HAAAm"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:07.238Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"T7VAANs6x8jnrW9HAAAm"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:16.244Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","socketId":"T7VAANs6x8jnrW9HAAAm"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:16.576Z","level":"INFO","message":"User connected","metadata":{"socketId":"h9AosgXebXPnCRx4AAAp"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:16.577Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"h9AosgXebXPnCRx4AAAp"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:21.126Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","socketId":"h9AosgXebXPnCRx4AAAp"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:21.439Z","level":"INFO","message":"User connected","metadata":{"socketId":"lrawK8-CSWloki-UAAAs"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:21.440Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"lrawK8-CSWloki-UAAAs"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:29.324Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","socketId":"lrawK8-CSWloki-UAAAs"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:29.645Z","level":"INFO","message":"User connected","metadata":{"socketId":"EpNLTe3kycOaynluAAAv"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T10:54:29.646Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"EpNLTe3kycOaynluAAAv"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T11:08:09.823Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","socketId":"EpNLTe3kycOaynluAAAv"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T11:08:10.259Z","level":"INFO","message":"User connected","metadata":{"socketId":"PXK1n6ijOytKWKh9AAAy"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T11:08:10.261Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"PXK1n6ijOytKWKh9AAAy"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T11:08:14.167Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","socketId":"PXK1n6ijOytKWKh9AAAy"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T11:08:14.489Z","level":"INFO","message":"User connected","metadata":{"socketId":"yxtwkWUOR55yYnASAAA1"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T11:08:14.491Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"yxtwkWUOR55yYnASAAA1"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T11:09:00.008Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","socketId":"yxtwkWUOR55yYnASAAA1"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T11:09:00.313Z","level":"INFO","message":"User connected","metadata":{"socketId":"AeCM4Bby6890YpDbAAA4"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T11:09:00.314Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"AeCM4Bby6890YpDbAAA4"},"pid":23484,"hostname":"MSI"}
+{"timestamp":"2025-11-23T11:09:16.522Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":23484,"hostname":"MSI"}
