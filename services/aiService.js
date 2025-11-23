@@ -199,13 +199,52 @@ Chỉ trả lời thông tin công khai, hướng dẫn chung, hoặc thông tin
 
           if (response.data && response.data.candidates && response.data.candidates.length > 0) {
             const candidate = response.data.candidates[0];
-            if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
-              console.log(`Gemini API thành công với ${apiVersion} và model ${this.geminiModel}`);
-              return candidate.content.parts[0].text.trim();
+            
+            // Kiểm tra xem message có bị block bởi safety settings không
+            if (candidate.finishReason === 'SAFETY' || candidate.finishReason === 'RECITATION') {
+              const safetyMessage = candidate.finishReason === 'SAFETY' 
+                ? 'Nội dung của bạn có thể vi phạm chính sách an toàn của Gemini. Vui lòng diễn đạt lại câu hỏi một cách lịch sự hơn.'
+                : 'Nội dung của bạn có thể vi phạm chính sách bản quyền. Vui lòng diễn đạt lại câu hỏi.';
+              console.warn(`Gemini API: Message bị block vì ${candidate.finishReason}`);
+              throw new Error(safetyMessage);
             }
+            
+            // Kiểm tra xem có content không
+            if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+              const text = candidate.content.parts[0].text;
+              if (text && text.trim()) {
+                console.log(`Gemini API thành công với ${apiVersion} và model ${this.geminiModel}`);
+                return text.trim();
+              }
+            }
+            
+            // Log chi tiết response structure để debug
+            console.error('Gemini API: Invalid response structure:', JSON.stringify({
+              hasCandidates: !!response.data.candidates,
+              candidatesLength: response.data.candidates?.length,
+              candidateFinishReason: candidate?.finishReason,
+              candidateContent: !!candidate?.content,
+              candidateParts: candidate?.content?.parts?.length,
+              safetyRatings: candidate?.safetyRatings
+            }, null, 2));
+            
+            // Nếu có finishReason khác, trả về thông báo phù hợp
+            if (candidate.finishReason) {
+              throw new Error(`Gemini API: Response bị chặn với lý do: ${candidate.finishReason}`);
+            }
+            
+            throw new Error('Gemini API: Response không chứa nội dung văn bản hợp lệ');
           }
 
-          throw new Error('Invalid response from Gemini API');
+          // Trường hợp không có candidates trong response
+          console.error('Gemini API: Response không có candidates:', JSON.stringify({
+            hasData: !!response.data,
+            hasCandidates: !!response.data?.candidates,
+            candidatesLength: response.data?.candidates?.length,
+            fullResponse: response.data
+          }, null, 2));
+          
+          throw new Error('Gemini API: Response không chứa candidates');
         } catch (versionError) {
           // Nếu lỗi 404, thử version tiếp theo
           if (versionError.response?.status === 404 && apiVersions.indexOf(apiVersion) < apiVersions.length - 1) {
@@ -219,24 +258,47 @@ Chỉ trả lời thông tin công khai, hướng dẫn chung, hoặc thông tin
       }
       
       // Nếu đã thử hết các version mà vẫn lỗi
-      throw lastError || new Error('Invalid response from Gemini API');
+      if (lastError) {
+        throw lastError;
+      }
+      throw new Error('Gemini API: Không thể kết nối đến service sau khi thử tất cả các API version');
     } catch (error) {
-      console.error('Gemini API Error:', error.response?.data || error.message);
+      // Log chi tiết lỗi để debug
+      if (error.response) {
+        console.error('Gemini API Error - Status:', error.response.status);
+        console.error('Gemini API Error - Data:', JSON.stringify(error.response.data, null, 2));
+      } else {
+        console.error('Gemini API Error:', error.message);
+        // Nếu error message có chứa thông tin về safety hoặc finishReason, giữ nguyên
+        if (error.message.includes('SAFETY') || error.message.includes('bị block') || error.message.includes('vi phạm')) {
+          throw error; // Giữ nguyên error message đã được xử lý
+        }
+      }
       
+      // Xử lý các mã lỗi HTTP cụ thể
       if (error.response?.status === 400) {
-        throw new Error('Gemini API request không hợp lệ');
+        const errorMsg = error.response.data?.error?.message || 'Request không hợp lệ';
+        throw new Error(`Gemini API: ${errorMsg}`);
       } else if (error.response?.status === 404) {
         const errorMsg = error.response?.data?.error?.message || 'Model không tồn tại';
         throw new Error(`Gemini API: ${errorMsg}. Model hiện tại: ${this.geminiModel}. Vui lòng kiểm tra lại model name trong .env`);
       } else if (error.response?.status === 401 || error.response?.status === 403) {
-        throw new Error('Gemini API key không hợp lệ hoặc không có quyền truy cập');
+        const errorMsg = error.response?.data?.error?.message || 'API key không hợp lệ hoặc không có quyền truy cập';
+        throw new Error(`Gemini API: ${errorMsg}`);
       } else if (error.response?.status === 429) {
-        throw new Error('Đã vượt quá giới hạn API. Vui lòng thử lại sau.');
+        throw new Error('Gemini API: Đã vượt quá giới hạn API. Vui lòng thử lại sau.');
       } else if (error.code === 'ECONNABORTED') {
-        throw new Error('Kết nối đến AI service bị timeout');
+        throw new Error('Gemini API: Kết nối đến AI service bị timeout');
       }
       
-      throw error;
+      // Nếu error đã có message rõ ràng (từ phần xử lý response ở trên), giữ nguyên
+      if (error.message && !error.message.includes('Invalid response from Gemini API')) {
+        throw error;
+      }
+      
+      // Mặc định throw error với message chi tiết hơn
+      const errorMessage = error.message || 'Lỗi không xác định từ Gemini API';
+      throw new Error(`Gemini API: ${errorMessage}`);
     }
   }
 
