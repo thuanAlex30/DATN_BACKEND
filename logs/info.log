@@ -141,3 +141,23 @@
 {"timestamp":"2025-11-22T03:55:09.107Z","level":"INFO","message":"User connected","metadata":{"socketId":"rHPaNWThnEbY2CSnAAAt"},"pid":21104,"hostname":"MSI"}
 {"timestamp":"2025-11-22T03:55:09.109Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"rHPaNWThnEbY2CSnAAAt"},"pid":21104,"hostname":"MSI"}
 {"timestamp":"2025-11-22T03:56:44.581Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":21104,"hostname":"MSI"}
+{"timestamp":"2025-11-22T04:47:37.447Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":17108,"hostname":"MSI"}
+{"timestamp":"2025-11-22T04:47:37.465Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":17108,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:52:30.753Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":25012,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:52:30.844Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":25012,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:53:02.329Z","level":"INFO","message":"User connected","metadata":{"socketId":"k715T5kfzUHwkumJAAAE"},"pid":25012,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:53:02.334Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"k715T5kfzUHwkumJAAAE"},"pid":25012,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:54:03.999Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":24476,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:54:04.017Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":24476,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:54:40.009Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":4716,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:54:40.026Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":4716,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:54:51.477Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","socketId":"k715T5kfzUHwkumJAAAE"},"pid":25012,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:54:52.117Z","level":"INFO","message":"User connected","metadata":{"socketId":"t-Av82kcxm97X8ayAAAI"},"pid":25012,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:54:52.119Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"t-Av82kcxm97X8ayAAAI"},"pid":25012,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:55:12.205Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":20652,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:55:12.230Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":20652,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:56:04.935Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":24652,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:56:04.952Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":24652,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:56:05.611Z","level":"INFO","message":"User connected","metadata":{"socketId":"DOHJOY3RPrnk09koAAAB"},"pid":24652,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:56:05.614Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","role":"admin","socketId":"DOHJOY3RPrnk09koAAAB"},"pid":24652,"hostname":"MSI"}
+{"timestamp":"2025-11-23T00:58:10.779Z","level":"INFO","message":"User disconnected","metadata":{"userId":"68e75dfadcfd0d51f3698e2d","socketId":"DOHJOY3RPrnk09koAAAB"},"pid":24652,"hostname":"MSI"}
