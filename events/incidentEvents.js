@@ -534,6 +534,51 @@ class IncidentEvents {
       throw error;
     }
   }
+
+  /**
+   * Emit incident escalated event
+   * @param {Object} incident - Incident data
+   * @param {Object} escalation - Escalation data
+   * @param {Object} escalator - Escalator information
+   * @returns {Promise<Object>} Event result
+   */
+  static async emitIncidentEscalated(incident, escalation, escalator) {
+    try {
+      const eventData = {
+        incidentId: incident._id,
+        incidentType: incident.type,
+        severity: incident.severity,
+        status: incident.status,
+        location: incident.location,
+        description: incident.description,
+        escalationId: escalation._id,
+        escalationLevel: escalation.escalation_level,
+        reason: escalation.reason,
+        departmentId: escalation.department_id,
+        escalatedAt: escalation.created_at
+      };
+
+      const metadata = {
+        userId: escalator._id,
+        userRole: escalator.role,
+        userFullName: escalator.full_name,
+        timestamp: new Date().toISOString(),
+        source: 'incident-service'
+      };
+
+      const result = await kafkaProducer.sendIncidentEvent(
+        eventTypes.INCIDENT_ESCALATED,
+        eventData,
+        metadata
+      );
+
+      console.log(`✅ Incident escalated event emitted: ${result.eventId}`);
+      return result;
+    } catch (error) {
+      console.error('❌ Error emitting incident escalated event:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = IncidentEvents;

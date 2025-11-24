@@ -1,5 +1,6 @@
 const Incident = require('../models/incident');
 const User = require('../models/user');
+const { IncidentEscalation } = require('../models/incidentEscalation');
 const { sendEmail, sendSMS, sendNotification } = require('../utils/notifications'); // giả sử có các hàm này
 const websocketService = require('../services/websocketService');
 const IncidentEvents = require('../events/incidentEvents');
@@ -190,6 +191,137 @@ exports.getIncidentById = async (req, res) => {
     const incident = await Incident.findById(id).populate('createdBy assignedTo histories.performedBy');
     if (!incident) return res.status(404).json({ error: 'Không tìm thấy sự cố' });
     res.json(incident);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// 9. Escalate incident (Department Header)
+exports.escalateIncident = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { escalation_level, reason } = req.body;
+    
+    // Validate escalation_level
+    const validLevels = ['SITE', 'DEPARTMENT', 'COMPANY', 'EXTERNAL'];
+    if (!escalation_level || !validLevels.includes(escalation_level)) {
+      return res.status(400).json({ error: 'escalation_level phải là một trong: SITE, DEPARTMENT, COMPANY, EXTERNAL' });
+    }
+    
+    // Find incident
+    const incident = await Incident.findById(id);
+    if (!incident) {
+      return res.status(404).json({ error: 'Không tìm thấy sự cố' });
+    }
+    
+    // Check if user is Department Header and has department_id
+    if (!req.user.department_id) {
+      return res.status(403).json({ error: 'Bạn phải thuộc một department để escalate sự cố' });
+    }
+    
+    // Check tenant scope
+    if (req.user.tenant_id && incident.tenant_id.toString() !== req.user.tenant_id.toString()) {
+      return res.status(403).json({ error: 'Không có quyền truy cập sự cố này' });
+    }
+    
+    // Create escalation record
+    const escalation = new IncidentEscalation({
+      tenant_id: req.user.tenant_id || incident.tenant_id,
+      department_id: req.user.department_id,
+      incident_id: incident._id,
+      escalation_level,
+      reason: reason || '',
+      status: 'OPEN',
+      created_by: req.user._id
+    });
+    await escalation.save();
+    
+    // Update incident history
+    incident.histories.push({ 
+      action: 'Escalate', 
+      performedBy: req.user._id, 
+      note: `Escalate lên ${escalation_level}: ${reason || 'Không có lý do'}` 
+    });
+    await incident.save();
+    
+    // Send notifications based on escalation level
+    if (escalation_level === 'COMPANY' || escalation_level === 'EXTERNAL') {
+      await sendEmail('Company Admin', `Sự cố ${incident.incidentId} đã được escalate lên ${escalation_level}`);
+      await sendNotification('Company Admin', `Sự cố ${incident.incidentId} đã được escalate lên ${escalation_level}`);
+    } else if (escalation_level === 'SITE') {
+      await sendEmail('Site Manager', `Sự cố ${incident.incidentId} đã được escalate lên ${escalation_level}`);
+    }
+    
+    // Emit WebSocket event
+    try {
+      websocketService.emitToAll('incident_escalated', {
+        incident: {
+          id: incident._id,
+          incidentId: incident.incidentId,
+          title: incident.title,
+          severity: incident.severity,
+          status: incident.status
+        },
+        escalation: {
+          id: escalation._id,
+          escalationLevel: escalation.escalation_level,
+          reason: escalation.reason,
+          status: escalation.status
+        },
+        escalator: {
+          id: req.user._id,
+          full_name: req.user.full_name,
+          role: req.user.role
+        },
+        timestamp: new Date()
+      });
+    } catch (wsError) {
+      console.error('Failed to emit WebSocket event:', wsError);
+    }
+    
+    // Emit Kafka event
+    try {
+      await IncidentEvents.emitIncidentEscalated(incident, escalation, req.user);
+    } catch (eventError) {
+      console.error('Failed to emit incident escalated event:', eventError);
+    }
+    
+    res.status(201).json({
+      incident,
+      escalation
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// 10. Get escalations for an incident
+exports.getIncidentEscalations = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const incident = await Incident.findById(id);
+    if (!incident) {
+      return res.status(404).json({ error: 'Không tìm thấy sự cố' });
+    }
+    
+    // Check tenant scope
+    if (req.user.tenant_id && incident.tenant_id.toString() !== req.user.tenant_id.toString()) {
+      return res.status(403).json({ error: 'Không có quyền truy cập sự cố này' });
+    }
+    
+    const escalations = await IncidentEscalation.find({ incident_id: id })
+      .populate({
+        path: 'created_by',
+        select: 'full_name email role_id',
+        populate: {
+          path: 'role_id',
+          select: 'role_name role_code'
+        }
+      })
+      .populate('resolved_by', 'full_name email')
+      .sort({ created_at: -1 });
+    
+    res.json(escalations);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

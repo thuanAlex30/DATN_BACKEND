@@ -9,13 +9,32 @@ class TenantController {
       page: req.query.page || 1,
       limit: req.query.limit || 10,
       search: req.query.search || '',
-      status: req.query.status,
+      status: req.query.status?.toLowerCase(),
       sort_by: req.query.sort_by || 'created_at',
       sort_order: req.query.sort_order || 'desc'
     };
 
     const result = await TenantRepository.findAll(options);
-    return ApiResponse.success(res, result, 'Tenants retrieved successfully');
+    
+    // Map tenants to frontend format
+    const mappedTenants = result.tenants.map(tenant => {
+      const tenantObj = tenant.toObject ? tenant.toObject() : tenant;
+      return {
+        ...tenantObj,
+        tenant_name: tenantObj.tenant_name || tenantObj.name,
+        contact_name: tenantObj.contact_name || tenantObj.contact?.name,
+        contact_email: tenantObj.contact_email || tenantObj.contact?.email,
+        contact_phone: tenantObj.contact_phone || tenantObj.contact?.phone,
+        subscription_plan: tenantObj.subscription_plan || tenantObj.subscription?.plan,
+        subscription_expires_at: tenantObj.subscription_expires_at || tenantObj.subscription?.expires_at,
+        status: tenantObj.status?.toUpperCase() || 'ACTIVE'
+      };
+    });
+    
+    return ApiResponse.success(res, {
+      tenants: mappedTenants,
+      pagination: result.pagination
+    }, 'Tenants retrieved successfully');
   });
 
   // Get tenant by ID
@@ -34,15 +53,38 @@ class TenantController {
   static createTenant = ErrorMiddleware.asyncHandler(async (req, res) => {
     const tenantData = req.body;
 
+    // Map frontend format to backend format
+    const mappedData = {
+      tenant_code: tenantData.tenant_code || tenantData.tax_code?.toLowerCase().replace(/\s+/g, '_'),
+      name: tenantData.tenant_name || tenantData.name,
+      tenant_name: tenantData.tenant_name || tenantData.name,
+      tax_code: tenantData.tax_code,
+      status: tenantData.status?.toLowerCase() || 'active',
+      contact_name: tenantData.contact_name,
+      contact_email: tenantData.contact_email,
+      contact_phone: tenantData.contact_phone,
+      subscription_plan: tenantData.subscription_plan,
+      subscription_expires_at: tenantData.subscription_expires_at,
+      contact: {
+        name: tenantData.contact_name,
+        email: tenantData.contact_email,
+        phone: tenantData.contact_phone
+      },
+      subscription: {
+        plan: tenantData.subscription_plan,
+        expires_at: tenantData.subscription_expires_at
+      }
+    };
+
     // Check if tenant code already exists
-    if (tenantData.tenant_code) {
-      const codeExists = await TenantRepository.existsByCode(tenantData.tenant_code);
+    if (mappedData.tenant_code) {
+      const codeExists = await TenantRepository.existsByCode(mappedData.tenant_code);
       if (codeExists) {
         return ApiResponse.error(res, 'Tenant code already exists', 409);
       }
     }
 
-    const tenant = await TenantRepository.create(tenantData);
+    const tenant = await TenantRepository.create(mappedData);
     return ApiResponse.success(res, tenant, 'Tenant created successfully', 201);
   });
 
@@ -56,15 +98,52 @@ class TenantController {
       return ApiResponse.notFound(res, 'Tenant not found');
     }
 
+    // Map frontend format to backend format
+    const mappedData = {};
+    if (updateData.tenant_name !== undefined) {
+      mappedData.name = updateData.tenant_name;
+      mappedData.tenant_name = updateData.tenant_name;
+    }
+    if (updateData.tax_code !== undefined) mappedData.tax_code = updateData.tax_code;
+    if (updateData.contact_name !== undefined) {
+      mappedData.contact_name = updateData.contact_name;
+      if (!mappedData.contact) mappedData.contact = {};
+      mappedData.contact.name = updateData.contact_name;
+    }
+    if (updateData.contact_email !== undefined) {
+      mappedData.contact_email = updateData.contact_email;
+      if (!mappedData.contact) mappedData.contact = {};
+      mappedData.contact.email = updateData.contact_email;
+    }
+    if (updateData.contact_phone !== undefined) {
+      mappedData.contact_phone = updateData.contact_phone;
+      if (!mappedData.contact) mappedData.contact = {};
+      mappedData.contact.phone = updateData.contact_phone;
+    }
+    if (updateData.subscription_plan !== undefined) {
+      mappedData.subscription_plan = updateData.subscription_plan;
+      if (!mappedData.subscription) mappedData.subscription = {};
+      mappedData.subscription.plan = updateData.subscription_plan;
+    }
+    if (updateData.subscription_expires_at !== undefined) {
+      mappedData.subscription_expires_at = updateData.subscription_expires_at;
+      if (!mappedData.subscription) mappedData.subscription = {};
+      mappedData.subscription.expires_at = updateData.subscription_expires_at;
+    }
+    if (updateData.status !== undefined) {
+      mappedData.status = updateData.status.toLowerCase();
+    }
+
     // Check if new tenant code already exists (excluding current tenant)
     if (updateData.tenant_code) {
       const codeExists = await TenantRepository.existsByCode(updateData.tenant_code, id);
       if (codeExists) {
         return ApiResponse.error(res, 'Tenant code already exists', 409);
       }
+      mappedData.tenant_code = updateData.tenant_code;
     }
 
-    const tenant = await TenantRepository.updateById(id, updateData);
+    const tenant = await TenantRepository.updateById(id, mappedData);
     return ApiResponse.success(res, tenant, 'Tenant updated successfully');
   });
 
