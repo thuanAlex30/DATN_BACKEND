@@ -1,7 +1,7 @@
 const express = require('express');
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
-// const roleRoutes = require('./roleRoutes');
+const roleRoutes = require('./roleRoutes');
 const departmentRoutes = require('./departmentRoutes');
 const positionRoutes = require('./positionRoutes');
 const systemLogRoutes = require('./systemLogRoutes');
@@ -139,7 +139,7 @@ router.get('/health', (req, res) => {
 // API routes
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
-// router.use('/roles', roleRoutes);
+router.use('/roles', roleRoutes);
 router.use('/departments', departmentRoutes);
 router.use('/positions', positionRoutes);
 router.use('/system-logs', systemLogRoutes);
