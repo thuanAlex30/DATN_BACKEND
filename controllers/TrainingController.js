@@ -545,15 +545,84 @@ class TrainingController {
     static submitTraining = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { sessionId } = req.params;
         const userId = req.user._id || req.user.id;
-        const { answers, score, completionTime } = req.body;
+        const { answers, completionTime } = req.body;
         
-        const result = await trainingService.submitTraining(sessionId, userId, answers, score, completionTime);
+        const result = await trainingService.submitTraining(sessionId, userId, answers, completionTime);
         
         if (result.success) {
-            // Emit training completion event
+            // Emit training submission event (not completion, waiting for grading)
             try {
                 const metadata = {
                     userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                // You can create a new event for submission if needed
+                // await TrainingEvents.emitTrainingSubmission(result.data, metadata);
+            } catch (error) {
+                console.error('❌ Error emitting training submission event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    // ========== Admin Grading Controllers ==========
+    static getSubmissionsForGrading = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const filters = req.query;
+        const result = await trainingService.getSubmissionsForGrading(filters);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getSubmissionForGrading = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { submissionId } = req.params;
+        const result = await trainingService.getSubmissionForGrading(submissionId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static gradeTrainingSubmission = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { submissionId } = req.params;
+        const adminId = req.user._id || req.user.id;
+        const { score, passed, admin_comments } = req.body;
+        
+        // Validate required fields
+        if (score === undefined || passed === undefined) {
+            return ApiResponse.error(res, 'Score and passed status are required', 400);
+        }
+
+        // Validate score range
+        if (score < 0 || score > 100) {
+            return ApiResponse.error(res, 'Score must be between 0 and 100', 400);
+        }
+        
+        const result = await trainingService.gradeTrainingSubmission(
+            submissionId, 
+            adminId, 
+            score, 
+            passed, 
+            admin_comments
+        );
+        
+        if (result.success) {
+            // Emit training completion event after grading
+            try {
+                const metadata = {
+                    userId: adminId,
                     userRole: req.user?.role,
                     userFullName: req.user?.full_name,
                     ipAddress: req.ip,
@@ -593,6 +662,52 @@ class TrainingController {
                 // Don't fail the request if event emission fails
             }
             
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    // ========== Additional Helper Controllers ==========
+    static getAvailableSessionsForCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const userId = req.query.userId || req.user?._id || req.user?.id;
+        
+        const result = await trainingService.getAvailableSessionsForCourse(courseId, userId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getUserEnrollments = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { userId } = req.params;
+        const filters = {
+            status: req.query.status
+        };
+        
+        // If userId in params doesn't match current user, check permissions
+        const currentUserId = req.user?._id || req.user?.id;
+        if (userId !== currentUserId?.toString() && req.user?.role !== 'admin' && req.user?.role !== 'manager') {
+            return ApiResponse.error(res, 'Unauthorized to view other user enrollments', 403);
+        }
+        
+        const result = await trainingService.getUserEnrollments(userId, filters);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static getImprovedCourseStats = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const result = await trainingService.getImprovedCourseStats(courseId);
+        
+        if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
         } else {
             return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);

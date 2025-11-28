@@ -1,5 +1,6 @@
 const trainingRepository = require('../repository/TrainingRepository');
 const { createResponse } = require('../utils/response');
+const trainingUtils = require('../utils/trainingUtils');
 
 class TrainingService {
     // ========== Course Set Services ==========
@@ -261,6 +262,51 @@ class TrainingService {
 
     async createTrainingEnrollment(enrollmentData) {
         try {
+            const { session_id, user_id } = enrollmentData;
+
+            // Validate session exists
+            const session = await trainingRepository.getTrainingSessionById(session_id);
+            if (!session) {
+                return createResponse(404, 'Training session not found');
+            }
+
+            // Check if user already enrolled
+            const existingEnrollment = await trainingRepository.getEnrollmentByUserAndSession(user_id, session_id);
+            if (existingEnrollment) {
+                return createResponse(400, 'User is already enrolled in this session');
+            }
+
+            // Check session capacity
+            const enrollmentCount = await trainingRepository.getSessionEnrollmentCount(session_id);
+            if (enrollmentCount >= session.max_participants) {
+                return createResponse(400, 'Session is full');
+            }
+
+            // Check prerequisites (if course has prerequisite_course_ids field)
+            const course = await trainingRepository.getCourseById(session.course_id);
+            if (course) {
+                const prereqCheck = await trainingUtils.validatePrerequisites(
+                    course,
+                    user_id,
+                    async (userId, courseId) => {
+                        return await trainingRepository.hasUserCompletedCourse(userId, courseId);
+                    }
+                );
+
+                if (!prereqCheck.isValid) {
+                    return createResponse(400, prereqCheck.message, {
+                        missingPrerequisites: prereqCheck.missingPrerequisites
+                    });
+                }
+            }
+
+            // Check session status
+            const sessionStatus = trainingUtils.getSessionStatus(session);
+            if (sessionStatus === 'COMPLETED' || sessionStatus === 'CANCELLED') {
+                return createResponse(400, `Cannot enroll in ${sessionStatus.toLowerCase()} session`);
+            }
+
+            // Create enrollment
             const enrollment = await trainingRepository.createTrainingEnrollment(enrollmentData);
             return createResponse(201, 'Training enrollment created successfully', enrollment);
         } catch (error) {
@@ -479,17 +525,7 @@ class TrainingService {
     // ========== Session Status Management ==========
     async updateSessionStatus(session) {
         try {
-            const now = new Date();
-            let newStatus = session.status_code;
-
-            // Update status based on time
-            if (session.status_code === 'SCHEDULED' && now >= session.start_time && now <= session.end_time) {
-                newStatus = 'ONGOING';
-            } else if (session.status_code === 'ONGOING' && now > session.end_time) {
-                newStatus = 'COMPLETED';
-            } else if (session.status_code === 'SCHEDULED' && now > session.end_time) {
-                newStatus = 'COMPLETED';
-            }
+            const newStatus = trainingUtils.getSessionStatus(session);
 
             // Update session if status changed
             if (newStatus !== session.status_code) {
@@ -498,6 +534,36 @@ class TrainingService {
 
             return newStatus;
         } catch (error) {
+            throw error;
+        }
+    }
+
+    // ========== Auto Update All Session Statuses ==========
+    async updateAllSessionStatuses() {
+        try {
+            const { shouldBeOngoing, shouldBeCompleted } = await trainingRepository.getSessionsNeedingStatusUpdate();
+            
+            let updatedCount = 0;
+
+            // Update sessions to ONGOING
+            for (const session of shouldBeOngoing) {
+                await trainingRepository.updateTrainingSession(session._id, { status_code: 'ONGOING' });
+                updatedCount++;
+            }
+
+            // Update sessions to COMPLETED
+            for (const session of shouldBeCompleted) {
+                await trainingRepository.updateTrainingSession(session._id, { status_code: 'COMPLETED' });
+                updatedCount++;
+            }
+
+            return {
+                updatedCount,
+                ongoingUpdated: shouldBeOngoing.length,
+                completedUpdated: shouldBeCompleted.length
+            };
+        } catch (error) {
+            console.error('Error updating session statuses:', error);
             throw error;
         }
     }
@@ -546,7 +612,17 @@ class TrainingService {
             }
 
             // Get questions for the training
-            const questions = await trainingRepository.getQuestionsByBankId(questionBank._id);
+            let questions = await trainingRepository.getQuestionsByBankId(questionBank._id);
+
+            // Shuffle questions for security (each attempt gets different order)
+            // Optional: Limit number of questions if needed
+            questions = trainingUtils.shuffleQuestions(questions);
+
+            // Sanitize questions (remove correct_answer)
+            const sanitizedQuestions = trainingUtils.sanitizeQuestions(questions);
+
+            // Calculate time remaining
+            const timeUntilEnd = trainingUtils.getTimeDifference(new Date(), session.end_time);
 
             return createResponse(200, 'Training started successfully', {
                 session: {
@@ -560,7 +636,7 @@ class TrainingService {
                     _id: course._id,
                     course_name: course.course_name,
                     description: course.description,
-                    duration_minutes: course.duration_minutes
+                    duration_hours: course.duration_hours
                 },
                 enrollment: {
                     _id: enrollment._id,
@@ -569,25 +645,22 @@ class TrainingService {
                 },
                 questionBank: {
                     _id: questionBank._id,
-                    bank_name: questionBank.bank_name,
-                    total_questions: questions.length
+                    name: questionBank.name,
+                    total_questions: sanitizedQuestions.length
                 },
-                questions: questions.map(q => ({
-                    _id: q._id,
-                    content: q.content,
-                    question_type: q.question_type,
-                    options: q.options,
-                    difficulty_level: q.difficulty_level,
-                    points: q.points
-                    // Note: correct_answer is not sent to frontend for security
-                }))
+                questions: sanitizedQuestions,
+                timeRemaining: {
+                    seconds: timeUntilEnd.seconds,
+                    minutes: timeUntilEnd.minutes,
+                    hours: timeUntilEnd.hours
+                }
             });
         } catch (error) {
             throw error;
         }
     }
 
-    async submitTraining(sessionId, userId, answers, score, completionTime) {
+    async submitTraining(sessionId, userId, answers, completionTime) {
         try {
             // Check if user is enrolled in this session
             const enrollment = await trainingRepository.getEnrollmentByUserAndSession(userId, sessionId);
@@ -600,8 +673,93 @@ class TrainingService {
                 return createResponse(400, `Cannot submit training. Current status: ${enrollment.status}`);
             }
 
-            // Get questions to validate answers and calculate correct score
+            // Check if already submitted
+            const existingSubmission = await trainingRepository.getSubmissionByEnrollment(enrollment._id);
+            if (existingSubmission) {
+                return createResponse(400, 'You have already submitted this training. Please wait for grading.');
+            }
+
+            // Get session to validate
             const session = await trainingRepository.getTrainingSessionById(sessionId);
+            if (!session) {
+                return createResponse(404, 'Training session not found');
+            }
+
+            // Create submission (lưu answers, chờ admin chấm)
+            const submission = await trainingRepository.createSubmission({
+                enrollment_id: enrollment._id,
+                session_id: sessionId,
+                user_id: userId,
+                answers: answers,
+                submitted_at: completionTime || new Date(),
+                status: 'submitted'
+            });
+
+            // Update enrollment status to indicate submitted (vẫn giữ 'enrolled' nhưng có submission)
+            // Note: Có thể thêm field submitted_at vào enrollment nếu cần
+
+            return createResponse(200, 'Training submitted successfully. Please wait for grading.', {
+                submission: {
+                    id: submission._id,
+                    submitted_at: submission.submitted_at,
+                    status: submission.status
+                },
+                message: 'Bài làm của bạn đã được gửi. Vui lòng chờ admin chấm điểm.'
+            });
+        } catch (error) {
+            if (error.code === 11000) {
+                return createResponse(400, 'You have already submitted this training');
+            }
+            throw error;
+        }
+    }
+
+    // ========== Admin Grading Services ==========
+    
+    /**
+     * Get submissions waiting for grading
+     */
+    async getSubmissionsForGrading(filters = {}) {
+        try {
+            const submissions = await trainingRepository.getSubmissionsForGrading(filters);
+            return createResponse(200, 'Submissions retrieved successfully', submissions);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Get submission details for grading
+     */
+    async getSubmissionForGrading(submissionId) {
+        try {
+            const submission = await trainingRepository.getSubmissionForGrading(submissionId);
+            if (!submission) {
+                return createResponse(404, 'Submission not found');
+            }
+            return createResponse(200, 'Submission retrieved successfully', submission);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Grade a training submission (Admin only)
+     */
+    async gradeTrainingSubmission(submissionId, adminId, score, passed, adminComments = null) {
+        try {
+            // Get submission
+            const submission = await trainingRepository.getSubmissionById(submissionId);
+            if (!submission) {
+                return createResponse(404, 'Submission not found');
+            }
+
+            if (submission.status === 'graded') {
+                return createResponse(400, 'This submission has already been graded');
+            }
+
+            // Get questions to calculate score details
+            const session = await trainingRepository.getTrainingSessionById(submission.session_id);
             if (!session) {
                 return createResponse(404, 'Training session not found');
             }
@@ -613,40 +771,52 @@ class TrainingService {
 
             const questions = await trainingRepository.getQuestionsByBankId(questionBank._id);
             
-            // Calculate actual score based on correct answers
-            let actualScore = 0;
-            let correctAnswers = 0;
+            // Calculate score details for reference
+            const scoreDetails = trainingUtils.calculateScore(questions, submission.answers);
             
-            questions.forEach(question => {
-                const userAnswer = answers[question._id];
-                if (userAnswer === question.correct_answer) {
-                    actualScore += question.points;
-                    correctAnswers++;
-                }
+            // Update submission
+            const updatedSubmission = await trainingRepository.updateSubmission(submissionId, {
+                status: 'graded',
+                graded_at: new Date(),
+                graded_by: adminId,
+                admin_comments: adminComments
             });
-
-            const totalPossibleScore = questions.reduce((sum, q) => sum + q.points, 0);
-            const passThreshold = 70; // 70% to pass
-            const passed = (actualScore / totalPossibleScore) * 100 >= passThreshold;
 
             // Update enrollment with results
-            const updatedEnrollment = await trainingRepository.updateTrainingEnrollment(enrollment._id, {
+            const updatedEnrollment = await trainingRepository.updateTrainingEnrollment(submission.enrollment_id, {
                 status: passed ? 'completed' : 'failed',
-                score: actualScore,
+                score: score,
                 passed: passed,
-                completion_date: completionTime
+                completion_date: new Date()
             });
 
-            return createResponse(200, 'Training submitted successfully', {
+            // Send notification to user
+            try {
+                const websocketService = require('../services/websocketService');
+                await websocketService.emitToUser(submission.user_id, 'training_graded', {
+                    type: 'training_graded',
+                    enrollment: {
+                        id: updatedEnrollment._id,
+                        status: updatedEnrollment.status,
+                        score: updatedEnrollment.score,
+                        passed: updatedEnrollment.passed
+                    },
+                    message: passed 
+                        ? `Chúc mừng! Bạn đã đậu khóa học với điểm số ${score}`
+                        : `Bạn đã hoàn thành khóa học với điểm số ${score}. Vui lòng làm lại để đạt yêu cầu.`
+                });
+            } catch (notifError) {
+                console.error('Error sending notification:', notifError);
+                // Don't fail if notification fails
+            }
+
+            return createResponse(200, 'Training submission graded successfully', {
+                submission: updatedSubmission,
                 enrollment: updatedEnrollment,
-                results: {
-                    totalQuestions: questions.length,
-                    correctAnswers: correctAnswers,
-                    score: actualScore,
-                    totalPossibleScore: totalPossibleScore,
-                    percentage: Math.round((actualScore / totalPossibleScore) * 100),
-                    passed: passed,
-                    passThreshold: passThreshold
+                scoreDetails: {
+                    totalQuestions: scoreDetails.totalQuestions,
+                    correctAnswers: scoreDetails.correctAnswers,
+                    percentage: scoreDetails.percentage
                 }
             });
         } catch (error) {
@@ -674,8 +844,7 @@ class TrainingService {
             }
 
             // Check if session is still active
-            const now = new Date();
-            if (now > session.end_time) {
+            if (trainingUtils.isSessionExpired(session.end_time)) {
                 return createResponse(400, 'Training session has expired. Cannot retake.');
             }
 
@@ -699,14 +868,18 @@ class TrainingService {
                 return createResponse(404, 'Question bank not found');
             }
 
-            const questions = await trainingRepository.getQuestionsByBankId(questionBank._id);
+            let questions = await trainingRepository.getQuestionsByBankId(questionBank._id);
+            
+            // Shuffle questions for retake
+            questions = trainingUtils.shuffleQuestions(questions);
+            const sanitizedQuestions = trainingUtils.sanitizeQuestions(questions);
             
             // Return training data for retake
             return createResponse(200, 'Training retake initiated successfully', {
                 session: session,
                 course: course,
                 enrollment: updatedEnrollment,
-                questions: questions,
+                questions: sanitizedQuestions,
                 questionBank: questionBank,
                 retakeInfo: {
                     previousScore: enrollment.score,
@@ -715,6 +888,50 @@ class TrainingService {
                 }
             });
         } catch (error) {
+            throw error;
+        }
+    }
+
+    // ========== Additional Helper Services ==========
+    
+    /**
+     * Get available sessions for a course
+     */
+    async getAvailableSessionsForCourse(courseId, userId = null) {
+        try {
+            const sessions = await trainingRepository.getAvailableSessionsForCourse(courseId, userId);
+            return createResponse(200, 'Available sessions retrieved successfully', sessions);
+        } catch (error) {
+            if (error.message === 'Course not found') {
+                return createResponse(404, error.message);
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Get user's enrollments with details
+     */
+    async getUserEnrollments(userId, filters = {}) {
+        try {
+            const enrollments = await trainingRepository.getUserEnrollments(userId, filters);
+            return createResponse(200, 'User enrollments retrieved successfully', enrollments);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Get improved course statistics
+     */
+    async getImprovedCourseStats(courseId) {
+        try {
+            const stats = await trainingRepository.getImprovedCourseStats(courseId);
+            return createResponse(200, 'Course statistics retrieved successfully', stats);
+        } catch (error) {
+            if (error.message === 'Course not found') {
+                return createResponse(404, error.message);
+            }
             throw error;
         }
     }

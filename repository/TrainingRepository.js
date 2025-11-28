@@ -3,6 +3,7 @@ const Course = require('../models/course');
 const { TrainingSession, SessionStatus } = require('../models/trainingSession');
 const TrainingEnrollment = require('../models/trainingEnrollment');
 const { QuestionBank, Question } = require('../models/questionBank');
+const TrainingSubmission = require('../models/trainingSubmission');
 const mongoose = require('mongoose');
 
 class TrainingRepository {
@@ -482,6 +483,104 @@ class TrainingRepository {
         };
     }
 
+    /**
+     * Get improved course statistics with detailed enrollment stats
+     * This is a separate method to avoid conflicts
+     */
+    async getImprovedCourseStats(courseId) {
+        const course = await Course.findById(courseId);
+        if (!course) {
+            throw new Error('Course not found');
+        }
+
+        // Get all sessions for this course
+        const sessions = await TrainingSession.find({ course_id: courseId });
+        const sessionIds = sessions.map(s => s._id);
+
+        if (sessionIds.length === 0) {
+            return {
+                course: {
+                    _id: course._id,
+                    course_name: course.course_name,
+                    description: course.description
+                },
+                sessions: {
+                    total: 0,
+                    scheduled: 0,
+                    ongoing: 0,
+                    completed: 0
+                },
+                enrollments: {
+                    total: 0,
+                    completed: 0,
+                    passed: 0,
+                    failed: 0,
+                    completionRate: 0,
+                    passRate: 0,
+                    averageScore: 0
+                }
+            };
+        }
+
+        // Get enrollment stats
+        const totalEnrollments = await TrainingEnrollment.countDocuments({
+            session_id: { $in: sessionIds }
+        });
+
+        const completedEnrollments = await TrainingEnrollment.countDocuments({
+            session_id: { $in: sessionIds },
+            status: 'completed'
+        });
+
+        const passedEnrollments = await TrainingEnrollment.countDocuments({
+            session_id: { $in: sessionIds },
+            status: 'completed',
+            passed: true
+        });
+
+        const failedEnrollments = await TrainingEnrollment.countDocuments({
+            session_id: { $in: sessionIds },
+            status: 'failed'
+        });
+
+        // Calculate average score
+        const enrollmentsWithScores = await TrainingEnrollment.find({
+            session_id: { $in: sessionIds },
+            score: { $exists: true, $ne: null }
+        }).select('score');
+
+        const averageScore = enrollmentsWithScores.length > 0
+            ? enrollmentsWithScores.reduce((sum, e) => sum + (e.score || 0), 0) / enrollmentsWithScores.length
+            : 0;
+
+        return {
+            course: {
+                _id: course._id,
+                course_name: course.course_name,
+                description: course.description
+            },
+            sessions: {
+                total: sessions.length,
+                scheduled: sessions.filter(s => s.status_code === 'SCHEDULED').length,
+                ongoing: sessions.filter(s => s.status_code === 'ONGOING').length,
+                completed: sessions.filter(s => s.status_code === 'COMPLETED').length
+            },
+            enrollments: {
+                total: totalEnrollments,
+                completed: completedEnrollments,
+                passed: passedEnrollments,
+                failed: failedEnrollments,
+                completionRate: totalEnrollments > 0 
+                    ? (completedEnrollments / totalEnrollments) * 100 
+                    : 0,
+                passRate: completedEnrollments > 0
+                    ? (passedEnrollments / completedEnrollments) * 100
+                    : 0,
+                averageScore: Math.round(averageScore * 100) / 100
+            }
+        };
+    }
+
     async getSessionEnrollmentStats(sessionId) {
         if (!mongoose.Types.ObjectId.isValid(sessionId)) {
             throw new Error('Training session not found');
@@ -593,8 +692,298 @@ class TrainingRepository {
 
     async getQuestionsByBankId(bankId) {
         return await Question.find({ bank_id: bankId })
-            .select('content question_type options correct_answer difficulty_level points')
+            .select('content question_type options correct_answer difficulty_level points explanation')
             .sort({ difficulty_level: 1, points: -1 });
+    }
+
+    // ========== Additional Helper Methods ==========
+    
+    /**
+     * Get enrollment count for a session
+     */
+    async getSessionEnrollmentCount(sessionId) {
+        return await TrainingEnrollment.countDocuments({ 
+            session_id: sessionId,
+            status: { $ne: 'cancelled' }
+        });
+    }
+
+    /**
+     * Check if user has completed a specific course
+     * Returns true if user has at least one completed enrollment for any session of this course
+     */
+    async hasUserCompletedCourse(userId, courseId) {
+        // Get all sessions for this course
+        const sessions = await TrainingSession.find({ course_id: courseId });
+        const sessionIds = sessions.map(s => s._id);
+
+        if (sessionIds.length === 0) {
+            return false;
+        }
+
+        // Check if user has completed enrollment for any session of this course
+        const completedEnrollment = await TrainingEnrollment.findOne({
+            user_id: userId,
+            session_id: { $in: sessionIds },
+            status: 'completed',
+            passed: true
+        });
+
+        return !!completedEnrollment;
+    }
+
+    /**
+     * Get available sessions for a course
+     * Returns sessions that are scheduled, not full, and user hasn't enrolled
+     */
+    async getAvailableSessionsForCourse(courseId, userId = null) {
+        const sessions = await TrainingSession.find({
+            course_id: courseId,
+            status_code: 'SCHEDULED'
+        }).populate('course_id', 'course_name');
+
+        const availableSessions = [];
+
+        for (const session of sessions) {
+            // Check enrollment count
+            const enrollmentCount = await this.getSessionEnrollmentCount(session._id);
+            const isFull = enrollmentCount >= session.max_participants;
+
+            if (isFull) {
+                continue;
+            }
+
+            // If userId provided, check if user already enrolled
+            if (userId) {
+                const existingEnrollment = await TrainingEnrollment.findOne({
+                    user_id: userId,
+                    session_id: session._id
+                });
+
+                if (existingEnrollment) {
+                    continue;
+                }
+            }
+
+            availableSessions.push({
+                ...session.toObject(),
+                enrollmentCount,
+                availableSlots: session.max_participants - enrollmentCount
+            });
+        }
+
+        return availableSessions;
+    }
+
+    /**
+     * Get user's enrollments with course and session details
+     */
+    async getUserEnrollments(userId, filters = {}) {
+        const query = { user_id: userId };
+        
+        if (filters.status) {
+            query.status = filters.status;
+        }
+
+        return await TrainingEnrollment.find(query)
+            .populate({
+                path: 'session_id',
+                populate: {
+                    path: 'course_id',
+                    select: 'course_name description duration_hours is_mandatory validity_months'
+                }
+            })
+            .sort({ enrolled_at: -1 });
+    }
+
+
+    /**
+     * Get sessions that need status update
+     */
+    async getSessionsNeedingStatusUpdate() {
+        const now = new Date();
+        
+        // Get sessions that should be ONGOING
+        const shouldBeOngoing = await TrainingSession.find({
+            status_code: 'SCHEDULED',
+            start_time: { $lte: now },
+            end_time: { $gte: now }
+        });
+
+        // Get sessions that should be COMPLETED
+        const shouldBeCompleted = await TrainingSession.find({
+            status_code: { $in: ['SCHEDULED', 'ONGOING'] },
+            end_time: { $lt: now }
+        });
+
+        return {
+            shouldBeOngoing,
+            shouldBeCompleted
+        };
+    }
+
+    /**
+     * Get sessions that need reminders
+     */
+    async getSessionsNeedingReminders(reminderDays = [7, 1], reminderHours = 1) {
+        const now = new Date();
+        const sessions = await TrainingSession.find({
+            status_code: 'SCHEDULED',
+            start_time: { $gt: now }
+        }).populate({
+            path: 'course_id',
+            select: 'course_name'
+        });
+
+        const sessionsNeedingReminders = [];
+
+        for (const session of sessions) {
+            const startTime = new Date(session.start_time);
+            const diffMs = startTime - now;
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+            // Check for day-based reminders
+            if (reminderDays.includes(diffDays)) {
+                sessionsNeedingReminders.push({
+                    session,
+                    reminderType: 'day',
+                    daysUntil: diffDays
+                });
+            }
+
+            // Check for hour-based reminder
+            if (diffHours === reminderHours && diffDays === 0) {
+                sessionsNeedingReminders.push({
+                    session,
+                    reminderType: 'hour',
+                    hoursUntil: reminderHours
+                });
+            }
+        }
+
+        return sessionsNeedingReminders;
+    }
+
+    // ========== Training Submission Operations ==========
+    
+    /**
+     * Create a new training submission
+     */
+    async createSubmission(submissionData) {
+        const submission = new TrainingSubmission(submissionData);
+        return await submission.save();
+    }
+
+    /**
+     * Get submission by enrollment ID
+     */
+    async getSubmissionByEnrollment(enrollmentId) {
+        return await TrainingSubmission.findOne({ enrollment_id: enrollmentId })
+            .populate('user_id', 'full_name email')
+            .populate('session_id', 'session_name course_id')
+            .populate('graded_by', 'full_name');
+    }
+
+    /**
+     * Get submission by ID
+     */
+    async getSubmissionById(submissionId) {
+        if (!mongoose.Types.ObjectId.isValid(submissionId)) {
+            return null;
+        }
+        return await TrainingSubmission.findById(submissionId)
+            .populate('enrollment_id')
+            .populate('user_id', 'full_name email')
+            .populate('session_id', 'session_name course_id')
+            .populate('graded_by', 'full_name');
+    }
+
+    /**
+     * Get submission for grading (with questions)
+     */
+    async getSubmissionForGrading(submissionId) {
+        const submission = await this.getSubmissionById(submissionId);
+        if (!submission) {
+            return null;
+        }
+
+        // Get questions for this submission
+        const session = await this.getTrainingSessionById(submission.session_id);
+        if (!session) {
+            return submission;
+        }
+
+        const questionBank = await this.getQuestionBankByCourseId(session.course_id);
+        if (!questionBank) {
+            return submission;
+        }
+
+        const questions = await this.getQuestionsByBankId(questionBank._id);
+
+        // Add questions to submission object
+        return {
+            ...submission.toObject(),
+            questions: questions
+        };
+    }
+
+    /**
+     * Get submissions waiting for grading
+     */
+    async getSubmissionsForGrading(filters = {}) {
+        const query = { status: 'submitted' };
+
+        if (filters.sessionId) {
+            query.session_id = filters.sessionId;
+        }
+
+        if (filters.userId) {
+            query.user_id = filters.userId;
+        }
+
+        return await TrainingSubmission.find(query)
+            .populate('enrollment_id')
+            .populate('user_id', 'full_name email department')
+            .populate('session_id', 'session_name start_time end_time')
+            .populate({
+                path: 'session_id',
+                populate: {
+                    path: 'course_id',
+                    select: 'course_name description'
+                }
+            })
+            .sort({ submitted_at: 1 }); // Oldest first
+    }
+
+    /**
+     * Update submission
+     */
+    async updateSubmission(submissionId, updateData) {
+        if (!mongoose.Types.ObjectId.isValid(submissionId)) {
+            throw new Error('Submission not found');
+        }
+        const submission = await TrainingSubmission.findByIdAndUpdate(
+            submissionId,
+            updateData,
+            { new: true, runValidators: true }
+        )
+        .populate('user_id', 'full_name email')
+        .populate('session_id', 'session_name course_id')
+        .populate('graded_by', 'full_name');
+
+        if (!submission) {
+            throw new Error('Submission not found');
+        }
+        return submission;
+    }
+
+    /**
+     * Get user's submission for an enrollment
+     */
+    async getUserSubmission(enrollmentId) {
+        return await TrainingSubmission.findOne({ enrollment_id: enrollmentId })
+            .populate('graded_by', 'full_name');
     }
 }
 

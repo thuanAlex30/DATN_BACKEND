@@ -156,6 +156,27 @@ router.post('/sessions/:sessionId/submit',
     trainingController.submitTraining
 );
 
+// ========== Admin Grading Routes ==========
+router.get('/submissions/grading', 
+    AuthMiddleware.authenticate,
+    AuthMiddleware.authorize(['admin', 'manager']),
+    trainingController.getSubmissionsForGrading
+);
+
+router.get('/submissions/:submissionId/grading', 
+    AuthMiddleware.authenticate,
+    AuthMiddleware.authorize(['admin', 'manager']),
+    trainingController.getSubmissionForGrading
+);
+
+router.post('/submissions/:submissionId/grade', 
+    AuthMiddleware.authenticate,
+    AuthMiddleware.authorize(['admin', 'manager']),
+    ...trainingValidation.gradeSubmission,
+    ExpressValidatorMiddleware.handleValidationErrors,
+    trainingController.gradeTrainingSubmission
+);
+
 router.post('/sessions/:sessionId/retake', 
     ...trainingValidation.retakeTraining,
     ExpressValidatorMiddleware.handleValidationErrors,
@@ -245,6 +266,25 @@ router.post('/questions/import-excel',
 // ========== Dashboard Routes ==========
 router.get('/dashboard/stats', 
     trainingController.getTrainingDashboardStats
+);
+
+// ========== Additional Helper Routes ==========
+router.get('/courses/:courseId/available-sessions', 
+    ...trainingValidation.getAvailableSessions,
+    ExpressValidatorMiddleware.handleValidationErrors,
+    trainingController.getAvailableSessionsForCourse
+);
+
+router.get('/users/:userId/enrollments', 
+    ...trainingValidation.getUserEnrollments,
+    ExpressValidatorMiddleware.handleValidationErrors,
+    trainingController.getUserEnrollments
+);
+
+router.get('/courses/:courseId/stats-improved', 
+    ...trainingValidation.getCourseStats,
+    ExpressValidatorMiddleware.handleValidationErrors,
+    trainingController.getImprovedCourseStats
 );
 
 module.exports = router;

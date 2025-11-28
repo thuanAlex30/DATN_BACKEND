@@ -24,6 +24,7 @@ const LoggingMiddleware = require('./middlewares/LoggingMiddleware');
 const initializeTrainingData = require('./database/initializeTrainingData');
 const websocketService = require('./services/websocketService');
 const kafkaMonitor = require('./services/kafkaMonitor');
+const { startTrainingCronJobs } = require('./scripts/start-training-cron');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -173,6 +174,13 @@ app.use(ErrorMiddleware.handle);
     
     // Initialize training data
     await initializeTrainingData();
+    
+    // Start training cron jobs
+    try {
+        startTrainingCronJobs();
+    } catch (error) {
+        console.error('⚠️  Failed to start training cron jobs:', error);
+    }
 
     const server = app.listen(PORT, () => {
       console.log(`

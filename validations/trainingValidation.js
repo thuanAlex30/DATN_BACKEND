@@ -500,12 +500,28 @@ const trainingValidation = {
         body('answers')
             .isObject()
             .withMessage('Answers must be an object'),
-        body('score')
-            .isFloat({ min: 0 })
-            .withMessage('Score must be a number greater than or equal to 0'),
-        body('completion_time')
+        body('completionTime')
+            .optional()
             .isISO8601()
             .withMessage('Valid completion time is required')
+    ],
+
+    // Grade Submission Validation
+    gradeSubmission: [
+        param('submissionId')
+            .custom(isValidObjectId)
+            .withMessage('Valid submission ID is required'),
+        body('score')
+            .isFloat({ min: 0, max: 100 })
+            .withMessage('Score must be a number between 0 and 100'),
+        body('passed')
+            .isBoolean()
+            .withMessage('Passed must be a boolean value'),
+        body('admin_comments')
+            .optional()
+            .isString()
+            .isLength({ max: 1000 })
+            .withMessage('Admin comments must not exceed 1000 characters')
     ],
 
     // Retake Training Validation
@@ -513,6 +529,28 @@ const trainingValidation = {
         param('sessionId')
             .custom(isValidObjectId)
             .withMessage('Valid session ID is required')
+    ],
+
+    // Get Available Sessions
+    getAvailableSessions: [
+        param('courseId')
+            .custom(isValidObjectId)
+            .withMessage('Valid course ID is required'),
+        query('userId')
+            .optional()
+            .custom(isValidObjectId)
+            .withMessage('Valid user ID is required')
+    ],
+
+    // Get User Enrollments
+    getUserEnrollments: [
+        param('userId')
+            .custom(isValidObjectId)
+            .withMessage('Valid user ID is required'),
+        query('status')
+            .optional()
+            .isIn(['enrolled', 'completed', 'failed', 'cancelled'])
+            .withMessage('Invalid status')
     ]
 };
 
