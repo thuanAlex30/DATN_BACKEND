@@ -1,9 +1,9 @@
+const incidentService = require('../services/incidentService');
 const Incident = require('../models/incident');
 const User = require('../models/user');
 const { IncidentEscalation } = require('../models/incidentEscalation');
-const { sendEmail, sendSMS, sendNotification } = require('../utils/notifications'); 
+const { sendEmail, sendSMS, sendNotification } = require('../utils/notifications'); // giả sử có các hàm này
 const websocketService = require('../services/websocketService');
-const incidentService = require('../services/incidentService');
 const IncidentEvents = require('../events/incidentEvents');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
@@ -134,6 +134,17 @@ class IncidentController {
     const result = await incidentService.updateIncidentProgress(id, progressData, userId);
     
     if (result.success) {
+      // Emit WebSocket notification for incident progress updated
+      try {
+        const updater = await User.findById(userId).select('_id role full_name');
+        if (updater) {
+          websocketService.emitIncidentProgressUpdated(result.data, updater);
+          console.log(`🚨 Incident progress updated WebSocket notification sent for user: ${updater._id}`);
+        }
+      } catch (wsError) {
+        console.error('Failed to emit incident progress updated WebSocket notification:', wsError);
+      }
+      
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
@@ -147,6 +158,132 @@ class IncidentController {
     const userId = req.user._id;
     
     const result = await incidentService.closeIncident(id, closeData, userId);
+    
+    if (result.success) {
+      // Emit WebSocket notification for incident closed
+      try {
+        const closer = await User.findById(userId).select('_id role full_name');
+        if (closer) {
+          websocketService.emitIncidentClosed(result.data, closer);
+          console.log(`🚨 Incident closed WebSocket notification sent for user: ${closer._id}`);
+        }
+      } catch (wsError) {
+        console.error('Failed to emit incident closed WebSocket notification:', wsError);
+      }
+      
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // 9. Lấy thống kê incidents
+  static getIncidentStats = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const result = await incidentService.getIncidentStats();
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // 10. Tìm kiếm incidents
+  static searchIncidents = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { q } = req.query;
+    const result = await incidentService.searchIncidents(q);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // 11. Lấy incidents theo user
+  static getIncidentsByUser = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const result = await incidentService.getIncidentsByUser(userId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // 12. Lấy incidents theo project
+  static getIncidentsByProject = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const result = await incidentService.getIncidentsByProject(projectId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // 13. Lấy incidents theo status
+  static getIncidentsByStatus = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { status } = req.params;
+    const result = await incidentService.getIncidentsByStatus(status);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // 14. Lấy incidents theo severity
+  static getIncidentsBySeverity = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { severity } = req.params;
+    const result = await incidentService.getIncidentsBySeverity(severity);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // 15. Xóa incident
+  static deleteIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user._id;
+    
+    const result = await incidentService.deleteIncident(id, userId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // 16. Cập nhật incident
+  static updateIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updateData = req.body;
+    const userId = req.user._id;
+    
+    const result = await incidentService.updateIncident(id, updateData, userId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // 17. Cập nhật thông tin nhân viên trong incident
+  static updateEmployeeIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updateData = req.body;
+    const userId = req.user._id;
+    
+    const result = await incidentService.updateIncident(id, updateData, userId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

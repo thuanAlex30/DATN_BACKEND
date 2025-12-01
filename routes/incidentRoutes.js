@@ -89,13 +89,21 @@ router.get('/:id/escalations',
   IncidentController.getIncidentEscalations
 );
 
+// Xóa incident (phải đặt trước route /:id)
+router.delete('/:id', 
+  AuthMiddleware.authenticate,
+  ValidationMiddleware.validateParams(incidentValidation.id),
+  IncidentController.deleteIncident
+);
+
 // Lấy chi tiết sự cố (phải đặt cuối cùng vì match với mọi /:id)
 router.get('/:id', 
   (req, res, next) => {
     console.log('🔍 Route matched: GET /:id', req.params, 'Path:', req.path, 'Original URL:', req.originalUrl);
     next();
   },
-  AuthMiddleware.authenticate, 
+  AuthMiddleware.authenticate,
+  ValidationMiddleware.validateParams(incidentValidation.id),
   IncidentController.getIncidentById
 );
 

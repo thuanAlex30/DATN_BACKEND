@@ -201,13 +201,44 @@ class ChatbotService {
     // Câu hỏi cụ thể
     if (message.includes('làm thế nào') || message.includes('cách')) {
       if (message.includes('ppe') || message.includes('thiết bị bảo hộ')) {
-        return 'Để sử dụng PPE, bạn cần:\n1. Đăng nhập vào hệ thống\n2. Vào mục "Quản lý PPE"\n3. Xem danh sách PPE đã được phát\n4. Nếu cần PPE mới, liên hệ với quản trị viên\n5. Khi trả PPE, chọn PPE cần trả và điền thông tin tình trạng';
+        return 'Để sử dụng và quản lý PPE trong hệ thống, bạn cần thực hiện các bước sau:\n\n' +
+               '1. Đăng nhập vào hệ thống với tài khoản của bạn\n' +
+               '2. Vào mục "Quản lý PPE" trong menu chính\n' +
+               '3. Xem danh sách PPE đã được phát cho bạn, bao gồm thông tin về loại PPE, ngày phát, và ngày hết hạn\n' +
+               '4. Nếu cần PPE mới, bạn có thể:\n' +
+               '   - Liên hệ trực tiếp với quản trị viên hoặc người phụ trách kho\n' +
+               '   - Hoặc tạo yêu cầu trong hệ thống (nếu có quyền)\n' +
+               '5. Khi trả PPE, bạn cần:\n' +
+               '   - Chọn PPE cần trả từ danh sách\n' +
+               '   - Điền thông tin tình trạng PPE (còn tốt, hỏng, mất, v.v.)\n' +
+               '   - Gửi yêu cầu trả PPE\n\n' +
+               'Lưu ý: Hệ thống sẽ tự động thông báo khi PPE của bạn sắp hết hạn, giúp bạn chủ động trong việc thay thế.';
       }
       if (message.includes('báo cáo sự cố') || message.includes('ghi nhận sự cố')) {
-        return 'Để báo cáo sự cố:\n1. Vào mục "Quản lý Sự cố"\n2. Chọn "Ghi nhận sự cố mới"\n3. Điền đầy đủ thông tin: tiêu đề, mô tả, vị trí, mức độ nghiêm trọng\n4. Đính kèm hình ảnh nếu có\n5. Gửi báo cáo';
+        return 'Để báo cáo sự cố an toàn lao động trong hệ thống, bạn cần làm theo các bước sau:\n\n' +
+               '1. Đăng nhập vào hệ thống và vào mục "Quản lý Sự cố"\n' +
+               '2. Chọn "Ghi nhận sự cố mới" hoặc "Báo cáo sự cố"\n' +
+               '3. Điền đầy đủ thông tin bắt buộc:\n' +
+               '   - Tiêu đề sự cố: Mô tả ngắn gọn về sự cố\n' +
+               '   - Mô tả chi tiết: Mô tả đầy đủ về sự cố, bao gồm thời gian, địa điểm, nguyên nhân (nếu biết)\n' +
+               '   - Vị trí xảy ra sự cố: Chọn hoặc nhập địa điểm cụ thể\n' +
+               '   - Mức độ nghiêm trọng: Chọn từ các mức (Nhẹ, Trung bình, Nghiêm trọng, Rất nghiêm trọng)\n' +
+               '   - Loại sự cố: Chọn loại phù hợp (Tai nạn, Sự cố gần như tai nạn, Tình trạng không an toàn, v.v.)\n' +
+               '4. Đính kèm hình ảnh nếu có: Hình ảnh giúp minh họa rõ ràng hơn về sự cố\n' +
+               '5. Xem lại thông tin và gửi báo cáo\n\n' +
+               'Sau khi gửi, sự cố sẽ được chuyển đến người phụ trách để xử lý. Bạn có thể theo dõi tiến độ xử lý trong mục "Sự cố của tôi".';
       }
       if (message.includes('đăng ký đào tạo')) {
-        return 'Để đăng ký đào tạo:\n1. Vào mục "Đào tạo"\n2. Xem danh sách khóa đào tạo có sẵn\n3. Chọn khóa đào tạo phù hợp\n4. Nhấn "Đăng ký"\n5. Chờ phê duyệt từ quản trị viên';
+        return 'Để đăng ký tham gia các khóa đào tạo an toàn lao động, bạn thực hiện như sau:\n\n' +
+               '1. Đăng nhập vào hệ thống và vào mục "Đào tạo" hoặc "Training"\n' +
+               '2. Xem danh sách các khóa đào tạo có sẵn:\n' +
+               '   - Hệ thống sẽ hiển thị các khóa đào tạo đang mở đăng ký\n' +
+               '   - Mỗi khóa sẽ có thông tin về tên khóa, mô tả, thời lượng, ngày bắt đầu/kết thúc\n' +
+               '3. Chọn khóa đào tạo phù hợp với nhu cầu của bạn\n' +
+               '4. Xem chi tiết khóa học và nhấn nút "Đăng ký" hoặc "Tham gia"\n' +
+               '5. Điền thông tin đăng ký (nếu có yêu cầu bổ sung)\n' +
+               '6. Gửi đăng ký và chờ phê duyệt từ quản trị viên hoặc người phụ trách đào tạo\n\n' +
+               'Sau khi được phê duyệt, bạn sẽ nhận được thông báo và có thể tham gia khóa học. Bạn cũng có thể theo dõi tiến độ học tập và xem chứng chỉ sau khi hoàn thành khóa học.';
       }
     }
     
@@ -296,12 +327,18 @@ class ChatbotService {
     const goodbyes = ['tạm biệt', 'bye', 'goodbye'];
     
     if (greetings.some(g => message.includes(g))) {
-      return 'Xin chào! Tôi là trợ lý ảo của hệ thống Quản lý An toàn Lao động. Tôi có thể giúp bạn:\n\n' +
-             '• Tìm hiểu về các tính năng của hệ thống\n' +
-             '• Tư vấn về an toàn lao động\n' +
-             '• Hướng dẫn sử dụng các chức năng\n' +
-             '• Tìm kiếm thông tin về PPE, sự cố, đào tạo\n\n' +
-             'Bạn muốn biết gì?';
+      return 'Xin chào! Tôi là trợ lý ảo của hệ thống Quản lý An toàn Lao động. Rất vui được hỗ trợ bạn!\n\n' +
+             'Tôi có thể giúp bạn với nhiều vấn đề khác nhau:\n\n' +
+             '• Tìm hiểu về các tính năng của hệ thống: PPE, Quản lý Sự cố, Đào tạo, Dự án, Nhân sự\n' +
+             '• Tư vấn về an toàn lao động: các nguyên tắc, quy trình, best practices\n' +
+             '• Hướng dẫn sử dụng các chức năng: từng bước cụ thể để thực hiện các tác vụ\n' +
+             '• Tìm kiếm thông tin: về PPE, sự cố, đào tạo, dự án trong hệ thống\n' +
+             '• Giải đáp thắc mắc: về quy trình, quy định, cách sử dụng hệ thống\n\n' +
+             'Bạn có thể hỏi tôi bất cứ điều gì liên quan đến hệ thống hoặc an toàn lao động. Ví dụ:\n' +
+             '- "Làm thế nào để báo cáo sự cố?"\n' +
+             '- "Các loại PPE nào cần thiết?"\n' +
+             '- "Hệ thống có những tính năng gì?"\n\n' +
+             'Bạn muốn biết gì? Hãy hỏi tôi nhé!';
     }
     
     if (thanks.some(t => message.includes(t))) {
@@ -312,13 +349,29 @@ class ChatbotService {
       return 'Tạm biệt! Chúc bạn một ngày làm việc an toàn. Nếu cần hỗ trợ, hãy quay lại nhé!';
     }
     
-    return 'Xin lỗi, tôi chưa hiểu rõ câu hỏi của bạn. Bạn có thể hỏi tôi về:\n\n' +
-           '• Các tính năng của hệ thống (PPE, Sự cố, Đào tạo, Dự án)\n' +
-           '• Hướng dẫn sử dụng hệ thống\n' +
-           '• Thông tin về an toàn lao động\n' +
-           '• Quy trình xử lý sự cố\n' +
-           '• Các loại PPE và cách sử dụng\n\n' +
-           'Hoặc bạn có thể hỏi cụ thể hơn, ví dụ: "Làm thế nào để báo cáo sự cố?"';
+    return 'Xin lỗi, tôi chưa hiểu rõ câu hỏi của bạn. Để tôi có thể hỗ trợ bạn tốt hơn, bạn có thể hỏi tôi về:\n\n' +
+           '📋 Các tính năng của hệ thống:\n' +
+           '   • Quản lý PPE (Thiết bị Bảo hộ Cá nhân)\n' +
+           '   • Quản lý Sự cố và Rủi ro\n' +
+           '   • Quản lý Đào tạo và Chứng chỉ\n' +
+           '   • Quản lý Dự án\n' +
+           '   • Quản lý Nhân sự và Phòng ban\n\n' +
+           '📖 Hướng dẫn sử dụng hệ thống:\n' +
+           '   • Cách báo cáo sự cố\n' +
+           '   • Cách đăng ký đào tạo\n' +
+           '   • Cách sử dụng PPE\n' +
+           '   • Cách quản lý dự án\n\n' +
+           '🛡️ Thông tin về an toàn lao động:\n' +
+           '   • Nguyên tắc an toàn lao động\n' +
+           '   • Quy trình xử lý sự cố\n' +
+           '   • Các loại PPE và cách sử dụng\n' +
+           '   • Best practices trong an toàn lao động\n\n' +
+           '💡 Ví dụ câu hỏi bạn có thể hỏi:\n' +
+           '   • "Làm thế nào để báo cáo sự cố?"\n' +
+           '   • "Hệ thống có những tính năng gì?"\n' +
+           '   • "Các loại PPE nào cần thiết trong công trường?"\n' +
+           '   • "Quy trình xử lý sự cố như thế nào?"\n\n' +
+           'Hãy thử hỏi lại với câu hỏi cụ thể hơn nhé!';
   }
 
   // Format response cho hệ thống
