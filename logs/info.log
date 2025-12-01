@@ -5826,3 +5826,6 @@
 {"timestamp":"2025-12-01T08:41:50.188Z","level":"INFO","message":"User connected","metadata":{"socketId":"kr5ujMmgFcHeby9PAAAG"},"pid":22268,"hostname":"MSI"}
 {"timestamp":"2025-12-01T08:41:50.190Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"kr5ujMmgFcHeby9PAAAG"},"pid":22268,"hostname":"MSI"}
 {"timestamp":"2025-12-01T08:42:19.367Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":22268,"hostname":"MSI"}
+{"timestamp":"2025-12-01T08:53:25.873Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":5188,"hostname":"MSI"}
+{"timestamp":"2025-12-01T08:53:25.890Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":5188,"hostname":"MSI"}
+{"timestamp":"2025-12-01T08:54:46.902Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":5188,"hostname":"MSI"}
