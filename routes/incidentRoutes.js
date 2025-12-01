@@ -54,31 +54,9 @@ router.put('/progress/:id',
 );
 
 // Đóng sự cố & xuất báo cáo
-<<<<<<< HEAD
-router.put('/close/:id', 
-  AuthMiddleware.authenticate,
-  ValidationMiddleware.validate({
-    params: incidentValidation.id,
-    body: incidentValidation.closeIncident
-  }),
-  IncidentController.closeIncident
-);
-
-// Cập nhật incident
-router.put('/:id', 
-  AuthMiddleware.authenticate,
-  ValidationMiddleware.validate({
-    params: incidentValidation.id,
-    body: incidentValidation.updateIncident
-  }),
-  IncidentController.updateIncident
-);
-
-=======
 router.put('/close/:id', AuthMiddleware.authenticate, IncidentController.closeIncident);
 // Cập nhật thông tin nhân viên trong sự cố
 router.put('/update-employee/:id', AuthMiddleware.authenticate, IncidentController.updateEmployeeIncident);
->>>>>>> origin/anh-thy
 // Lấy danh sách sự cố
 router.get('/', AuthMiddleware.authenticate, IncidentController.getIncidents);
 
