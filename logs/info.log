@@ -5867,3 +5867,14 @@
 {"timestamp":"2025-12-01T09:09:10.888Z","level":"INFO","message":"User connected","metadata":{"socketId":"Z0lAhuR5Dm5dtR7KAAAi"},"pid":12428,"hostname":"MSI"}
 {"timestamp":"2025-12-01T09:09:10.889Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709d","role":"Department Header","socketId":"Z0lAhuR5Dm5dtR7KAAAi"},"pid":12428,"hostname":"MSI"}
 {"timestamp":"2025-12-01T09:09:51.122Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709d","socketId":"Z0lAhuR5Dm5dtR7KAAAi"},"pid":12428,"hostname":"MSI"}
+{"timestamp":"2025-12-01T09:12:37.172Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":8488,"hostname":"MSI"}
+{"timestamp":"2025-12-01T09:12:37.189Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":8488,"hostname":"MSI"}
+{"timestamp":"2025-12-01T09:18:21.901Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":8488,"hostname":"MSI"}
+{"timestamp":"2025-12-01T09:18:25.794Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":22672,"hostname":"MSI"}
+{"timestamp":"2025-12-01T09:18:25.811Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":22672,"hostname":"MSI"}
+{"timestamp":"2025-12-01T09:20:07.663Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":22672,"hostname":"MSI"}
+{"timestamp":"2025-12-01T09:20:13.345Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":24184,"hostname":"MSI"}
+{"timestamp":"2025-12-01T09:20:13.382Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":24184,"hostname":"MSI"}
+{"timestamp":"2025-12-01T09:22:40.801Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":24184,"hostname":"MSI"}
+{"timestamp":"2025-12-01T09:22:45.511Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":8768,"hostname":"MSI"}
+{"timestamp":"2025-12-01T09:22:45.528Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":8768,"hostname":"MSI"}

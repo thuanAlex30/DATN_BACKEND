@@ -36,10 +36,21 @@ class IncidentController {
 
   // 2. Lấy tất cả incidents
   static getIncidents = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await incidentService.getAllIncidents();
+    const userId = req.user?._id;
+    const filters = {
+      ...req.query,
+      // Apply tenant filter if available
+      ...(req.scopeFilter || {})
+    };
+    
+    // Note: Incident model doesn't have department_id field
+    // For department_header, we'll filter by user's department through createdBy/assignedTo
+    // This will be handled in the service/repository if needed
+    
+    const result = await incidentService.getAllIncidents(userId, filters, req.user);
     
     if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+      return ApiResponse.success(res, result.data, result.message, result.statusCode, result.pagination);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
     }
@@ -179,7 +190,17 @@ class IncidentController {
 
   // 9. Lấy thống kê incidents
   static getIncidentStats = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await incidentService.getIncidentStats();
+    const filters = {
+      ...req.query,
+      // Apply tenant filter if available
+      ...(req.scopeFilter || {}),
+      // Apply department filter for department_header
+      ...(req.user?.department_id && req.user?.role?.role_code === 'department_header' 
+        ? { department_id: req.user.department_id } 
+        : {})
+    };
+    
+    const result = await incidentService.getIncidentStats(filters);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

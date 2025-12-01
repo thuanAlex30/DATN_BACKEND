@@ -59,17 +59,56 @@ class IncidentService {
   /**
    * Lấy tất cả incidents
    */
-  static async getAllIncidents() {
+  static async getAllIncidents(userId = null, filters = {}, user = null) {
     try {
-      const incidents = await IncidentRepository.getAllIncidents();
+      // Build query filters - extract pagination options
+      const { page, limit, sortBy, sortOrder, department_id, ...queryFilters } = filters;
       
-      return {
-        success: true,
-        data: incidents,
-        message: 'Lấy danh sách incidents thành công',
-        statusCode: 200
-      };
+      // Remove department_id from queryFilters since Incident model doesn't have this field
+      // If user is department_header, we'll need to filter differently (through user lookup)
+      // For now, just use tenant_id and other available filters
+      
+      // Use findAll for paginated results, or getAllIncidents for all results
+      if (page || limit) {
+        const result = await IncidentRepository.findAll(queryFilters, {
+          page: page || 1,
+          limit: limit || 100,
+          sortBy: sortBy || 'createdAt',
+          sortOrder: sortOrder || 'desc',
+          status: filters.status,
+          severity: filters.severity,
+          assignedTo: filters.assignedTo,
+          createdBy: filters.createdBy,
+          dateFrom: filters.dateFrom,
+          dateTo: filters.dateTo
+        });
+        
+        // If department_header, filter results by department after query
+        let incidents = result.incidents || [];
+        if (user?.department_id && user?.role?.role_code === 'department_header' && department_id) {
+          // This would require additional filtering logic if needed
+          // For now, we'll return all incidents filtered by tenant
+        }
+        
+        return {
+          success: true,
+          data: incidents,
+          pagination: result.pagination,
+          message: 'Lấy danh sách incidents thành công',
+          statusCode: 200
+        };
+      } else {
+        const incidents = await IncidentRepository.getAllIncidents(queryFilters);
+        
+        return {
+          success: true,
+          data: incidents,
+          message: 'Lấy danh sách incidents thành công',
+          statusCode: 200
+        };
+      }
     } catch (error) {
+      console.error('Error in getAllIncidents:', error);
       return {
         success: false,
         message: error.message,
@@ -328,9 +367,9 @@ class IncidentService {
   /**
    * Lấy thống kê incidents
    */
-  static async getIncidentStats() {
+  static async getIncidentStats(filters = {}) {
     try {
-      const stats = await IncidentRepository.getIncidentStats();
+      const stats = await IncidentRepository.getIncidentStats(filters);
       
       return {
         success: true,

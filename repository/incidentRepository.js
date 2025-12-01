@@ -49,6 +49,31 @@ class IncidentRepository {
     }
   }
 
+  // Lấy tất cả sự cố (không phân trang)
+  static async getAllIncidents(filters = {}) {
+    try {
+      const query = {};
+      
+      // Apply filters (Note: Incident model doesn't have department_id field)
+      if (filters.tenant_id) query.tenant_id = filters.tenant_id;
+      // Skip department_id as it's not in the model
+      if (filters.status) query.status = filters.status;
+      if (filters.severity) query.severity = filters.severity;
+      if (filters.assignedTo) query.assignedTo = filters.assignedTo;
+      if (filters.createdBy) query.createdBy = filters.createdBy;
+      
+      const incidents = await Incident.find(query)
+        .populate('createdBy', 'full_name email role department_id')
+        .populate('assignedTo', 'full_name email role department_id')
+        .populate('histories.performedBy', 'full_name email role')
+        .sort({ createdAt: -1 });
+      
+      return incidents;
+    } catch (error) {
+      throw new Error(`Lỗi lấy danh sách sự cố: ${error.message}`);
+    }
+  }
+
   // Lấy danh sách sự cố với phân trang và lọc
   static async findAll(filters = {}, options = {}) {
     try {
@@ -68,6 +93,15 @@ class IncidentRepository {
       // Xây dựng query
       const query = {};
       
+      // Apply filters from filters parameter (tenant_id, etc.)
+      // Note: Incident model doesn't have department_id field, so we skip it
+      if (filters.tenant_id) query.tenant_id = filters.tenant_id;
+      if (filters.status) query.status = filters.status;
+      if (filters.severity) query.severity = filters.severity;
+      if (filters.assignedTo) query.assignedTo = filters.assignedTo;
+      if (filters.createdBy) query.createdBy = filters.createdBy;
+      
+      // Override with options if provided
       if (status) query.status = status;
       if (severity) query.severity = severity;
       if (assignedTo) query.assignedTo = assignedTo;
@@ -158,10 +192,19 @@ class IncidentRepository {
     }
   }
 
+  // Thống kê sự cố (alias cho getStatistics)
+  static async getIncidentStats(filters = {}) {
+    return await this.getStatistics(filters);
+  }
+
   // Thống kê sự cố
   static async getStatistics(filters = {}) {
     try {
       const query = {};
+      
+      // Apply tenant and department filters
+      if (filters.tenant_id) query.tenant_id = filters.tenant_id;
+      if (filters.department_id) query.department_id = filters.department_id;
       
       if (filters.dateFrom || filters.dateTo) {
         query.createdAt = {};

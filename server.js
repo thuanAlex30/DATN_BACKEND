@@ -33,28 +33,40 @@ const server = createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // Initialize Socket.IO
+const parseAllowedOrigins = () => {
+  const baseOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:5173'
+  ];
+
+  if (process.env.FRONTEND_URL) {
+    baseOrigins.push(process.env.FRONTEND_URL);
+  }
+
+  if (process.env.ALLOWED_ORIGINS) {
+    baseOrigins.push(
+      ...process.env.ALLOWED_ORIGINS
+        .split(',')
+        .map(origin => origin.trim())
+        .filter(Boolean)
+    );
+  }
+
+  return Array.from(new Set(baseOrigins));
+};
+
+const allowedOrigins = parseAllowedOrigins();
+
 const io = new Server(server, {
   cors: {
     origin: function (origin, callback) {
-      // Allow all local development origins
-      const allowedOrigins = [
-        'http://localhost:3000',
-        'http://localhost:3001', 
-        'http://localhost:5173',
-        'http://127.0.0.1:3000',
-        'http://127.0.0.1:3001',
-        'http://127.0.0.1:5173'
-      ];
-      
-      // Add production origins if in production
-      if (process.env.NODE_ENV === 'production') {
-        allowedOrigins.push(process.env.FRONTEND_URL);
-      }
-      
-      // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
-      
-      if (allowedOrigins.indexOf(origin) !== -1) {
+
+      if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         console.log('Socket.IO CORS blocked origin:', origin);
@@ -77,25 +89,9 @@ app.use(helmet());
 // CORS - 更宽松的配置用于开发环境
 const corsOptions = {
   origin: function (origin, callback) {
-    // 允许所有本地开发端口
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:3001', 
-      'http://localhost:5173',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:3001',
-      'http://127.0.0.1:5173'
-    ];
-    
-    // 在生产环境中添加生产域名
-    if (process.env.NODE_ENV === 'production') {
-      allowedOrigins.push('https://yourdomain.com');
-    }
-    
-    // 允许没有 origin 的请求（如移动应用）
     if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
+
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);
@@ -103,7 +99,7 @@ const corsOptions = {
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type', 
     'Authorization', 
@@ -294,7 +290,7 @@ app.use(ErrorMiddleware.handle);
     // Set server timeout to 2 minutes for better performance
     server.timeout = 120000; // 2 minutes
     server.keepAliveTimeout = 65000; // 65 seconds
-    server.headersTimeout = 66000; // 66 seconds
+server.headersTimeout = 66000; // 66 seconds
 
     // Graceful shutdown
     process.on('SIGTERM', () => {

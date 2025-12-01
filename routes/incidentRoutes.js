@@ -56,6 +56,12 @@ router.put('/progress/:id',
 // Đóng sự cố & xuất báo cáo
 router.put('/close/:id', AuthMiddleware.authenticate, IncidentController.closeIncident);
 
+// Lấy thống kê incidents (phải đặt trước route /:id)
+router.get('/stats/overview', 
+  AuthMiddleware.authenticate,
+  IncidentController.getIncidentStats
+);
+
 // Lấy danh sách sự cố (phải đặt trước route /:id)
 router.get('/', AuthMiddleware.authenticate, IncidentController.getIncidents);
 
