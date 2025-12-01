@@ -413,6 +413,21 @@ class KafkaConsumer {
           });
           break;
 
+        case eventTypes.INCIDENT_ESCALATED:
+          websocketService.emitToAll('incident_escalated', {
+            incident: data,
+            escalation: {
+              escalationId: data.escalationId,
+              escalationLevel: data.escalationLevel,
+              reason: data.reason,
+              departmentId: data.departmentId,
+              escalatedAt: data.escalatedAt
+            },
+            escalator: metadata,
+            timestamp: eventData.timestamp
+          });
+          break;
+
         default:
           console.warn(`⚠️ Unknown incident event type: ${eventType}`);
       }

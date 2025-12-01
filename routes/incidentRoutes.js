@@ -54,78 +54,49 @@ router.put('/progress/:id',
 );
 
 // Đóng sự cố & xuất báo cáo
-router.put('/close/:id', 
-  AuthMiddleware.authenticate,
-  ValidationMiddleware.validate({
-    params: incidentValidation.id,
-    body: incidentValidation.closeIncident
-  }),
-  IncidentController.closeIncident
-);
+router.put('/close/:id', AuthMiddleware.authenticate, IncidentController.closeIncident);
 
-// Cập nhật incident
-router.put('/:id', 
-  AuthMiddleware.authenticate,
-  ValidationMiddleware.validate({
-    params: incidentValidation.id,
-    body: incidentValidation.updateIncident
-  }),
-  IncidentController.updateIncident
-);
-
-// Lấy danh sách sự cố
+// Lấy danh sách sự cố (phải đặt trước route /:id)
 router.get('/', AuthMiddleware.authenticate, IncidentController.getIncidents);
 
-// Lấy chi tiết sự cố
+// Escalate sự cố (Department Header) - phải đặt trước route /:id
+router.post('/:id/escalate', 
+  (req, res, next) => {
+    console.log('🔍 Route matched: POST /:id/escalate', req.params);
+    next();
+  },
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorizeScope({
+    modules: 'incident',
+    action: 'escalate',
+    tenantScope: 'tenant'
+  }),
+  IncidentController.escalateIncident
+);
+
+// Lấy danh sách escalations của sự cố - phải đặt trước route /:id
+router.get('/:id/escalations', 
+  (req, res, next) => {
+    console.log('🔍 Route matched: GET /:id/escalations', req.params);
+    next();
+  },
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorizeScope({
+    modules: 'incident',
+    action: 'read',
+    tenantScope: 'tenant'
+  }),
+  IncidentController.getIncidentEscalations
+);
+
+// Lấy chi tiết sự cố (phải đặt cuối cùng vì match với mọi /:id)
 router.get('/:id', 
-  AuthMiddleware.authenticate,
-  ValidationMiddleware.validateParams(incidentValidation.id),
+  (req, res, next) => {
+    console.log('🔍 Route matched: GET /:id', req.params, 'Path:', req.path, 'Original URL:', req.originalUrl);
+    next();
+  },
+  AuthMiddleware.authenticate, 
   IncidentController.getIncidentById
-);
-
-// Lấy thống kê incidents
-router.get('/stats/overview', AuthMiddleware.authenticate, IncidentController.getIncidentStats);
-
-// Tìm kiếm incidents
-router.get('/search/query', 
-  AuthMiddleware.authenticate,
-  ValidationMiddleware.validateQuery(incidentValidation.searchQuery),
-  IncidentController.searchIncidents
-);
-
-// Lấy incidents theo user
-router.get('/user/:userId', 
-  AuthMiddleware.authenticate,
-  ValidationMiddleware.validateParams(incidentValidation.userId),
-  IncidentController.getIncidentsByUser
-);
-
-// Lấy incidents theo project
-router.get('/project/:projectId', 
-  AuthMiddleware.authenticate,
-  ValidationMiddleware.validateParams(incidentValidation.projectId),
-  IncidentController.getIncidentsByProject
-);
-
-// Lấy incidents theo status
-router.get('/status/:status', 
-  AuthMiddleware.authenticate,
-  ValidationMiddleware.validateParams(incidentValidation.status),
-  IncidentController.getIncidentsByStatus
-);
-
-// Lấy incidents theo severity
-router.get('/severity/:severity', 
-  AuthMiddleware.authenticate,
-  ValidationMiddleware.validateParams(incidentValidation.severity),
-  IncidentController.getIncidentsBySeverity
-);
-
-// Xóa incident
-router.delete('/:id', 
-  AuthMiddleware.authenticate,
-  ValidationMiddleware.validateParams(incidentValidation.id),
-  IncidentController.deleteIncident
 );
 
 module.exports = router;

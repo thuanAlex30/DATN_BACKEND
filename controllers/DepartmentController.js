@@ -93,6 +93,15 @@ class DepartmentController {
       return ApiResponse.notFound(res, 'Department not found');
     }
 
+    // Check department scope: Department Header can only update their own department
+    const userRoleCode = req.user?.role?.role_code || req.user?.role_code;
+    if (userRoleCode === 'department_header' || userRoleCode === 'DEPARTMENT_HEADER') {
+      const userDepartmentId = req.user?.department_id || req.user?.departmentId;
+      if (userDepartmentId && existingDepartment._id.toString() !== userDepartmentId.toString()) {
+        return ApiResponse.forbidden(res, 'Can only update your own department');
+      }
+    }
+
     // Check if new department name already exists (excluding current department)
     if (updateData.department_name) {
       const nameExists = await DepartmentRepository.existsByName(

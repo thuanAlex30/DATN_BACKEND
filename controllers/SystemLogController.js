@@ -37,7 +37,36 @@ class SystemLogController {
             const resultPromise = SystemLog.getLogs(filters, parseInt(page), parseInt(limit));
             const result = await Promise.race([resultPromise, timeoutPromise]);
             
-            ApiResponse.success(res, result, 'Lấy danh sách nhật ký hệ thống thành công');
+            // Map logs to frontend format
+            const mappedLogs = result.logs.map(log => {
+                const logObj = log.toObject ? log.toObject() : log;
+                return {
+                    id: logObj._id?.toString() || logObj.id,
+                    user_id: logObj.user_id?._id?.toString() || logObj.user_id,
+                    user_name: logObj.user_id?.username || logObj.user_id?.full_name,
+                    tenant_id: logObj.tenant_id?.toString() || logObj.tenant_id,
+                    module: logObj.module,
+                    action: logObj.action,
+                    details: typeof logObj.details === 'string' ? logObj.details : JSON.stringify(logObj.details || {}),
+                    ip_address: logObj.ip_address,
+                    created_at: logObj.created_at || logObj.timestamp
+                };
+            });
+            
+            // Map pagination to frontend format
+            const mappedPagination = {
+                page: result.pagination?.current_page || parseInt(page),
+                limit: result.pagination?.items_per_page || parseInt(limit),
+                total: result.pagination?.total_items || 0,
+                totalPages: result.pagination?.total_pages || 0,
+                hasNextPage: (result.pagination?.current_page || parseInt(page)) < (result.pagination?.total_pages || 0),
+                hasPrevPage: (result.pagination?.current_page || parseInt(page)) > 1
+            };
+            
+            ApiResponse.success(res, {
+                data: mappedLogs,
+                pagination: mappedPagination
+            }, 'Lấy danh sách nhật ký hệ thống thành công');
         } catch (error) {
             console.error('Error getting system logs:', error);
             if (error.message === 'Request timeout') {

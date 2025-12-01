@@ -49,5 +49,13 @@ router.get('/users-by-role/:role_id',
   CompanyAdminController.getUsersByRole
 );
 
+router.get('/department-headers',
+  AuthMiddleware.authorizeScope({
+    minRoleLevel: 90,
+    tenantScope: 'tenant'
+  }),
+  CompanyAdminController.getDepartmentHeaders
+);
+
 module.exports = router;
 

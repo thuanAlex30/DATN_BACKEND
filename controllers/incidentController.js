@@ -1,6 +1,10 @@
-const incidentService = require('../services/incidentService');
-const websocketService = require('../services/websocketService');
+const Incident = require('../models/incident');
 const User = require('../models/user');
+const { IncidentEscalation } = require('../models/incidentEscalation');
+const { sendEmail, sendSMS, sendNotification } = require('../utils/notifications'); 
+const websocketService = require('../services/websocketService');
+const incidentService = require('../services/incidentService');
+const IncidentEvents = require('../events/incidentEvents');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 
@@ -130,17 +134,6 @@ class IncidentController {
     const result = await incidentService.updateIncidentProgress(id, progressData, userId);
     
     if (result.success) {
-      // Emit WebSocket notification for incident progress updated
-      try {
-        const updater = await User.findById(userId).select('_id role full_name');
-        if (updater) {
-          websocketService.emitIncidentProgressUpdated(result.data, updater);
-          console.log(`🚨 Incident progress updated WebSocket notification sent for user: ${updater._id}`);
-        }
-      } catch (wsError) {
-        console.error('Failed to emit incident progress updated WebSocket notification:', wsError);
-      }
-      
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
@@ -156,121 +149,130 @@ class IncidentController {
     const result = await incidentService.closeIncident(id, closeData, userId);
     
     if (result.success) {
-      // Emit WebSocket notification for incident closed
-      try {
-        const closer = await User.findById(userId).select('_id role full_name');
-        if (closer) {
-          websocketService.emitIncidentClosed(result.data, closer);
-          console.log(`🚨 Incident closed WebSocket notification sent for user: ${closer._id}`);
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // 9. Escalate incident (Department Header)
+  static escalateIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { escalation_level, reason } = req.body;
+    
+    // Validate escalation_level
+    const validLevels = ['SITE', 'DEPARTMENT', 'COMPANY', 'EXTERNAL'];
+    if (!escalation_level || !validLevels.includes(escalation_level)) {
+      return ApiResponse.error(res, 'escalation_level phải là một trong: SITE, DEPARTMENT, COMPANY, EXTERNAL', 400);
+    }
+    
+    // Find incident
+    const incident = await Incident.findById(id);
+    if (!incident) {
+      return ApiResponse.error(res, 'Không tìm thấy sự cố', 404);
+    }
+    
+    // Check if user is Department Header and has department_id
+    if (!req.user.department_id) {
+      return ApiResponse.error(res, 'Bạn phải thuộc một department để escalate sự cố', 403);
+    }
+    
+    // Check tenant scope
+    if (req.user.tenant_id && incident.tenant_id.toString() !== req.user.tenant_id.toString()) {
+      return ApiResponse.error(res, 'Không có quyền truy cập sự cố này', 403);
+    }
+    
+    // Create escalation record
+    const escalation = new IncidentEscalation({
+      tenant_id: req.user.tenant_id || incident.tenant_id,
+      department_id: req.user.department_id,
+      incident_id: incident._id,
+      escalation_level,
+      reason: reason || '',
+      status: 'OPEN',
+      created_by: req.user._id
+    });
+    await escalation.save();
+    
+    // Update incident history
+    incident.histories.push({ 
+      action: 'Escalate', 
+      performedBy: req.user._id, 
+      note: `Escalate lên ${escalation_level}: ${reason || 'Không có lý do'}` 
+    });
+    await incident.save();
+    
+    // Send notifications based on escalation level
+    if (escalation_level === 'COMPANY' || escalation_level === 'EXTERNAL') {
+      await sendEmail('Company Admin', `Sự cố ${incident.incidentId} đã được escalate lên ${escalation_level}`);
+      await sendNotification('Company Admin', `Sự cố ${incident.incidentId} đã được escalate lên ${escalation_level}`);
+    } else if (escalation_level === 'SITE') {
+      await sendEmail('Site Manager', `Sự cố ${incident.incidentId} đã được escalate lên ${escalation_level}`);
+    }
+    
+    // Emit WebSocket event
+    try {
+      websocketService.emitToAll('incident_escalated', {
+        incident: {
+          id: incident._id,
+          incidentId: incident.incidentId,
+          title: incident.title,
+          severity: incident.severity,
+          status: incident.status
+        },
+        escalation: {
+          id: escalation._id,
+          escalationLevel: escalation.escalation_level,
+          reason: escalation.reason,
+          status: escalation.status
+        },
+        escalator: {
+          id: req.user._id,
+          full_name: req.user.full_name,
+          role: req.user.role
+        },
+        timestamp: new Date()
+      });
+    } catch (wsError) {
+      console.error('Failed to emit WebSocket event:', wsError);
+    }
+    
+    // Emit Kafka event
+    try {
+      await IncidentEvents.emitIncidentEscalated(incident, escalation, req.user);
+    } catch (eventError) {
+      console.error('Failed to emit incident escalated event:', eventError);
+    }
+    
+    return ApiResponse.success(res, { incident, escalation }, 'Escalate incident thành công', 201);
+  });
+
+  // 10. Get escalations for an incident
+  static getIncidentEscalations = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const incident = await Incident.findById(id);
+    if (!incident) {
+      return ApiResponse.error(res, 'Không tìm thấy sự cố', 404);
+    }
+    
+    // Check tenant scope
+    if (req.user.tenant_id && incident.tenant_id.toString() !== req.user.tenant_id.toString()) {
+      return ApiResponse.error(res, 'Không có quyền truy cập sự cố này', 403);
+    }
+    
+    const escalations = await IncidentEscalation.find({ incident_id: id })
+      .populate({
+        path: 'created_by',
+        select: 'full_name email role_id',
+        populate: {
+          path: 'role_id',
+          select: 'role_name role_code'
         }
-      } catch (wsError) {
-        console.error('Failed to emit incident closed WebSocket notification:', wsError);
-      }
-      
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
-    }
-  });
-
-  // 9. Lấy thống kê incidents
-  static getIncidentStats = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await incidentService.getIncidentStats();
+      })
+      .populate('resolved_by', 'full_name email')
+      .sort({ created_at: -1 });
     
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
-    }
-  });
-
-  // 10. Tìm kiếm incidents
-  static searchIncidents = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { q } = req.query;
-    const result = await incidentService.searchIncidents(q);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
-    }
-  });
-
-  // 11. Lấy incidents theo user
-  static getIncidentsByUser = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { userId } = req.params;
-    const result = await incidentService.getIncidentsByUser(userId);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
-    }
-  });
-
-  // 12. Lấy incidents theo project
-  static getIncidentsByProject = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { projectId } = req.params;
-    const result = await incidentService.getIncidentsByProject(projectId);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
-    }
-  });
-
-  // 13. Lấy incidents theo status
-  static getIncidentsByStatus = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { status } = req.params;
-    const result = await incidentService.getIncidentsByStatus(status);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
-    }
-  });
-
-  // 14. Lấy incidents theo severity
-  static getIncidentsBySeverity = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { severity } = req.params;
-    const result = await incidentService.getIncidentsBySeverity(severity);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
-    }
-  });
-
-  // 15. Xóa incident
-  static deleteIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const userId = req.user._id;
-    
-    const result = await incidentService.deleteIncident(id, userId);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
-    }
-  });
-
-  // 16. Cập nhật incident
-  static updateIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const updateData = req.body;
-    const userId = req.user._id;
-    
-    const result = await incidentService.updateIncident(id, updateData, userId);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
-    }
+    return ApiResponse.success(res, escalations, 'Lấy danh sách escalations thành công', 200);
   });
 }
 
