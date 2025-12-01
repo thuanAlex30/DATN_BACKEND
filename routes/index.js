@@ -11,7 +11,11 @@ const ppeAdvancedRoutes = require('./ppeAdvanced');
 const projectRoutes = require('./projectRoutes');
 const incidentRoutes = require('./incidentRoutes');
 const trainingRoutes = require('./trainingRoutes');
-const certificateRoutes = require('./certificateRoutes');
+const taskWorkflowRoutes = require('./taskWorkflowRoutes');
+const trainerModuleRoutes = require('./trainerModuleRoutes');
+const safetyOfficerRoutes = require('./safetyOfficerRoutes');
+const warehouseModuleRoutes = require('./warehouseModuleRoutes');
+const maintenanceModuleRoutes = require('./maintenanceModuleRoutes');
 
 // Advanced Project Management Routes
 const projectTaskRoutes = require('./projectTaskRoutes');
@@ -25,8 +29,11 @@ const projectChangeRequestRoutes = require('./projectChangeRequestRoutes');
 const projectStatusReportRoutes = require('./projectStatusReportRoutes');
 const qualityCheckpointRoutes = require('./qualityCheckpointRoutes');
 const projectCommunicationRoutes = require('./projectCommunicationRoutes');
+const tenantRoutes = require('./tenantRoutes');
+const adminRoutes = require('./adminRoutes');
+const companyAdminRoutes = require('./companyAdminRoutes');
 const chatbotRoutes = require('./chatbotRoutes');
-
+const pricingRoutes = require('./pricingRoutes');
 
 console.log('Loading kafkaMonitor...');
 const kafkaMonitor = require('../services/kafkaMonitor');
@@ -91,8 +98,7 @@ router.get('/health', (req, res) => {
         projectChangeRequests: '/api/project-change-requests',
         projectStatusReports: '/api/project-status-reports',
         qualityCheckpoints: '/api/quality-checkpoints',
-        projectCommunication: '/api/project-communication',
-        chatbot: '/api/chatbot'
+        projectCommunication: '/api/project-communication'
       }
     });
   } catch (error) {
@@ -143,8 +149,11 @@ router.use('/ppe', ppeRoutes);
 router.use('/ppe-advanced', ppeAdvancedRoutes);
 router.use('/projects', projectRoutes);
 router.use('/incidents', incidentRoutes);
-router.use('/certificates', certificateRoutes);
 router.use('/training', trainingRoutes);
+router.use('/trainer-module', trainerModuleRoutes);
+router.use('/safety-officer', safetyOfficerRoutes);
+router.use('/warehouse', warehouseModuleRoutes);
+router.use('/maintenance', maintenanceModuleRoutes);
 
 // Advanced Project Management Routes
 router.use('/project-tasks', projectTaskRoutes);
@@ -158,7 +167,20 @@ router.use('/project-change-requests', projectChangeRequestRoutes);
 router.use('/project-status-reports', projectStatusReportRoutes);
 router.use('/quality-checkpoints', qualityCheckpointRoutes);
 router.use('/project-communication', projectCommunicationRoutes);
+
+// Task workflow (Dept Header → Manager → Leader → Employee)
+router.use('/task-workflows', taskWorkflowRoutes);
+
+// Admin and Tenant Management Routes
+router.use('/admin', adminRoutes);
+router.use('/tenants', tenantRoutes);
+router.use('/company-admin', companyAdminRoutes);
+
+// Chatbot Routes
 router.use('/chatbot', chatbotRoutes);
+
+// Pricing Routes (Public - không cần authentication)
+router.use('/pricing', pricingRoutes);
 
 // Global 404 handler for API routes
 router.use('*', (req, res) => {
@@ -197,11 +219,6 @@ router.use('*', (req, res) => {
         'GET /api/sites/:id',
         'PUT /api/sites/:id',
         'DELETE /api/sites/:id',
-        'GET /api/certificates',
-        'POST /api/certificates',
-        'GET /api/certificates/stats',
-        'GET /api/certificates/search',
-        'GET /api/certificates/expiring',
         'GET /api/site-areas/site/:siteId/areas',
         'GET /api/site-areas/areas',
         'POST /api/site-areas/areas',

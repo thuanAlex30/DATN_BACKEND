@@ -161,12 +161,12 @@ const issuanceValidation = {
 router.get('/categories', ppeController.getAllCategories);
 router.get('/categories/:id', ppeController.getCategoryById);
 router.post('/categories', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'header_department']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   ppeController.createCategory
 );
 router.post('/categories/import',
   upload.single('file'),
-  authMiddleware.authorizeRole(['admin', 'manager', 'header_department']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   (req, res, next) => {
     // Set timeout for this specific route
     req.setTimeout(300000); // 5 minutes
@@ -175,52 +175,52 @@ router.post('/categories/import',
   ppeController.importCategories
 );
 router.put('/categories/:id', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'header_department']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   ppeController.updateCategory
 );
 router.delete('/categories/:id', 
-  authMiddleware.authorizeRole(['admin', 'header_department']),
+  authMiddleware.authorizeScope({ minRoleLevel: 80, tenantScope: 'tenant' }),
   ppeController.deleteCategory
 );
 
 // PPE Items Routes
 router.get('/items', ppeController.getAllItems);
 router.post('/items/import', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'header_department']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   upload.single('file'),
   ppeController.importItems
 );
 router.get('/items/:id', ppeController.getItemById);
 router.post('/items', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'header_department']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   ppeController.createItem
 );
 router.put('/items/:id', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'header_department']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   ppeController.updateItem
 );
 router.delete('/items/:id', 
-  authMiddleware.authorizeRole(['admin', 'header_department']),
+  authMiddleware.authorizeScope({ minRoleLevel: 80, tenantScope: 'tenant' }),
   ppeController.deleteItem
 );
 
 // PPE Items Quantity Management Routes
 router.put('/items/:id/quantity', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'header_department', 'warehouse_staff']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   ppeController.updateItemQuantity
 );
 
 // PPE Issuances Routes - Luồng phân cấp Admin → Manager → Employee
 // Admin phát PPE cho Manager
 router.post('/issuances/to-manager', 
-  authMiddleware.authorizeRole(['admin', 'header_department']),
+  authMiddleware.authorizeScope({ minRoleLevel: 80, tenantScope: 'tenant' }),
   validationMiddleware.validateBody(issuanceValidation.create),
   ppeController.issueToManager
 );
 
 // Manager phát PPE cho Employee
 router.post('/issuances/to-employee', 
-  authMiddleware.authorizeRole(['manager']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   addIssuedByMiddleware,
   validationMiddleware.validateBody(issuanceValidation.create),
   ppeController.issueToEmployee
@@ -228,51 +228,51 @@ router.post('/issuances/to-employee',
 
 // Employee xác nhận nhận PPE từ Manager
 router.post('/issuances/:id/confirm-received', 
-  authMiddleware.authorizeRole(['employee']),
+  authMiddleware.authorizeScope({ minRoleLevel: 10, maxRoleLevel: 20, tenantScope: 'tenant', departmentScope: 'own' }),
   ppeController.confirmReceivedPPE
 );
 
 // Employee trả PPE cho Manager
 router.post('/issuances/:id/return-to-manager', 
-  authMiddleware.authorizeRole(['employee']),
+  authMiddleware.authorizeScope({ minRoleLevel: 10, maxRoleLevel: 20, tenantScope: 'tenant', departmentScope: 'own' }),
   validationMiddleware.validateBody(issuanceValidation.return),
   ppeController.returnToManager
 );
 
 // Manager xác nhận nhận PPE từ Employee
 router.post('/issuances/:id/confirm-employee-return', 
-  authMiddleware.authorizeRole(['manager']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   ppeController.confirmEmployeeReturn
 );
 
 // Manager trả PPE cho Admin
 router.post('/issuances/:id/return-to-admin', 
-  authMiddleware.authorizeRole(['manager']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   validationMiddleware.validateBody(issuanceValidation.return),
   ppeController.returnToAdmin
 );
 
 // Lấy danh sách PPE của Manager
 router.get('/issuances/manager-ppe', 
-  authMiddleware.authorizeRole(['manager']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   ppeController.getManagerPPE
 );
 
 // Lấy danh sách PPE của Employee (chỉ dành cho employee)
 router.get('/issuances/employee-ppe', 
-  authMiddleware.authorizeRole(['employee']),
+  authMiddleware.authorizeScope({ minRoleLevel: 10, maxRoleLevel: 20, tenantScope: 'tenant', departmentScope: 'own' }),
   ppeController.getEmployeePPE
 );
 
 // Lấy danh sách PPE của Employees trong department (dành cho manager)
 router.get('/issuances/department-employees-ppe', 
-  authMiddleware.authorizeRole(['manager']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   ppeController.getDepartmentEmployeesPPE
 );
 
 // Lấy lịch sử PPE của Manager
 router.get('/issuances/manager-history', 
-  authMiddleware.authorizeRole(['manager']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   ppeController.getManagerPPEHistory
 );
 
@@ -284,17 +284,17 @@ router.get('/issuances/user/:userId', ppeController.getIssuancesByUser);
 router.get('/issuances/active', ppeController.getActiveIssuances);
 router.get('/issuances/expiring', ppeController.getExpiringIssuances);
 router.post('/issuances', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'header_department', 'safety_officer']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   addIssuedByMiddleware,
   validationMiddleware.validateBody(issuanceValidation.create),
   ppeController.createIssuance
 );
 router.put('/issuances/:id', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'header_department', 'safety_officer']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   ppeController.updateIssuance
 );
 router.post('/issuances/:id/return', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'header_department', 'safety_officer']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   validationMiddleware.validateBody(issuanceValidation.return),
   ppeController.returnIssuance
 );
@@ -302,7 +302,7 @@ router.post('/issuances/:id/return',
 // Employee PPE return route - employees can return their own PPE
 router.post('/issuances/:id/return-employee', 
   authMiddleware.authenticate,
-  authMiddleware.authorizeRole(['employee']),
+  authMiddleware.authorizeScope({ minRoleLevel: 10, maxRoleLevel: 20, tenantScope: 'tenant', departmentScope: 'own' }),
   validationMiddleware.validateBody(issuanceValidation.return),
   ppeController.returnIssuanceEmployee
 );
@@ -310,12 +310,12 @@ router.post('/issuances/:id/return-employee',
 // Employee PPE report route - employees can report issues with their own PPE
 router.post('/issuances/:id/report-employee', 
   authMiddleware.authenticate,
-  authMiddleware.authorizeRole(['employee']),
+  authMiddleware.authorizeScope({ minRoleLevel: 10, maxRoleLevel: 20, tenantScope: 'tenant', departmentScope: 'own' }),
   validationMiddleware.validateBody(issuanceValidation.report),
   ppeController.reportIssuanceEmployee
 );
 router.delete('/issuances/:id', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'header_department']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   ppeController.deleteIssuance
 );
 
@@ -339,15 +339,15 @@ router.get('/items/:id/stats', ppeController.getItemStats);
 router.get('/inventory', ppeController.getAllInventory);
 router.get('/inventory/:id', ppeController.getInventoryById);
 router.post('/inventory', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'header_department', 'warehouse_staff']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   ppeController.createInventory
 );
 router.put('/inventory/:id', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'header_department', 'warehouse_staff']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   ppeController.updateInventory
 );
 router.delete('/inventory/:id', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'header_department']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   ppeController.deleteInventory
 );
 router.get('/inventory/stats', ppeController.getInventoryStats);
@@ -356,20 +356,20 @@ router.get('/inventory/stats', ppeController.getInventoryStats);
 router.get('/assignments', ppeController.getAllAssignments);
 router.get('/assignments/:id', ppeController.getAssignmentById);
 router.post('/assignments', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'safety_officer']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant' }),
   ppeController.createAssignment
 );
 router.put('/assignments/:id', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'safety_officer']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant' }),
   ppeController.updateAssignment
 );
 router.delete('/assignments/:id', 
-  authMiddleware.authorizeRole(['admin', 'manager']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant' }),
   ppeController.deleteAssignment
 );
 router.get('/assignments/user/:userId', ppeController.getUserAssignments);
 router.post('/assignments/:id/return', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'safety_officer']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant' }),
   ppeController.returnAssignment
 );
 
@@ -377,15 +377,15 @@ router.post('/assignments/:id/return',
 router.get('/maintenance', ppeController.getAllMaintenance);
 router.get('/maintenance/:id', ppeController.getMaintenanceById);
 router.post('/maintenance', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'maintenance_staff']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant' }),
   ppeController.createMaintenance
 );
 router.put('/maintenance/:id', 
-  authMiddleware.authorizeRole(['admin', 'manager', 'maintenance_staff']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant' }),
   ppeController.updateMaintenance
 );
 router.delete('/maintenance/:id', 
-  authMiddleware.authorizeRole(['admin', 'manager']),
+  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant' }),
   ppeController.deleteMaintenance
 );
 router.get('/maintenance/stats', ppeController.getMaintenanceStats);

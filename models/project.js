@@ -1,6 +1,13 @@
 const mongoose = require('mongoose');
+const { getDefaultTenantObjectId } = require('../utils/tenancy');
 
 const projectSchema = new mongoose.Schema({
+  tenant_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tenant',
+    required: true,
+    default: getDefaultTenantObjectId
+  },
   project_name: {
     type: String,
     required: true,
@@ -87,6 +94,7 @@ projectSchema.index({ project_name: 'text', description: 'text' });
 projectSchema.index({ status: 1 });
 projectSchema.index({ leader_id: 1 });
 projectSchema.index({ created_by: 1 });
+projectSchema.index({ tenant_id: 1 });
 projectSchema.index({ site_id: 1 });
 projectSchema.index({ start_date: 1, end_date: 1 });
 

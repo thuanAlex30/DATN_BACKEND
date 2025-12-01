@@ -175,7 +175,10 @@ class AuthService {
         role: roleData ? {
           _id: roleData._id,
           role_name: roleData.role_name,
-          permissions: roleData.permissions || {}
+          role_code: roleData.role_code || null,
+          role_level: roleData.role_level || null,
+          permissions: roleData.permissions || {},
+          scope_rules: roleData.scope_rules || {}
         } : null,
         department: departmentData ? {
           id: departmentData._id,
@@ -192,6 +195,8 @@ class AuthService {
       console.log('🔍 Backend login - Final user response:', {
         role: userResponse.role,
         role_name: userResponse.role?.role_name,
+        role_code: userResponse.role?.role_code,
+        role_level: userResponse.role?.role_level,
         department: userResponse.department,
         department_id: userResponse.department_id
       });

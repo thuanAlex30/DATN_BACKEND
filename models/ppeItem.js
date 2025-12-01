@@ -1,6 +1,13 @@
 const mongoose = require('mongoose');
+const { getDefaultTenantObjectId } = require('../utils/tenancy');
 
 const ppeItemSchema = new mongoose.Schema({
+  tenant_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tenant',
+    required: true,
+    default: getDefaultTenantObjectId
+  },
   category_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'PPECategory',
@@ -92,6 +99,7 @@ const ppeItemSchema = new mongoose.Schema({
 });
 
 // Add indexes for better performance
+ppeItemSchema.index({ tenant_id: 1 });
 ppeItemSchema.index({ item_code: 1 }, { unique: true });
 ppeItemSchema.index({ category_id: 1 });
 ppeItemSchema.index({ item_name: 'text', brand: 'text', model: 'text' });

@@ -7,7 +7,7 @@ const ChatMessageSchema = new mongoose.Schema({
 });
 
 const ChatHistorySchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
   sessionId: { type: String, required: true },
   messages: [ChatMessageSchema],
   createdAt: { type: Date, default: Date.now },

@@ -148,6 +148,18 @@ const limiter = rateLimit({
   keyGenerator: (req) => {
     // Use user ID if available, otherwise use IP
     return req.user?.id || req.ip;
+  },
+  // Skip rate limiting for pricing routes and chatbot session (they have their own limiters)
+  skip: (req) => {
+    // Exclude pricing routes from global rate limiter
+    if (req.path.startsWith('/api/pricing')) {
+      return true;
+    }
+    // Exclude chatbot session endpoint from global rate limiter (it has its own limiter)
+    if (req.path === '/api/chatbot/session' && req.method === 'POST') {
+      return true;
+    }
+    return false;
   }
 });
 app.use(limiter);

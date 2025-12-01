@@ -33,9 +33,26 @@ router.post('/message',
   ChatbotController.sendMessage
 );
 
+// Rate limiting riêng cho chatbot session (giới hạn thấp hơn để tránh spam)
+const chatbotSessionLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 phút
+  max: 10, // 10 requests/phút để tránh tạo quá nhiều session
+  message: {
+    success: false,
+    message: 'Bạn đã tạo quá nhiều session. Vui lòng đợi một chút rồi thử lại.',
+    timestamp: new Date().toISOString()
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return req.user?._id?.toString() || req.ip;
+  }
+});
+
 // Tạo session mới - cho phép dùng khi chưa đăng nhập
 router.post('/session', 
   AuthMiddleware.optionalAuth,
+  chatbotSessionLimiter,
   ChatbotController.createSession
 );
 
