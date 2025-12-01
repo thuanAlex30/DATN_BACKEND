@@ -34,10 +34,25 @@ class AuthMiddleware {
       }
 
       // Populate role and department information
-      await user.populate(['role_id', 'department_id', 'tenant_id']);
+      await user.populate({
+        path: 'role_id',
+        select: 'role_name role_code role_level scope_rules permissions is_active description'
+      });
+      await user.populate('department_id', 'department_name is_active');
+      await user.populate('tenant_id', 'tenant_code name is_active');
       
-      if (!user.role_id || !user.role_id.is_active) {
-        return ApiResponse.unauthorized(res, 'Invalid or inactive role');
+      if (!user.role_id) {
+        return ApiResponse.unauthorized(res, 'User role not found');
+      }
+      
+      if (!user.role_id.is_active) {
+        return ApiResponse.unauthorized(res, 'User role is inactive');
+      }
+      
+      // Ensure role has required fields
+      if (!user.role_id.role_code) {
+        console.error('Role missing role_code:', user.role_id);
+        return ApiResponse.error(res, 'Invalid role configuration: missing role_code', 500);
       }
 
       // Support for multi-role: if user has multiple roles, select the one with highest level
@@ -53,6 +68,17 @@ class AuthMiddleware {
         primaryRole = roles[0];
       }
 
+      // Validate primaryRole exists
+      if (!primaryRole) {
+        return ApiResponse.unauthorized(res, 'User role not found');
+      }
+
+      // Ensure role has required properties
+      if (!primaryRole._id || !primaryRole.role_code) {
+        console.error('Invalid role structure:', primaryRole);
+        return ApiResponse.error(res, 'Invalid role configuration', 500);
+      }
+
       // Attach user info to request
       req.user = {
         _id: user._id,
@@ -60,7 +86,7 @@ class AuthMiddleware {
         username: user.username,
         email: user.email,
         full_name: user.full_name,
-        tenant_id: user.tenant_id,
+        tenant_id: user.tenant_id?._id || user.tenant_id,
         tenant: user.tenant_id ? {
           _id: user.tenant_id._id || user.tenant_id,
           tenant_code: user.tenant_id.tenant_code,
@@ -68,15 +94,15 @@ class AuthMiddleware {
         } : null,
         role: {
           _id: primaryRole._id,
-          role_name: primaryRole.role_name,
-          role_code: primaryRole.role_code,
-          role_level: primaryRole.role_level,
+          role_name: primaryRole.role_name || '',
+          role_code: primaryRole.role_code || '',
+          role_level: primaryRole.role_level || 0,
           scope_rules: primaryRole.scope_rules || {},
           permissions: primaryRole.permissions || {}
         },
         role_id: primaryRole._id,
-        role_code: primaryRole.role_code,
-        role_level: primaryRole.role_level,
+        role_code: primaryRole.role_code || '',
+        role_level: primaryRole.role_level || 0,
         scope_rules: primaryRole.scope_rules || {},
         department_id: user.department_id?._id || user.department_id,
         department: user.department_id ? {
@@ -88,8 +114,8 @@ class AuthMiddleware {
         // Store all roles for future multi-role support
         roles: roles.map(r => ({
           _id: r._id,
-          role_code: r.role_code,
-          role_level: r.role_level,
+          role_code: r.role_code || '',
+          role_level: r.role_level || 0,
           scope_rules: r.scope_rules || {}
         }))
       };

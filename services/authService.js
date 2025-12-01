@@ -327,8 +327,11 @@ class AuthService {
         role: roleData ? {
           _id: roleData._id,
           role_name: roleData.role_name,
+          role_code: roleData.role_code,
+          role_level: roleData.role_level,
           description: roleData.description,
-          permissions: roleData.permissions,
+          permissions: roleData.permissions || {},
+          scope_rules: roleData.scope_rules || {},
           is_active: roleData.is_active,
           created_at: roleData.created_at,
           updated_at: roleData.updated_at
