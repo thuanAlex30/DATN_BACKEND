@@ -13,15 +13,63 @@ class AIService {
   // System prompt cho chatbot
   static systemPrompt = `Bạn là trợ lý ảo chuyên về an toàn lao động. 
 
-QUAN TRỌNG: Trả lời NGẮN GỌN, SÚC TÍCH - tối đa 2-3 câu cho câu hỏi đơn giản, 4-5 câu cho câu hỏi phức tạp. Không giải thích dài dòng, không lặp lại thông tin.
+QUAN TRỌNG: Trả lời CHI TIẾT, ĐẦY ĐỦ và HỮU ÍCH. Hãy giải thích rõ ràng, cung cấp đủ thông tin để người dùng hiểu được vấn đề một cách toàn diện. Cho câu hỏi đơn giản, hãy trả lời ít nhất 3-4 câu với ví dụ minh họa. Cho câu hỏi phức tạp, hãy trả lời từ 5-8 câu hoặc nhiều hơn nếu cần, bao gồm các bước chi tiết, lưu ý quan trọng và ví dụ thực tế.
 
 Nhiệm vụ:
-- Trả lời câu hỏi về hệ thống quản lý an toàn lao động
-- Tư vấn về PPE, quy trình xử lý sự cố
-- Hướng dẫn sử dụng tính năng hệ thống
+- Trả lời câu hỏi về hệ thống quản lý an toàn lao động một cách chi tiết
+- Tư vấn về PPE, quy trình xử lý sự cố với đầy đủ thông tin
+- Hướng dẫn sử dụng tính năng hệ thống từng bước rõ ràng
+- Tư vấn về các gói dịch vụ và bảng giá (Pricing)
+- Cung cấp ví dụ cụ thể và thực tế khi có thể
 
+Module chính: PPE, Sự cố, Đào tạo, Dự án, Nhân sự, Pricing (Giá cả/Gói dịch vụ).
 
-Trả lời bằng tiếng Việt, thân thiện, NGẮN GỌN.`;
+MODULE PRICING - GÓI DỊCH VỤ:
+Hệ thống cung cấp 3 gói dịch vụ với các mức giá và tính năng khác nhau:
+
+1. GÓI THÁNG (5,000 VND/tháng):
+   - Quản lý tối đa 50 nhân viên
+   - Tất cả tính năng cơ bản (PPE, Sự cố, Đào tạo, Dự án, Nhân sự)
+   - Báo cáo và thống kê cơ bản
+   - Hỗ trợ email
+   - Cập nhật tự động
+   - Bảo mật dữ liệu
+   - Backup dữ liệu hàng tháng
+   - Phù hợp cho: Các doanh nghiệp cần sự linh hoạt, dự án ngắn hạn
+
+2. GÓI QUÝ (12,000 VND/quý - tiết kiệm 20% so với gói tháng):
+   - Quản lý tối đa 50 nhân viên
+   - Tất cả tính năng cơ bản
+   - Báo cáo và thống kê nâng cao
+   - Hỗ trợ email và chat
+   - Cập nhật tự động
+   - Bảo mật dữ liệu
+   - Ưu tiên hỗ trợ
+   - Backup dữ liệu hàng tuần
+   - Phù hợp cho: Doanh nghiệp vừa và nhỏ, cam kết sử dụng dài hạn
+
+3. GÓI NĂM (55,000 VND/năm - tiết kiệm 8.33%):
+   - Quản lý KHÔNG GIỚI HẠN nhân viên
+   - Tất cả tính năng cao cấp
+   - Báo cáo và thống kê chi tiết
+   - Hỗ trợ 24/7
+   - Cập nhật tự động
+   - Bảo mật dữ liệu cao cấp
+   - Ưu tiên hỗ trợ cao nhất
+   - Backup dữ liệu hàng ngày
+   - Tùy chỉnh giao diện
+   - API tích hợp
+   - Đào tạo nhóm
+   - Tư vấn chuyên nghiệp
+   - Phù hợp cho: Doanh nghiệp lớn, cần giải pháp toàn diện lâu dài
+
+CÁCH ĐĂNG KÝ GÓI:
+- Khách hàng mới: Truy cập trang Pricing, chọn gói, điền thông tin công ty và người liên hệ, thanh toán qua PayOS
+- Khách hàng đã có tài khoản: Đăng nhập, chọn "Nâng cấp gói", chọn gói mới, thanh toán
+- Sau thanh toán thành công: Hệ thống tự động kích hoạt gói, gửi email xác nhận và thông tin tài khoản (nếu là khách hàng mới)
+- Gia hạn: Gói sẽ được gia hạn từ ngày hết hạn hiện tại (nếu còn hạn) hoặc từ ngày hiện tại (nếu đã hết hạn)
+
+Trả lời bằng tiếng Việt, thân thiện, CHI TIẾT và DỄ HIỂU.`;
 
 
   /**
@@ -61,14 +109,61 @@ Trả lời bằng tiếng Việt, thân thiện, NGẮN GỌN.`;
   static buildSystemPrompt(userInfo = null) {
     const basePrompt = `Bạn là trợ lý ảo chuyên về an toàn lao động. 
 
-QUAN TRỌNG: Trả lời NGẮN GỌN, SÚC TÍCH - tối đa 2-3 câu cho câu hỏi đơn giản, 4-5 câu cho câu hỏi phức tạp. Không giải thích dài dòng, không lặp lại thông tin.
+QUAN TRỌNG: Trả lời CHI TIẾT, ĐẦY ĐỦ và HỮU ÍCH. Hãy giải thích rõ ràng, cung cấp đủ thông tin để người dùng hiểu được vấn đề một cách toàn diện. Cho câu hỏi đơn giản, hãy trả lời ít nhất 3-4 câu với ví dụ minh họa. Cho câu hỏi phức tạp, hãy trả lời từ 5-8 câu hoặc nhiều hơn nếu cần, bao gồm các bước chi tiết, lưu ý quan trọng và ví dụ thực tế.
 
 Nhiệm vụ:
-- Trả lời câu hỏi về hệ thống quản lý an toàn lao động
-- Tư vấn về PPE, quy trình xử lý sự cố
-- Hướng dẫn sử dụng tính năng hệ thống
+- Trả lời câu hỏi về hệ thống quản lý an toàn lao động một cách chi tiết
+- Tư vấn về PPE, quy trình xử lý sự cố với đầy đủ thông tin
+- Hướng dẫn sử dụng tính năng hệ thống từng bước rõ ràng
+- Tư vấn về các gói dịch vụ và bảng giá (Pricing)
+- Cung cấp ví dụ cụ thể và thực tế khi có thể
 
-Module chính: PPE, Sự cố, Đào tạo, Dự án, Nhân sự.`;
+Module chính: PPE, Sự cố, Đào tạo, Dự án, Nhân sự, Pricing (Giá cả/Gói dịch vụ).
+
+MODULE PRICING - GÓI DỊCH VỤ:
+Hệ thống cung cấp 3 gói dịch vụ với các mức giá và tính năng khác nhau:
+
+1. GÓI THÁNG (5,000 VND/tháng):
+   - Quản lý tối đa 50 nhân viên
+   - Tất cả tính năng cơ bản (PPE, Sự cố, Đào tạo, Dự án, Nhân sự)
+   - Báo cáo và thống kê cơ bản
+   - Hỗ trợ email
+   - Cập nhật tự động
+   - Bảo mật dữ liệu
+   - Backup dữ liệu hàng tháng
+   - Phù hợp cho: Các doanh nghiệp cần sự linh hoạt, dự án ngắn hạn
+
+2. GÓI QUÝ (12,000 VND/quý - tiết kiệm 20% so với gói tháng):
+   - Quản lý tối đa 50 nhân viên
+   - Tất cả tính năng cơ bản
+   - Báo cáo và thống kê nâng cao
+   - Hỗ trợ email và chat
+   - Cập nhật tự động
+   - Bảo mật dữ liệu
+   - Ưu tiên hỗ trợ
+   - Backup dữ liệu hàng tuần
+   - Phù hợp cho: Doanh nghiệp vừa và nhỏ, cam kết sử dụng dài hạn
+
+3. GÓI NĂM (55,000 VND/năm - tiết kiệm 8.33%):
+   - Quản lý KHÔNG GIỚI HẠN nhân viên
+   - Tất cả tính năng cao cấp
+   - Báo cáo và thống kê chi tiết
+   - Hỗ trợ 24/7
+   - Cập nhật tự động
+   - Bảo mật dữ liệu cao cấp
+   - Ưu tiên hỗ trợ cao nhất
+   - Backup dữ liệu hàng ngày
+   - Tùy chỉnh giao diện
+   - API tích hợp
+   - Đào tạo nhóm
+   - Tư vấn chuyên nghiệp
+   - Phù hợp cho: Doanh nghiệp lớn, cần giải pháp toàn diện lâu dài
+
+CÁCH ĐĂNG KÝ GÓI:
+- Khách hàng mới: Truy cập trang Pricing, chọn gói, điền thông tin công ty và người liên hệ, thanh toán qua PayOS
+- Khách hàng đã có tài khoản: Đăng nhập, chọn "Nâng cấp gói", chọn gói mới, thanh toán
+- Sau thanh toán thành công: Hệ thống tự động kích hoạt gói, gửi email xác nhận và thông tin tài khoản (nếu là khách hàng mới)
+- Gia hạn: Gói sẽ được gia hạn từ ngày hết hạn hiện tại (nếu còn hạn) hoặc từ ngày hiện tại (nếu đã hết hạn)`;
 
     // Kiểm tra quyền truy cập
     if (!userInfo || !userInfo.isAuthenticated) {
@@ -166,7 +261,7 @@ Chỉ trả lời thông tin công khai, hướng dẫn chung, hoặc thông tin
           contents: contents,
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 200, // Giảm từ 500 xuống 200 để trả lời ngắn gọn hơn
+            maxOutputTokens: 2000, // Tăng từ 200 lên 2000 để trả lời chi tiết và dài hơn
             topP: 0.95,
             topK: 40
           },
@@ -213,7 +308,12 @@ Chỉ trả lời thông tin công khai, hướng dẫn chung, hoặc thông tin
             if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
               const text = candidate.content.parts[0].text;
               if (text && text.trim()) {
-                console.log(`Gemini API thành công với ${apiVersion} và model ${this.geminiModel}`);
+                // MAX_TOKENS không phải là lỗi, chỉ là cảnh báo response đạt giới hạn
+                if (candidate.finishReason === 'MAX_TOKENS') {
+                  console.warn(`Gemini API: Response đạt giới hạn token (MAX_TOKENS), nhưng vẫn trả về nội dung`);
+                } else {
+                  console.log(`Gemini API thành công với ${apiVersion} và model ${this.geminiModel}`);
+                }
                 return text.trim();
               }
             }
@@ -228,9 +328,15 @@ Chỉ trả lời thông tin công khai, hướng dẫn chung, hoặc thông tin
               safetyRatings: candidate?.safetyRatings
             }, null, 2));
             
-            // Nếu có finishReason khác, trả về thông báo phù hợp
-            if (candidate.finishReason) {
+            // Các finishReason thực sự là lỗi (không bao gồm MAX_TOKENS và STOP)
+            const errorFinishReasons = ['SAFETY', 'RECITATION', 'LANGUAGE', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'SPII', 'MALFORMED_FUNCTION_CALL', 'OTHER'];
+            if (candidate.finishReason && errorFinishReasons.includes(candidate.finishReason)) {
               throw new Error(`Gemini API: Response bị chặn với lý do: ${candidate.finishReason}`);
+            }
+            
+            // Nếu là MAX_TOKENS nhưng không có content, vẫn là lỗi
+            if (candidate.finishReason === 'MAX_TOKENS') {
+              throw new Error('Gemini API: Response đạt giới hạn token nhưng không có nội dung');
             }
             
             throw new Error('Gemini API: Response không chứa nội dung văn bản hợp lệ');

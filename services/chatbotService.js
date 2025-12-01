@@ -158,10 +158,10 @@ class ChatbotService {
   // Lấy lịch sử chat để truyền vào AI service
   static async getChatHistoryForAI(userId, sessionId) {
     try {
-      // Nếu chưa đăng nhập, chỉ lấy lịch sử theo sessionId
+      // Nếu chưa đăng nhập, chỉ lấy lịch sử theo sessionId với userId null
       const query = userId 
         ? { userId, sessionId }
-        : { sessionId, userId: { $exists: false } }; // Session không có userId
+        : { sessionId, userId: null }; // Session không có userId
       
       const chatHistory = await ChatHistory.findOne(query)
         .sort({ 'messages.timestamp': 1 });
@@ -358,16 +358,16 @@ class ChatbotService {
   // Lưu lịch sử chat
   static async saveChatHistory(userId, sessionId, userMessage, assistantResponse) {
     try {
-      // Nếu chưa đăng nhập, lưu với userId null hoặc không có userId
+      // Nếu chưa đăng nhập, lưu với userId null
       const query = userId 
         ? { userId, sessionId }
-        : { sessionId, userId: { $exists: false } };
+        : { sessionId, userId: null };
       
       let chatHistory = await ChatHistory.findOne(query);
       
       if (!chatHistory) {
         chatHistory = new ChatHistory({
-          userId: userId || undefined, // Không lưu userId nếu null
+          userId: userId || null, // Lưu null nếu chưa đăng nhập
           sessionId,
           messages: []
         });
