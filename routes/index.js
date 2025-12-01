@@ -32,6 +32,7 @@ const projectCommunicationRoutes = require('./projectCommunicationRoutes');
 const tenantRoutes = require('./tenantRoutes');
 const adminRoutes = require('./adminRoutes');
 const companyAdminRoutes = require('./companyAdminRoutes');
+const hikvisionRoutes = require('./hikvisionRoutes');
 const chatbotRoutes = require('./chatbotRoutes');
 const pricingRoutes = require('./pricingRoutes');
 
@@ -176,6 +177,8 @@ router.use('/admin', adminRoutes);
 router.use('/tenants', tenantRoutes);
 router.use('/company-admin', companyAdminRoutes);
 
+// Hikvision Integration Routes
+router.use('/hikvision', hikvisionRoutes);
 // Chatbot Routes
 router.use('/chatbot', chatbotRoutes);
 

@@ -69,8 +69,6 @@ class UserRepository {
 
       const [users, total] = await Promise.all([
         User.find(filter)
-          .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active'),
-        User.find(filter)
           .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
           .populate('department_id', 'department_name is_active')
           .populate('position_id', 'position_name level is_active')

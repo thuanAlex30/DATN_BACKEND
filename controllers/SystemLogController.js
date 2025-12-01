@@ -16,7 +16,8 @@ class SystemLogController {
                 action,
                 start_date,
                 end_date,
-                search
+                search,
+                ip_address
             } = req.query;
 
             const filters = {};
@@ -27,7 +28,8 @@ class SystemLogController {
             if (action) filters.action = action;
             if (start_date) filters.start_date = start_date;
             if (end_date) filters.end_date = end_date;
-            if (search) filters.action = search;
+            if (search) filters.search = search;
+            if (ip_address) filters.ip_address = ip_address;
 
             // Add timeout wrapper
             const timeoutPromise = new Promise((_, reject) => {
@@ -39,17 +41,47 @@ class SystemLogController {
             
             // Map logs to frontend format
             const mappedLogs = result.logs.map(log => {
-                const logObj = log.toObject ? log.toObject() : log;
+                const logObj = log.toObject ? log.toObject({ virtuals: true }) : log;
+                const parsedDetails = typeof logObj.details === 'string'
+                    ? (() => {
+                        try {
+                            return JSON.parse(logObj.details);
+                        } catch (err) {
+                            return logObj.details;
+                        }
+                    })()
+                    : (logObj.details || {});
+
+                let userPayload = null;
+                if (logObj.user_id) {
+                    if (typeof logObj.user_id === 'object' && (logObj.user_id._id || logObj.user_id.username)) {
+                        userPayload = {
+                            _id: logObj.user_id._id?.toString() || logObj.user_id._id,
+                            username: logObj.user_id.username,
+                            full_name: logObj.user_id.full_name
+                        };
+                    } else {
+                        userPayload = {
+                            _id: logObj.user_id?.toString(),
+                            username: null,
+                            full_name: null
+                        };
+                    }
+                }
+
                 return {
-                    id: logObj._id?.toString() || logObj.id,
-                    user_id: logObj.user_id?._id?.toString() || logObj.user_id,
-                    user_name: logObj.user_id?.username || logObj.user_id?.full_name,
-                    tenant_id: logObj.tenant_id?.toString() || logObj.tenant_id,
-                    module: logObj.module,
+                    _id: logObj._id?.toString() || logObj.id,
+                    user_id: userPayload,
                     action: logObj.action,
-                    details: typeof logObj.details === 'string' ? logObj.details : JSON.stringify(logObj.details || {}),
+                    module: logObj.module,
+                    severity: logObj.severity,
+                    details: parsedDetails,
                     ip_address: logObj.ip_address,
-                    created_at: logObj.created_at || logObj.timestamp
+                    user_agent: logObj.user_agent,
+                    session_id: logObj.session_id,
+                    timestamp: logObj.timestamp || logObj.createdAt || logObj.created_at,
+                    created_at: logObj.createdAt || logObj.created_at,
+                    updated_at: logObj.updatedAt || logObj.updated_at
                 };
             });
             
@@ -64,7 +96,7 @@ class SystemLogController {
             };
             
             ApiResponse.success(res, {
-                data: mappedLogs,
+                logs: mappedLogs,
                 pagination: mappedPagination
             }, 'Lấy danh sách nhật ký hệ thống thành công');
         } catch (error) {

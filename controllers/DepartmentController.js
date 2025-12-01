@@ -443,12 +443,14 @@ class DepartmentController {
     // Filter out managers, only keep employees
     const employees = allUsers.filter(user => {
       const roleName = user.role_id?.role_name;
-      const isEmployee = roleName === 'employee';
+      const roleCode = user.role_id?.role_code;
+      const isEmployee = (roleCode || roleName)?.toLowerCase() === 'employee';
       
       if (!isEmployee) {
         console.log('Filtered out non-employee:', {
           name: user.full_name,
-          role: roleName
+          role_name: roleName,
+          role_code: roleCode
         });
       }
       

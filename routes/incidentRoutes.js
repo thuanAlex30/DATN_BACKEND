@@ -56,47 +56,6 @@ router.put('/progress/:id',
 // Đóng sự cố & xuất báo cáo
 router.put('/close/:id', AuthMiddleware.authenticate, IncidentController.closeIncident);
 
-// Cập nhật thông tin nhân viên trong sự cố
-router.put('/update-employee/:id', AuthMiddleware.authenticate, IncidentController.updateEmployeeIncident);
-
-// Lấy thống kê incidents
-router.get('/stats/overview', AuthMiddleware.authenticate, IncidentController.getIncidentStats);
-
-// Tìm kiếm incidents
-router.get('/search/query', 
-  AuthMiddleware.authenticate,
-  ValidationMiddleware.validateQuery(incidentValidation.searchQuery),
-  IncidentController.searchIncidents
-);
-
-// Lấy incidents theo user
-router.get('/user/:userId', 
-  AuthMiddleware.authenticate,
-  ValidationMiddleware.validateParams(incidentValidation.userId),
-  IncidentController.getIncidentsByUser
-);
-
-// Lấy incidents theo project
-router.get('/project/:projectId', 
-  AuthMiddleware.authenticate,
-  ValidationMiddleware.validateParams(incidentValidation.projectId),
-  IncidentController.getIncidentsByProject
-);
-
-// Lấy incidents theo status
-router.get('/status/:status', 
-  AuthMiddleware.authenticate,
-  ValidationMiddleware.validateParams(incidentValidation.status),
-  IncidentController.getIncidentsByStatus
-);
-
-// Lấy incidents theo severity
-router.get('/severity/:severity', 
-  AuthMiddleware.authenticate,
-  ValidationMiddleware.validateParams(incidentValidation.severity),
-  IncidentController.getIncidentsBySeverity
-);
-
 // Lấy danh sách sự cố (phải đặt trước route /:id)
 router.get('/', AuthMiddleware.authenticate, IncidentController.getIncidents);
 

@@ -32,6 +32,7 @@
 {"timestamp":"2025-11-23T14:13:21.827Z","level":"ERROR","message":"WebSocket authentication error","metadata":{"error":"jwt expired"},"pid":16916,"hostname":"Bravo"}
 {"timestamp":"2025-11-23T14:13:22.853Z","level":"ERROR","message":"WebSocket authentication error","metadata":{"error":"jwt expired"},"pid":16916,"hostname":"Bravo"}
 {"timestamp":"2025-11-23T14:13:23.979Z","level":"ERROR","message":"WebSocket authentication error","metadata":{"error":"jwt expired"},"pid":16916,"hostname":"Bravo"}
+<<<<<<< HEAD
 {"timestamp":"2025-12-01T04:19:00.241Z","level":"ERROR","message":"WebSocket authentication error","metadata":{"error":"jwt expired"},"pid":6024,"hostname":"MSI"}
 {"timestamp":"2025-12-01T04:19:00.274Z","level":"ERROR","message":"WebSocket authentication error","metadata":{"error":"jwt expired"},"pid":6024,"hostname":"MSI"}
 {"timestamp":"2025-12-01T04:19:01.703Z","level":"ERROR","message":"WebSocket authentication error","metadata":{"error":"jwt expired"},"pid":6024,"hostname":"MSI"}
@@ -45,3 +46,5 @@
 {"timestamp":"2025-12-01T04:19:14.708Z","level":"ERROR","message":"WebSocket authentication error","metadata":{"error":"jwt expired"},"pid":6024,"hostname":"MSI"}
 {"timestamp":"2025-12-01T04:19:14.717Z","level":"ERROR","message":"WebSocket authentication error","metadata":{"error":"jwt expired"},"pid":6024,"hostname":"MSI"}
 {"timestamp":"2025-12-01T04:19:14.732Z","level":"ERROR","message":"WebSocket authentication error","metadata":{"error":"jwt expired"},"pid":6024,"hostname":"MSI"}
+=======
+>>>>>>> origin/ThuanDH30

@@ -82,6 +82,7 @@ systemLogSchema.statics.getLogs = async function(filters = {}, page = 1, limit =
         if (filters.module) query.module = filters.module;
         if (filters.severity) query.severity = filters.severity;
         if (filters.action) query.action = new RegExp(filters.action, 'i');
+        if (filters.ip_address) query.ip_address = new RegExp(filters.ip_address, 'i');
         if (filters.start_date || filters.end_date) {
             query.timestamp = {};
             if (filters.start_date) {
@@ -90,6 +91,14 @@ systemLogSchema.statics.getLogs = async function(filters = {}, page = 1, limit =
             if (filters.end_date) {
                 query.timestamp.$lte = new Date(filters.end_date);
             }
+        }
+        if (filters.search) {
+            const searchRegex = new RegExp(filters.search, 'i');
+            query.$or = [
+                { action: searchRegex },
+                { module: searchRegex },
+                { ip_address: searchRegex }
+            ];
         }
         
         const skip = (page - 1) * limit;
