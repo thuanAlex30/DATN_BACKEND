@@ -74,6 +74,7 @@ const eventTypes = {
   INCIDENT_DELETED: 'incident_deleted',
   INCIDENT_COMMENT_ADDED: 'incident_comment_added',
   INCIDENT_ATTACHMENT_ADDED: 'incident_attachment_added',
+  INCIDENT_ESCALATED: 'incident_escalated',
   
   // PPE Events
   PPE_ITEM_CREATED: 'ppe_item_created',

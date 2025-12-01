@@ -196,6 +196,41 @@ class CompanyAdminController {
       user_ids
     }, 'Roles assigned successfully');
   });
+
+  // Get all Department Headers in tenant
+  static getDepartmentHeaders = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const tenantId = req.user.tenant_id;
+
+    if (!tenantId) {
+      return ApiResponse.error(res, 'Tenant ID not found', 400);
+    }
+
+    // Find role with code 'department_header' or 'DEPARTMENT_HEADER'
+    const departmentHeaderRole = await Role.findOne({
+      $or: [
+        { role_code: 'department_header' },
+        { role_code: 'DEPARTMENT_HEADER' },
+        { role_name: { $regex: /department.*header/i } }
+      ]
+    });
+
+    if (!departmentHeaderRole) {
+      return ApiResponse.success(res, [], 'No Department Header role found');
+    }
+
+    // Find all users with Department Header role in tenant
+    const departmentHeaders = await User.find({
+      tenant_id: tenantId,
+      role_id: departmentHeaderRole._id,
+      is_active: req.query.is_active !== 'false'
+    })
+      .populate('role_id', 'role_name role_code role_level')
+      .populate('department_id', 'department_name')
+      .select('-password_hash')
+      .sort({ full_name: 1 });
+
+    return ApiResponse.success(res, departmentHeaders, 'Department Headers retrieved successfully');
+  });
 }
 
 module.exports = CompanyAdminController;
