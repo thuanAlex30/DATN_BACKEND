@@ -32,6 +32,7 @@ const projectCommunicationRoutes = require('./projectCommunicationRoutes');
 const tenantRoutes = require('./tenantRoutes');
 const adminRoutes = require('./adminRoutes');
 const companyAdminRoutes = require('./companyAdminRoutes');
+const hikvisionRoutes = require('./hikvisionRoutes');
 
 console.log('Loading kafkaMonitor...');
 const kafkaMonitor = require('../services/kafkaMonitor');
@@ -173,6 +174,9 @@ router.use('/task-workflows', taskWorkflowRoutes);
 router.use('/admin', adminRoutes);
 router.use('/tenants', tenantRoutes);
 router.use('/company-admin', companyAdminRoutes);
+
+// Hikvision Integration Routes
+router.use('/hikvision', hikvisionRoutes);
 
 // Global 404 handler for API routes
 router.use('*', (req, res) => {

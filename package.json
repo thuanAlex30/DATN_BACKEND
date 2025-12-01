@@ -37,6 +37,7 @@
     "docker:kafka:create-topics": "docker exec safety-kafka-init bash -c 'kafka-topics --bootstrap-server kafka:29092 --list'"
   },
   "dependencies": {
+    "@mhoc/axios-digest-auth": "^0.8.0",
     "axios": "^1.5.0",
     "bcryptjs": "^2.4.3",
     "bull": "^4.11.3",
