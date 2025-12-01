@@ -7,6 +7,7 @@ class KafkaConsumer {
     this.consumer = null;
     this.isConnected = false;
     this.isInitialized = false;
+    this.isConsuming = false;
     this.eventHandlers = new Map();
   }
 
@@ -50,6 +51,8 @@ class KafkaConsumer {
         console.log('📥 Disconnecting Kafka Consumer...');
         await this.consumer.disconnect();
         this.isConnected = false;
+        this.isConsuming = false;
+        this.isInitialized = false;
         console.log('✅ Kafka Consumer disconnected successfully');
       }
     } catch (error) {
@@ -62,6 +65,12 @@ class KafkaConsumer {
    */
   async startConsuming() {
     try {
+      // If already consuming, just return
+      if (this.isConsuming) {
+        console.log('📥 Kafka Consumer is already consuming');
+        return;
+      }
+
       if (!this.isConnected) {
         await this.initialize();
       }
@@ -82,10 +91,12 @@ class KafkaConsumer {
         }
       });
 
+      this.isConsuming = true;
       console.log('✅ Kafka Consumer started successfully');
 
     } catch (error) {
       console.error('❌ Failed to start Kafka Consumer:', error);
+      this.isConsuming = false;
       throw error;
     }
   }
@@ -1113,6 +1124,7 @@ class KafkaConsumer {
     return {
       isConnected: this.isConnected,
       isInitialized: this.isInitialized,
+      isConsuming: this.isConsuming,
       eventHandlersCount: this.eventHandlers.size
     };
   }

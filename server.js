@@ -128,7 +128,7 @@ app.options('*', (req, res) => {
 // Rate limiting - More flexible configuration
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 200 : 5000, // Increased limits
+  max: process.env.NODE_ENV === 'production' ? 200 : 10000, // Increased limits for development
   message: {
     success: false,
     message: 'Too many requests. Try again later.',
@@ -138,12 +138,12 @@ const limiter = rateLimit({
   legacyHeaders: false,
   // Skip successful requests
   skipSuccessfulRequests: true,
-  // Skip failed requests
-  skipFailedRequests: false,
+  // Skip failed requests to avoid penalizing users for server errors
+  skipFailedRequests: true,
   // Custom key generator to group by user
   keyGenerator: (req) => {
     // Use user ID if available, otherwise use IP
-    return req.user?.id || req.ip;
+    return req.user?._id || req.user?.id || req.ip;
   },
   // Skip rate limiting for pricing routes and chatbot session (they have their own limiters)
   skip: (req) => {
@@ -154,6 +154,11 @@ const limiter = rateLimit({
     // Exclude chatbot session endpoint from global rate limiter (it has its own limiter)
     if (req.path === '/api/chatbot/session' && req.method === 'POST') {
       return true;
+    }
+    // In development, be more lenient with API calls
+    if (process.env.NODE_ENV !== 'production') {
+      // Allow more requests in development
+      return false;
     }
     return false;
   }

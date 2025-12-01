@@ -155,7 +155,9 @@ class IncidentService {
       }
 
       const oldSeverity = incident.severity;
-      incident.severity = severity;
+      
+      // Update severity using repository
+      const updatedIncident = await IncidentRepository.updateById(id, { severity });
       
       // Thêm history entry
       await IncidentRepository.addHistoryEntry(id, {
@@ -165,11 +167,11 @@ class IncidentService {
       });
 
       // Emit events
-      await IncidentService.emitIncidentEvents('classified', incident, userId);
+      await IncidentService.emitIncidentEvents('classified', updatedIncident, userId);
 
       return {
         success: true,
-        data: incident,
+        data: updatedIncident,
         message: 'Phân loại incident thành công',
         statusCode: 200
       };
@@ -197,8 +199,11 @@ class IncidentService {
         };
       }
 
-      incident.assignedTo = assignedTo;
-      incident.status = 'Đang xử lý';
+      // Update assignedTo and status using repository
+      const updatedIncident = await IncidentRepository.updateById(id, {
+        assignedTo,
+        status: 'Đang xử lý'
+      });
       
       // Thêm history entry
       await IncidentRepository.addHistoryEntry(id, {
@@ -208,11 +213,11 @@ class IncidentService {
       });
 
       // Emit events
-      await IncidentService.emitIncidentEvents('assigned', incident, userId);
+      await IncidentService.emitIncidentEvents('assigned', updatedIncident, userId);
 
       return {
         success: true,
-        data: incident,
+        data: updatedIncident,
         message: 'Phân công incident thành công',
         statusCode: 200
       };
@@ -247,7 +252,7 @@ class IncidentService {
         action: 'Điều tra',
         performedBy: userId,
         note: investigation,
-        images: findingsImages || []
+        timestamp: new Date()
       });
 
       // Thêm solution entry
@@ -255,15 +260,18 @@ class IncidentService {
         action: 'Khắc phục',
         performedBy: userId,
         note: solution,
-        images: rootCauseImages || []
+        timestamp: new Date()
       });
 
+      // Get updated incident with history
+      const updatedIncident = await IncidentRepository.getIncidentById(id);
+
       // Emit events
-      await IncidentService.emitIncidentEvents('investigated', incident, userId);
+      await IncidentService.emitIncidentEvents('investigated', updatedIncident, userId);
 
       return {
         success: true,
-        data: incident,
+        data: updatedIncident,
         message: 'Điều tra incident thành công',
         statusCode: 200
       };
@@ -291,22 +299,34 @@ class IncidentService {
         };
       }
 
-      const { note, images } = progressData;
+      // Support both 'note' and 'progress' field names from frontend
+      const note = progressData.note || progressData.progress;
+
+      if (!note || note.trim() === '') {
+        return {
+          success: false,
+          message: 'Ghi chú tiến độ không được để trống',
+          statusCode: 400
+        };
+      }
 
       // Thêm progress entry
       await IncidentRepository.addHistoryEntry(id, {
         action: 'Cập nhật tiến độ',
         performedBy: userId,
-        note: note,
-        images: images || []
+        note: note.trim(),
+        timestamp: new Date()
       });
 
+      // Get updated incident with history
+      const updatedIncident = await IncidentRepository.getIncidentById(id);
+
       // Emit events
-      await IncidentService.emitIncidentEvents('progress_updated', incident, userId);
+      await IncidentService.emitIncidentEvents('progress_updated', updatedIncident, userId);
 
       return {
         success: true,
-        data: incident,
+        data: updatedIncident,
         message: 'Cập nhật tiến độ thành công',
         statusCode: 200
       };
@@ -334,24 +354,30 @@ class IncidentService {
         };
       }
 
-      incident.status = 'Đã đóng';
-      
-      const { note, images } = closeData;
+      const { note, images } = closeData || {};
+
+      // Update status using repository
+      const updatedIncident = await IncidentRepository.updateById(id, {
+        status: 'Đã đóng'
+      });
 
       // Thêm close entry
       await IncidentRepository.addHistoryEntry(id, {
         action: 'Đóng',
         performedBy: userId,
         note: note || 'Đóng incident',
-        images: images || []
+        timestamp: new Date()
       });
 
+      // Get updated incident with history
+      const finalIncident = await IncidentRepository.getIncidentById(id);
+
       // Emit events
-      await IncidentService.emitIncidentEvents('closed', incident, userId);
+      await IncidentService.emitIncidentEvents('closed', finalIncident, userId);
 
       return {
         success: true,
-        data: incident,
+        data: finalIncident,
         message: 'Đóng incident thành công',
         statusCode: 200
       };
@@ -555,12 +581,12 @@ class IncidentService {
         };
       }
 
-      // Validate dữ liệu cập nhật
-      const validation = IncidentUtils.validateIncidentData(updateData);
-      if (!validation.isValid) {
+      // Validate dữ liệu cập nhật (only validate if required fields are present)
+      // For partial updates, we don't require all fields
+      if (updateData.title !== undefined && (!updateData.title || updateData.title.trim() === '')) {
         return {
           success: false,
-          message: validation.message,
+          message: 'Tiêu đề không được để trống',
           statusCode: 400
         };
       }

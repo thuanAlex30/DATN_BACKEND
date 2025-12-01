@@ -58,8 +58,44 @@ router.put('/close/:id', AuthMiddleware.authenticate, IncidentController.closeIn
 
 // Lấy thống kê incidents (phải đặt trước route /:id)
 router.get('/stats/overview', 
+  (req, res, next) => {
+    console.log('🔍 Route matched: GET /stats/overview', req.path, req.originalUrl);
+    next();
+  },
   AuthMiddleware.authenticate,
   IncidentController.getIncidentStats
+);
+
+// Tìm kiếm incidents (phải đặt trước route /:id)
+router.get('/search/query',
+  AuthMiddleware.authenticate,
+  IncidentController.searchIncidents
+);
+
+// Lấy incidents theo user (phải đặt trước route /:id)
+router.get('/user/:userId',
+  AuthMiddleware.authenticate,
+  ValidationMiddleware.validateParams(incidentValidation.userId),
+  IncidentController.getIncidentsByUser
+);
+
+// Lấy incidents theo project (phải đặt trước route /:id)
+router.get('/project/:projectId',
+  AuthMiddleware.authenticate,
+  ValidationMiddleware.validateParams(incidentValidation.projectId),
+  IncidentController.getIncidentsByProject
+);
+
+// Lấy incidents theo status (phải đặt trước route /:id)
+router.get('/status/:status',
+  AuthMiddleware.authenticate,
+  IncidentController.getIncidentsByStatus
+);
+
+// Lấy incidents theo severity (phải đặt trước route /:id)
+router.get('/severity/:severity',
+  AuthMiddleware.authenticate,
+  IncidentController.getIncidentsBySeverity
 );
 
 // Lấy danh sách sự cố (phải đặt trước route /:id)
@@ -93,6 +129,16 @@ router.get('/:id/escalations',
     tenantScope: 'tenant'
   }),
   IncidentController.getIncidentEscalations
+);
+
+// Cập nhật incident (phải đặt trước route /:id)
+router.put('/:id', 
+  AuthMiddleware.authenticate,
+  ValidationMiddleware.validate({
+    params: incidentValidation.id,
+    body: incidentValidation.updateIncident
+  }),
+  IncidentController.updateIncident
 );
 
 // Xóa incident (phải đặt trước route /:id)

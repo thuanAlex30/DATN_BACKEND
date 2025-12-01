@@ -5878,3 +5878,27 @@
 {"timestamp":"2025-12-01T09:22:40.801Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":24184,"hostname":"MSI"}
 {"timestamp":"2025-12-01T09:22:45.511Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":8768,"hostname":"MSI"}
 {"timestamp":"2025-12-01T09:22:45.528Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":8768,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:05:14.983Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":25144,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:05:15.074Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":25144,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:06:47.818Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":1716,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:06:47.835Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":1716,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:07:20.930Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":3948,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:07:20.948Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":3948,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:08:19.756Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":23056,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:08:19.777Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":23056,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:09:20.142Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":24636,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:09:20.160Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":24636,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:19:21.495Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":23056,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:19:27.192Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":28088,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:19:27.209Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":28088,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:37:36.873Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":28088,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:37:46.581Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":8824,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:37:46.598Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":8824,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:43:55.740Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":8824,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:44:03.146Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":27840,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:44:03.163Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":27840,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:44:23.851Z","level":"INFO","message":"Audit event processed","metadata":{"eventType":"system_health_check","eventId":"0110bab6-3f46-458d-9f52-a0a53ca960cd","action":"unknown","resource":"system:kafka-monitor","timestamp":"2025-12-01T15:44:23.778Z"},"pid":27840,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:44:53.781Z","level":"INFO","message":"Audit event processed","metadata":{"eventType":"system_health_check","eventId":"fd5790ae-c92f-42c5-b84e-d263d5d95ffb","action":"unknown","resource":"system:kafka-monitor","timestamp":"2025-12-01T15:44:53.765Z"},"pid":27840,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:45:23.795Z","level":"INFO","message":"Audit event processed","metadata":{"eventType":"system_health_check","eventId":"48e5bb45-f288-4b62-b623-45d1e44cc878","action":"unknown","resource":"system:kafka-monitor","timestamp":"2025-12-01T15:45:23.791Z"},"pid":27840,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:45:53.773Z","level":"INFO","message":"Audit event processed","metadata":{"eventType":"system_health_check","eventId":"7f3d50de-985d-427d-8b5f-dd2117140df5","action":"unknown","resource":"system:kafka-monitor","timestamp":"2025-12-01T15:45:53.768Z"},"pid":27840,"hostname":"MSI"}
+{"timestamp":"2025-12-01T15:46:21.146Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":27840,"hostname":"MSI"}

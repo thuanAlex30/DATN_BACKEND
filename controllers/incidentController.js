@@ -190,22 +190,23 @@ class IncidentController {
 
   // 9. Lấy thống kê incidents
   static getIncidentStats = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const filters = {
-      ...req.query,
-      // Apply tenant filter if available
-      ...(req.scopeFilter || {}),
-      // Apply department filter for department_header
-      ...(req.user?.department_id && req.user?.role?.role_code === 'department_header' 
-        ? { department_id: req.user.department_id } 
-        : {})
-    };
-    
-    const result = await incidentService.getIncidentStats(filters);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    try {
+      const filters = {
+        ...req.query,
+        // Apply tenant filter if available
+        ...(req.scopeFilter || {})
+      };
+      
+      const result = await incidentService.getIncidentStats(filters);
+      
+      if (result.success) {
+        return ApiResponse.success(res, result.data, result.message, result.statusCode);
+      } else {
+        return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+      }
+    } catch (error) {
+      console.error('Error in getIncidentStats controller:', error);
+      return ApiResponse.error(res, error.message || 'Lỗi khi lấy thống kê incidents', 500);
     }
   });
 
