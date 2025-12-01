@@ -4,11 +4,45 @@ const User = require('../models/user');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 
-class IncidentController {
-  // 1. Ghi nhận sự cố
-  static reportIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const incidentData = req.body;
-    const userId = req.user._id;
+// 1. Ghi nhận sự cố
+exports.reportIncident = async (req, res) => {
+  try {
+    const { 
+      title, 
+      description, 
+      images, 
+      location, 
+      severity,
+      affectedEmployeeId,
+      employeeStatus,
+      incidentType,
+      witnesses,
+      medicalReport
+    } = req.body;
+    
+    // Tạo incidentId tự động
+    const incidentId = 'INC' + Date.now();
+    const incident = new Incident({
+      title,
+      description,
+      images,
+      location,
+      severity,
+      incidentId,
+      createdBy: req.user._id,
+      // Thêm các trường mới cho Update Employee Incident
+      affectedEmployeeId,
+      employeeStatus,
+      incidentType,
+      witnesses: witnesses || [],
+      medicalReport,
+      histories: [{ 
+        action: 'Ghi nhận', 
+        performedBy: req.user._id, 
+        note: `Ghi nhận sự cố${affectedEmployeeId ? ` - Nhân viên: ${affectedEmployeeId}` : ''}` 
+      }]
+    });
+    await incident.save();
     
     const result = await incidentService.createIncident(incidentData, userId);
     
@@ -124,6 +158,7 @@ class IncidentController {
   // 7. Cập nhật tiến độ
   static updateIncidentProgress = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
+<<<<<<< HEAD
     const progressData = req.body;
     const userId = req.user._id;
     
@@ -275,3 +310,67 @@ class IncidentController {
 }
 
 module.exports = IncidentController;
+=======
+    const incident = await Incident.findById(id).populate('createdBy assignedTo histories.performedBy');
+    if (!incident) return res.status(404).json({ error: 'Không tìm thấy sự cố' });
+    res.json(incident);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// 9. Cập nhật thông tin nhân viên trong sự cố
+exports.updateEmployeeIncident = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      affectedEmployeeId, 
+      employeeStatus, 
+      medicalReport, 
+      witnesses, 
+      incidentType,
+      additionalNotes 
+    } = req.body;
+    
+    const incident = await Incident.findById(id);
+    if (!incident) return res.status(404).json({ error: 'Không tìm thấy sự cố' });
+    
+    // Cập nhật thông tin nhân viên
+    incident.affectedEmployeeId = affectedEmployeeId;
+    incident.employeeStatus = employeeStatus;
+    incident.medicalReport = medicalReport;
+    incident.witnesses = witnesses || [];
+    incident.incidentType = incidentType;
+    incident.additionalNotes = additionalNotes;
+    
+    // Thêm vào lịch sử
+    incident.histories.push({ 
+      action: 'Cập nhật thông tin nhân viên', 
+      performedBy: req.user._id, 
+      note: `Cập nhật tình trạng nhân viên: ${employeeStatus}` 
+    });
+    
+    await incident.save();
+    
+    // Emit WebSocket event for employee incident updated
+    websocketService.emitEmployeeIncidentUpdated(incident, req.user);
+    
+    // Emit Kafka event for incident updated
+    try {
+      const changes = { 
+        affectedEmployeeId, 
+        employeeStatus, 
+        incidentType,
+        updatedBy: req.user._id 
+      };
+      await IncidentEvents.emitIncidentUpdated(incident, req.user, changes);
+    } catch (eventError) {
+      console.error('Failed to emit incident updated event:', eventError);
+    }
+    
+    res.json(incident);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+>>>>>>> origin/anh-thy

@@ -54,6 +54,7 @@ router.put('/progress/:id',
 );
 
 // Đóng sự cố & xuất báo cáo
+<<<<<<< HEAD
 router.put('/close/:id', 
   AuthMiddleware.authenticate,
   ValidationMiddleware.validate({
@@ -73,6 +74,11 @@ router.put('/:id',
   IncidentController.updateIncident
 );
 
+=======
+router.put('/close/:id', AuthMiddleware.authenticate, IncidentController.closeIncident);
+// Cập nhật thông tin nhân viên trong sự cố
+router.put('/update-employee/:id', AuthMiddleware.authenticate, IncidentController.updateEmployeeIncident);
+>>>>>>> origin/anh-thy
 // Lấy danh sách sự cố
 router.get('/', AuthMiddleware.authenticate, IncidentController.getIncidents);
 
