@@ -1,7 +1,7 @@
 const ProjectMessage = require('../models/ProjectMessage');
 const ProjectNotification = require('../models/ProjectNotification');
 const ProjectMeeting = require('../models/ProjectMeeting');
-const Project = require('../models/Project');
+const Project = require('../models/project');
 const User = require('../models/user');
 
 class ProjectCommunicationService {
