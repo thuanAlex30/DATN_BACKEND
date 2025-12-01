@@ -6,8 +6,8 @@
 const logger = require('../utils/logger');
 
 class WebSocketService {
-    constructor() {
-        this.io = null;
+  constructor() {
+    this.io = null;
     this.connectedUsers = new Map(); // userId -> socketId
     this.userRoles = new Map(); // userId -> role
   }
@@ -18,7 +18,7 @@ class WebSocketService {
    */
   initialize(io) {
     this.io = io;
-        this.setupEventHandlers();
+    this.setupEventHandlers();
     logger.info('WebSocket service initialized');
   }
 
@@ -70,7 +70,7 @@ class WebSocketService {
           logger.info('User authenticated via WebSocket (legacy)', { userId, role, socketId: socket.id });
           
           socket.emit('authenticated', { success: true, userId, role });
-            } catch (error) {
+        } catch (error) {
           logger.error('WebSocket authentication error', { error: error.message });
           socket.emit('authentication_error', { message: 'Authentication failed' });
         }
@@ -93,27 +93,27 @@ class WebSocketService {
       // Handle batch processing status
       socket.on('batch_status_request', (data) => {
         this.handleBatchStatusRequest(socket, data);
-            });
-        });
-    }
+      });
+    });
+  }
 
-    /**
-     * Emit to specific user
+  /**
+   * Emit to specific user
    * @param {string} userId - User ID
    * @param {string} event - Event name
    * @param {Object} data - Data to send
-     */
-    emitToUser(userId, event, data) {
+   */
+  emitToUser(userId, event, data) {
     const socketId = this.connectedUsers.get(userId);
     if (socketId && this.io) {
-            this.io.to(socketId).emit(event, data);
+      this.io.to(socketId).emit(event, data);
       logger.debug('Emitted to user', { userId, event, socketId });
-        } else {
+    } else {
       logger.warn('User not connected', { userId, event });
-        }
     }
+  }
 
-    /**
+  /**
    * Emit to all users with specific role
    * @param {string} role - User role
    * @param {string} event - Event name
@@ -124,21 +124,21 @@ class WebSocketService {
 
     this.userRoles.forEach((userRole, userId) => {
       if (userRole === role) {
-            this.emitToUser(userId, event, data);
+        this.emitToUser(userId, event, data);
       }
-        });
+    });
 
     logger.debug('Emitted to role', { role, event, userCount: this.getUserCountByRole(role) });
-    }
+  }
 
-    /**
-     * Emit to all connected users
+  /**
+   * Emit to all connected users
    * @param {string} event - Event name
    * @param {Object} data - Data to send
-     */
-    emitToAll(event, data) {
+   */
+  emitToAll(event, data) {
     if (this.io) {
-        this.io.emit(event, data);
+      this.io.emit(event, data);
       logger.debug('Emitted to all users', { event, userCount: this.connectedUsers.size });
     }
   }
@@ -186,7 +186,7 @@ class WebSocketService {
         newQuantity: updateData.newQuantity,
         operation: updateData.operation,
         updatedBy: updateData.updatedBy,
-            timestamp: new Date()
+        timestamp: new Date()
       }
     };
 
@@ -211,7 +211,7 @@ class WebSocketService {
         itemCode: ppeItem.item_code,
         newCondition,
         updatedBy,
-            timestamp: new Date()
+        timestamp: new Date()
       }
     };
 
@@ -279,8 +279,8 @@ class WebSocketService {
    * @param {Object} issuance - PPE issuance data
    * @param {Object} issuer - Issuer (Manager) information
    * @param {Object} recipient - Recipient (Employee) information
-     */
-    emitPPEIssuedToEmployee(issuance, issuer, recipient) {
+   */
+  emitPPEIssuedToEmployee(issuance, issuer, recipient) {
     const notification = {
       type: 'ppe_issued_to_employee',
       title: 'PPE Issued to Employee',
@@ -335,7 +335,7 @@ class WebSocketService {
         issuedTo: recipient.full_name,
         issuedBy: issuer.full_name,
         managerId: issuance.manager_id,
-            timestamp: new Date()
+        timestamp: new Date()
       }
     });
   }
@@ -570,18 +570,17 @@ class WebSocketService {
       this.emitToRole('manager', 'ppe_status_update', {
         ...data,
         updatedBy: socket.userId,
-                timestamp: new Date()
+        timestamp: new Date()
       });
-            
-        } catch (error) {
+    } catch (error) {
       logger.error('Error handling PPE status update', {
         error: error.message,
         userId: socket.userId
       });
-        }
     }
+  }
 
-    /**
+  /**
    * Handle batch status request
    * @param {Object} socket - Socket instance
    * @param {Object} data - Request data
@@ -597,10 +596,9 @@ class WebSocketService {
       socket.emit('batch_status_response', {
         batchId: data.batchId,
         status: 'processing', // This would come from actual batch service
-                timestamp: new Date()
+        timestamp: new Date()
       });
-            
-        } catch (error) {
+    } catch (error) {
       logger.error('Error handling batch status request', {
         error: error.message,
         userId: socket.userId

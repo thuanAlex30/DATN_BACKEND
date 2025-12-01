@@ -29,6 +29,15 @@ class RoleRepository {
     }
   }
 
+  // Find role by code
+  static async findByCode(role_code) {
+    try {
+      return await Role.findOne({ role_code });
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // Update role by ID
   static async updateById(id, updateData) {
     try {

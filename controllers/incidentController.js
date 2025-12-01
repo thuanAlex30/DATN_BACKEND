@@ -1,227 +1,185 @@
 const Incident = require('../models/incident');
 const User = require('../models/user');
 const { IncidentEscalation } = require('../models/incidentEscalation');
-const { sendEmail, sendSMS, sendNotification } = require('../utils/notifications'); // giả sử có các hàm này
+const { sendEmail, sendSMS, sendNotification } = require('../utils/notifications'); 
 const websocketService = require('../services/websocketService');
+const incidentService = require('../services/incidentService');
 const IncidentEvents = require('../events/incidentEvents');
+const { ApiResponse } = require('../utils/response');
+const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 
-// 1. Ghi nhận sự cố
-exports.reportIncident = async (req, res) => {
-  try {
-    const { title, description, images, location, severity } = req.body;
-    // Tạo incidentId tự động
-    const incidentId = 'INC' + Date.now();
-    const incident = new Incident({
-      title,
-      description,
-      images,
-      location,
-      severity,
-      incidentId,
-      createdBy: req.user._id,
-      histories: [{ action: 'Ghi nhận', performedBy: req.user._id, note: 'Ghi nhận sự cố' }]
-    });
-    await incident.save();
+class IncidentController {
+  // 1. Ghi nhận sự cố
+  static reportIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const incidentData = req.body;
+    const userId = req.user._id;
     
-    // Emit WebSocket event for incident reported
-    websocketService.emitIncidentReported(incident, req.user);
+    const result = await incidentService.createIncident(incidentData, userId);
     
-    // Emit Kafka event for incident reported
-    try {
-      await IncidentEvents.emitIncidentReported(incident, req.user);
-    } catch (eventError) {
-      console.error('Failed to emit incident reported event:', eventError);
+    if (result.success) {
+      // Emit WebSocket notification for incident reported
+      try {
+        const reporter = await User.findById(userId).select('_id role full_name');
+        if (reporter) {
+          websocketService.emitIncidentReported(result.data, reporter);
+          console.log(`🚨 Incident reported WebSocket notification sent for user: ${reporter._id}`);
+        }
+      } catch (wsError) {
+        console.error('Failed to emit incident reported WebSocket notification:', wsError);
+      }
+      
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
     }
-    
-    res.status(201).json(incident);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+  });
 
-// 2. Phân loại & thông báo
-exports.classifyIncident = async (req, res) => {
-  try {
+  // 2. Lấy tất cả incidents
+  static getIncidents = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const result = await incidentService.getAllIncidents();
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // 3. Lấy incident theo ID
+  static getIncidentById = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const result = await incidentService.getIncidentById(id);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 404, result.data);
+    }
+  });
+
+  // 4. Phân loại & thông báo
+  static classifyIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { severity } = req.body;
-    const incident = await Incident.findById(id);
-    if (!incident) return res.status(404).json({ error: 'Không tìm thấy sự cố' });
+    const userId = req.user._id;
     
-    const oldSeverity = incident.severity;
-    incident.severity = severity;
-    incident.status = 'Đang xử lý';
-    incident.histories.push({ action: 'Phân loại', performedBy: req.user._id, note: `Phân loại: ${severity}` });
+    const result = await incidentService.classifyIncident(id, severity, userId);
     
-    // Gửi thông báo theo mức độ
-    if (severity === 'rất nghiêm trọng') {
-      await sendSMS('Giám đốc, ATVS, Y tế', `Sự cố ${incident.incidentId} rất nghiêm trọng!`);
-    } else if (severity === 'nặng') {
-      await sendEmail('Trưởng ca, Quản lý dự án', `Sự cố ${incident.incidentId} nặng!`);
-      await sendNotification('Trưởng ca, Quản lý dự án', `Sự cố ${incident.incidentId} nặng!`);
+    if (result.success) {
+      // Emit WebSocket notification for incident classified
+      try {
+        const classifier = await User.findById(userId).select('_id role full_name');
+        if (classifier) {
+          websocketService.emitIncidentClassified(result.data, classifier);
+          console.log(`🚨 Incident classified WebSocket notification sent for user: ${classifier._id}`);
+        }
+      } catch (wsError) {
+        console.error('Failed to emit incident classified WebSocket notification:', wsError);
+      }
+      
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
-      await sendEmail('Trưởng ca', `Sự cố ${incident.incidentId} nhẹ!`);
-      incident.notified = true;
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
     }
-    await incident.save();
-    
-    // Emit WebSocket event for incident classified
-    websocketService.emitIncidentClassified(incident, req.user);
-    
-    // Emit Kafka event for incident updated
-    try {
-      const changes = { severity: { old: oldSeverity, new: severity } };
-      await IncidentEvents.emitIncidentUpdated(incident, req.user, changes);
-    } catch (eventError) {
-      console.error('Failed to emit incident updated event:', eventError);
-    }
-    
-    res.json(incident);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+  });
 
-// 3. Phân công người phụ trách
-exports.assignIncident = async (req, res) => {
-  try {
+  // 5. Phân công xử lý
+  static assignIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { assignedTo } = req.body;
-    const incident = await Incident.findById(id);
-    if (!incident) return res.status(404).json({ error: 'Không tìm thấy sự cố' });
-    incident.assignedTo = assignedTo;
-    incident.histories.push({ action: 'Phân công', performedBy: req.user._id, note: `Phân công cho user ${assignedTo}` });
-    await incident.save();
+    const userId = req.user._id;
     
-    // Get assignee user for WebSocket notification
-    const assignee = await User.findById(assignedTo);
-    if (assignee) {
-      websocketService.emitIncidentAssigned(incident, assignee, req.user);
-    }
+    const result = await incidentService.assignIncident(id, assignedTo, userId);
     
-    // Emit Kafka event for incident assigned
-    try {
-      if (assignee) {
-        await IncidentEvents.emitIncidentAssigned(incident, assignee, req.user);
+    if (result.success) {
+      // Emit WebSocket notification for incident assigned
+      try {
+        const assigner = await User.findById(userId).select('_id role full_name');
+        const assignee = await User.findById(assignedTo).select('_id role full_name');
+        if (assigner && assignee) {
+          websocketService.emitIncidentAssigned(result.data, assignee, assigner);
+          console.log(`🚨 Incident assigned WebSocket notification sent for user: ${assignee._id}`);
+        }
+      } catch (wsError) {
+        console.error('Failed to emit incident assigned WebSocket notification:', wsError);
       }
-    } catch (eventError) {
-      console.error('Failed to emit incident assigned event:', eventError);
+      
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
     }
-    
-    res.json(incident);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+  });
 
-// 4. Điều tra & xử lý
-exports.investigateIncident = async (req, res) => {
-  try {
+  // 6. Điều tra sự cố
+  static investigateIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { investigation, solution } = req.body;
-    const incident = await Incident.findById(id);
-    if (!incident) return res.status(404).json({ error: 'Không tìm thấy sự cố' });
-    incident.histories.push({ action: 'Điều tra', performedBy: req.user._id, note: investigation });
-    incident.histories.push({ action: 'Khắc phục', performedBy: req.user._id, note: solution });
-    await incident.save();
-    res.json(incident);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// 5. Cập nhật tiến độ
-exports.updateIncidentProgress = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { progress } = req.body;
-    const incident = await Incident.findById(id);
-    if (!incident) return res.status(404).json({ error: 'Không tìm thấy sự cố' });
-    incident.histories.push({ action: 'Cập nhật tiến độ', performedBy: req.user._id, note: progress });
-    await incident.save();
+    const investigationData = req.body;
+    const userId = req.user._id;
     
-    // Emit WebSocket event for incident progress updated
-    websocketService.emitIncidentProgressUpdated(incident, req.user);
+    const result = await incidentService.investigateIncident(id, investigationData, userId);
     
-    res.json(incident);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// 6. Đóng sự cố & xuất báo cáo
-exports.closeIncident = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const incident = await Incident.findById(id);
-    if (!incident) return res.status(404).json({ error: 'Không tìm thấy sự cố' });
-    incident.status = 'Đã đóng';
-    incident.histories.push({ action: 'Đóng sự cố', performedBy: req.user._id, note: 'Đã xác nhận & đóng sự cố' });
-    await incident.save();
-    
-    // Emit WebSocket event for incident closed
-    websocketService.emitIncidentClosed(incident, req.user);
-    
-    // Emit Kafka event for incident closed
-    try {
-      await IncidentEvents.emitIncidentClosed(incident, req.user);
-    } catch (eventError) {
-      console.error('Failed to emit incident closed event:', eventError);
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
     }
-    
-    res.json(incident);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+  });
 
-// 7. Lấy danh sách sự cố
-exports.getIncidents = async (req, res) => {
-  try {
-    const incidents = await Incident.find().populate('createdBy assignedTo histories.performedBy');
-    res.json(incidents);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// 8. Lấy chi tiết sự cố
-exports.getIncidentById = async (req, res) => {
-  try {
+  // 7. Cập nhật tiến độ
+  static updateIncidentProgress = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const incident = await Incident.findById(id).populate('createdBy assignedTo histories.performedBy');
-    if (!incident) return res.status(404).json({ error: 'Không tìm thấy sự cố' });
-    res.json(incident);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+    const progressData = req.body;
+    const userId = req.user._id;
+    
+    const result = await incidentService.updateIncidentProgress(id, progressData, userId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
 
-// 9. Escalate incident (Department Header)
-exports.escalateIncident = async (req, res) => {
-  try {
+  // 8. Đóng sự cố
+  static closeIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const closeData = req.body;
+    const userId = req.user._id;
+    
+    const result = await incidentService.closeIncident(id, closeData, userId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // 9. Escalate incident (Department Header)
+  static escalateIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { escalation_level, reason } = req.body;
     
     // Validate escalation_level
     const validLevels = ['SITE', 'DEPARTMENT', 'COMPANY', 'EXTERNAL'];
     if (!escalation_level || !validLevels.includes(escalation_level)) {
-      return res.status(400).json({ error: 'escalation_level phải là một trong: SITE, DEPARTMENT, COMPANY, EXTERNAL' });
+      return ApiResponse.error(res, 'escalation_level phải là một trong: SITE, DEPARTMENT, COMPANY, EXTERNAL', 400);
     }
     
     // Find incident
     const incident = await Incident.findById(id);
     if (!incident) {
-      return res.status(404).json({ error: 'Không tìm thấy sự cố' });
+      return ApiResponse.error(res, 'Không tìm thấy sự cố', 404);
     }
     
     // Check if user is Department Header and has department_id
     if (!req.user.department_id) {
-      return res.status(403).json({ error: 'Bạn phải thuộc một department để escalate sự cố' });
+      return ApiResponse.error(res, 'Bạn phải thuộc một department để escalate sự cố', 403);
     }
     
     // Check tenant scope
     if (req.user.tenant_id && incident.tenant_id.toString() !== req.user.tenant_id.toString()) {
-      return res.status(403).json({ error: 'Không có quyền truy cập sự cố này' });
+      return ApiResponse.error(res, 'Không có quyền truy cập sự cố này', 403);
     }
     
     // Create escalation record
@@ -286,27 +244,20 @@ exports.escalateIncident = async (req, res) => {
       console.error('Failed to emit incident escalated event:', eventError);
     }
     
-    res.status(201).json({
-      incident,
-      escalation
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+    return ApiResponse.success(res, { incident, escalation }, 'Escalate incident thành công', 201);
+  });
 
-// 10. Get escalations for an incident
-exports.getIncidentEscalations = async (req, res) => {
-  try {
+  // 10. Get escalations for an incident
+  static getIncidentEscalations = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
     const incident = await Incident.findById(id);
     if (!incident) {
-      return res.status(404).json({ error: 'Không tìm thấy sự cố' });
+      return ApiResponse.error(res, 'Không tìm thấy sự cố', 404);
     }
     
     // Check tenant scope
     if (req.user.tenant_id && incident.tenant_id.toString() !== req.user.tenant_id.toString()) {
-      return res.status(403).json({ error: 'Không có quyền truy cập sự cố này' });
+      return ApiResponse.error(res, 'Không có quyền truy cập sự cố này', 403);
     }
     
     const escalations = await IncidentEscalation.find({ incident_id: id })
@@ -321,8 +272,8 @@ exports.getIncidentEscalations = async (req, res) => {
       .populate('resolved_by', 'full_name email')
       .sort({ created_at: -1 });
     
-    res.json(escalations);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+    return ApiResponse.success(res, escalations, 'Lấy danh sách escalations thành công', 200);
+  });
+}
+
+module.exports = IncidentController;

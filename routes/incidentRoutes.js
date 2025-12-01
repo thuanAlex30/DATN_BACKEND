@@ -2,17 +2,57 @@ const express = require('express');
 const router = express.Router();
 const IncidentController = require('../controllers/incidentController');
 const AuthMiddleware = require('../middlewares/AuthMiddleware');
+const ValidationMiddleware = require('../middlewares/ValidationMiddleware');
+const incidentValidation = require('../validations/incidentValidation');
 
 // Ghi nhận sự cố
-router.post('/report', AuthMiddleware.authenticate, IncidentController.reportIncident);
+router.post('/report', 
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(['manager']),
+  ValidationMiddleware.validateBody(incidentValidation.createIncident),
+  IncidentController.reportIncident
+);
+
 // Phân loại & thông báo
-router.put('/classify/:id', AuthMiddleware.authenticate, IncidentController.classifyIncident);
+router.put('/classify/:id', 
+  AuthMiddleware.authenticate,
+  ValidationMiddleware.validate({
+    params: incidentValidation.id,
+    body: incidentValidation.classifyIncident
+  }),
+  IncidentController.classifyIncident
+);
+
 // Phân công người phụ trách
-router.put('/assign/:id', AuthMiddleware.authenticate, IncidentController.assignIncident);
+router.put('/assign/:id', 
+  AuthMiddleware.authenticate,
+  ValidationMiddleware.validate({
+    params: incidentValidation.id,
+    body: incidentValidation.assignIncident
+  }),
+  IncidentController.assignIncident
+);
+
 // Điều tra & xử lý
-router.put('/investigate/:id', AuthMiddleware.authenticate, IncidentController.investigateIncident);
+router.put('/investigate/:id', 
+  AuthMiddleware.authenticate,
+  ValidationMiddleware.validate({
+    params: incidentValidation.id,
+    body: incidentValidation.investigateIncident
+  }),
+  IncidentController.investigateIncident
+);
+
 // Cập nhật tiến độ
-router.put('/progress/:id', AuthMiddleware.authenticate, IncidentController.updateIncidentProgress);
+router.put('/progress/:id', 
+  AuthMiddleware.authenticate,
+  ValidationMiddleware.validate({
+    params: incidentValidation.id,
+    body: incidentValidation.updateProgress
+  }),
+  IncidentController.updateIncidentProgress
+);
+
 // Đóng sự cố & xuất báo cáo
 router.put('/close/:id', AuthMiddleware.authenticate, IncidentController.closeIncident);
 

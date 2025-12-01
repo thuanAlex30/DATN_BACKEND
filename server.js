@@ -148,6 +148,18 @@ const limiter = rateLimit({
   keyGenerator: (req) => {
     // Use user ID if available, otherwise use IP
     return req.user?.id || req.ip;
+  },
+  // Skip rate limiting for pricing routes and chatbot session (they have their own limiters)
+  skip: (req) => {
+    // Exclude pricing routes from global rate limiter
+    if (req.path.startsWith('/api/pricing')) {
+      return true;
+    }
+    // Exclude chatbot session endpoint from global rate limiter (it has its own limiter)
+    if (req.path === '/api/chatbot/session' && req.method === 'POST') {
+      return true;
+    }
+    return false;
   }
 });
 app.use(limiter);
@@ -227,6 +239,26 @@ app.use(ErrorMiddleware.handle);
 🔌 WebSocket: ws://localhost:${PORT}
 ⏰ Started at: ${new Date().toLocaleString()}
       `);
+    }).on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`
+❌ Lỗi: Port ${PORT} đã được sử dụng bởi process khác!
+
+💡 Giải pháp:
+   1. Tìm và dừng process đang sử dụng port ${PORT}:
+      Windows: netstat -ano | findstr :${PORT}
+      Sau đó: taskkill /PID <PID> /F
+   
+   2. Hoặc thay đổi port trong file .env:
+      PORT=3001
+
+   3. Hoặc đợi vài giây để port được giải phóng tự động.
+        `);
+        process.exit(1);
+      } else {
+        console.error('❌ Lỗi khi khởi động server:', err);
+        process.exit(1);
+      }
     });
 
     // Initialize WebSocket server

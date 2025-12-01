@@ -492,6 +492,31 @@ class KafkaProducer {
   }
 
   /**
+   * Send Certificate Event
+   * @param {string} eventType - Type of certificate event
+   * @param {Object} certificateData - Certificate data
+   * @param {Object} metadata - Event metadata
+   */
+  async sendCertificateEvent(eventType, certificateData, metadata = {}) {
+    const event = {
+      eventType,
+      data: certificateData,
+      metadata: {
+        userId: metadata.userId,
+        userRole: metadata.userRole,
+        userFullName: metadata.userFullName,
+        ipAddress: metadata.ipAddress,
+        userAgent: metadata.userAgent,
+        timestamp: new Date().toISOString(),
+        source: 'certificate-service',
+        ...metadata
+      }
+    };
+
+    return await this.sendEvent(topics.CERTIFICATE_EVENTS, event, certificateData.certificateId || 'certificate');
+  }
+
+  /**
    * Get connection status
    */
   getStatus() {

@@ -125,6 +125,68 @@ const systemEventDataSchema = Joi.object({
 });
 
 /**
+ * Certificate Event Data Schema
+ */
+const certificateEventDataSchema = Joi.object({
+  certificateId: Joi.string().required(),
+  certificateName: Joi.string().required(),
+  certificateCode: Joi.string().optional(),
+  category: Joi.string().valid('SAFETY', 'TECHNICAL', 'MANAGEMENT', 'QUALITY', 'ENVIRONMENTAL', 'HEALTH', 'OTHER').required(),
+  subCategory: Joi.string().optional(),
+  description: Joi.string().optional(),
+  issuingAuthority: Joi.string().required(),
+  issueDate: Joi.date().iso().optional(),
+  expiryDate: Joi.date().iso().optional(),
+  validityPeriod: Joi.number().min(0).optional(),
+  validityPeriodUnit: Joi.string().valid('MONTHS', 'YEARS').optional(),
+  status: Joi.string().valid('ACTIVE', 'INACTIVE', 'SUSPENDED', 'EXPIRED').required(),
+  priority: Joi.string().valid('LOW', 'MEDIUM', 'HIGH', 'CRITICAL').optional(),
+  renewalRequired: Joi.boolean().default(true),
+  cost: Joi.number().min(0).optional(),
+  currency: Joi.string().default('VND'),
+  contactInfo: Joi.object({
+    email: Joi.string().email().optional(),
+    phone: Joi.string().optional(),
+    address: Joi.string().optional()
+  }).optional(),
+  tags: Joi.array().items(Joi.string()).default([]),
+  attachments: Joi.array().items(Joi.object({
+    filename: Joi.string().required(),
+    originalName: Joi.string().required(),
+    mimetype: Joi.string().required(),
+    size: Joi.number().min(0).required(),
+    uploadedAt: Joi.date().iso().required()
+  })).default([]),
+  reminderSettings: Joi.object({
+    enabled: Joi.boolean().default(true),
+    reminderDays: Joi.array().items(Joi.number().min(0)).default([30, 60, 90]),
+    notificationMethods: Joi.array().items(Joi.string().valid('EMAIL', 'SMS', 'SYSTEM')).default(['EMAIL', 'SYSTEM']),
+    recipients: Joi.array().items(Joi.string()).default([])
+  }).optional(),
+  complianceStandards: Joi.array().items(Joi.string()).default([]),
+  siteId: Joi.string().optional(),
+  projectId: Joi.string().optional(),
+  assignedTo: Joi.string().optional(),
+  notes: Joi.string().optional(),
+  lastRenewalDate: Joi.date().iso().optional(),
+  renewalNotes: Joi.string().optional(),
+  changes: Joi.object().optional(),
+  oldStatus: Joi.string().optional(),
+  newStatus: Joi.string().optional(),
+  statusChangedAt: Joi.date().iso().optional(),
+  renewalDate: Joi.date().iso().optional(),
+  previousExpiryDate: Joi.date().iso().optional(),
+  daysUntilExpiry: Joi.number().optional(),
+  operation: Joi.string().optional(),
+  certificateIds: Joi.array().items(Joi.string()).optional(),
+  certificateNames: Joi.array().items(Joi.string()).optional(),
+  count: Joi.number().min(0).optional(),
+  operationData: Joi.object().optional(),
+  processedAt: Joi.date().iso().optional(),
+  deletedAt: Joi.date().iso().optional()
+});
+
+/**
  * Complete Event Schemas
  */
 const eventSchemas = {
@@ -245,6 +307,35 @@ const eventSchemas = {
   }),
   system_warning: baseEventSchema.keys({
     data: systemEventDataSchema.required()
+  }),
+
+  // Certificate Events
+  certificate_created: baseEventSchema.keys({
+    data: certificateEventDataSchema.required()
+  }),
+  certificate_updated: baseEventSchema.keys({
+    data: certificateEventDataSchema.required()
+  }),
+  certificate_deleted: baseEventSchema.keys({
+    data: certificateEventDataSchema.required()
+  }),
+  certificate_renewed: baseEventSchema.keys({
+    data: certificateEventDataSchema.required()
+  }),
+  certificate_expiring_soon: baseEventSchema.keys({
+    data: certificateEventDataSchema.required()
+  }),
+  certificate_expired: baseEventSchema.keys({
+    data: certificateEventDataSchema.required()
+  }),
+  certificate_reminder_settings_updated: baseEventSchema.keys({
+    data: certificateEventDataSchema.required()
+  }),
+  certificate_status_changed: baseEventSchema.keys({
+    data: certificateEventDataSchema.required()
+  }),
+  certificate_bulk_operation: baseEventSchema.keys({
+    data: certificateEventDataSchema.required()
   })
 };
 
@@ -318,5 +409,6 @@ module.exports = {
   ppeEventDataSchema,
   userEventDataSchema,
   notificationEventDataSchema,
-  systemEventDataSchema
+  systemEventDataSchema,
+  certificateEventDataSchema
 };

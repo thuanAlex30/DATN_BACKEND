@@ -40,7 +40,8 @@ const topics = {
   DEPARTMENT_EVENTS: process.env.KAFKA_TOPIC_DEPARTMENT_EVENTS || 'department-events',
   POSITION_EVENTS: process.env.KAFKA_TOPIC_POSITION_EVENTS || 'position-events',
   TRAINING_EVENTS: process.env.KAFKA_TOPIC_TRAINING_EVENTS || 'training-events',
-  QUALITY_EVENTS: process.env.KAFKA_TOPIC_QUALITY_EVENTS || 'quality-events'
+  QUALITY_EVENTS: process.env.KAFKA_TOPIC_QUALITY_EVENTS || 'quality-events',
+  CERTIFICATE_EVENTS: process.env.KAFKA_TOPIC_CERTIFICATE_EVENTS || 'certificate-events'
 };
 
 // Event Types
@@ -170,7 +171,18 @@ const eventTypes = {
   QUALITY_CHECKPOINT_DELETED: 'quality_checkpoint_deleted',
   QUALITY_CHECKPOINT_COMPLETED: 'quality_checkpoint_completed',
   QUALITY_CHECKPOINT_STATUS_CHANGED: 'quality_checkpoint_status_changed',
-  QUALITY_CHECKPOINT_ASSIGNED: 'quality_checkpoint_assigned'
+  QUALITY_CHECKPOINT_ASSIGNED: 'quality_checkpoint_assigned',
+
+  // Certificate Events
+  CERTIFICATE_CREATED: 'certificate_created',
+  CERTIFICATE_UPDATED: 'certificate_updated',
+  CERTIFICATE_DELETED: 'certificate_deleted',
+  CERTIFICATE_RENEWED: 'certificate_renewed',
+  CERTIFICATE_EXPIRING_SOON: 'certificate_expiring_soon',
+  CERTIFICATE_EXPIRED: 'certificate_expired',
+  CERTIFICATE_REMINDER_SETTINGS_UPDATED: 'certificate_reminder_settings_updated',
+  CERTIFICATE_STATUS_CHANGED: 'certificate_status_changed',
+  CERTIFICATE_BULK_OPERATION: 'certificate_bulk_operation'
 };
 
 // Create Kafka instance

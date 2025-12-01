@@ -479,6 +479,93 @@ class UserService {
       return createResponse(500, 'Lỗi khi import người dùng', null, error.message);
     }
   }
+
+  /**
+   * Generate random password
+   */
+  static generateRandomPassword(length = 12) {
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const special = '!@#$%^&*';
+    const allChars = uppercase + lowercase + numbers + special;
+
+    let password = '';
+    // Đảm bảo có ít nhất 1 ký tự từ mỗi loại
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += special[Math.floor(Math.random() * special.length)];
+
+    // Thêm các ký tự ngẫu nhiên
+    for (let i = password.length; i < length; i++) {
+      password += allChars[Math.floor(Math.random() * allChars.length)];
+    }
+
+    // Shuffle password
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+  }
+
+  /**
+   * Tạo user với role_code (không cần role_id)
+   */
+  static async createUserWithRole(userData) {
+    try {
+      const { role_code, tenant_id, ...restUserData } = userData;
+
+      // Tìm role theo role_code
+      const role = await RoleRepository.findByCode(role_code);
+      if (!role || !role.is_active) {
+        return {
+          success: false,
+          message: `Role ${role_code} not found or inactive`
+        };
+      }
+
+      // Tạo user với role_id
+      const userResult = await this.createUser({
+        ...restUserData,
+        role_id: role._id,
+        tenant_id: tenant_id
+      });
+
+      // Debug: Log userResult để kiểm tra
+      console.log('🔍 [createUserWithRole] userResult:', {
+        statusCode: userResult.statusCode,
+        success: userResult.success,
+        message: userResult.message,
+        hasData: !!userResult.data
+      });
+
+   
+      if (!userResult.success || userResult.statusCode !== 201) {
+        console.error('❌ [createUserWithRole] User creation failed:', {
+          statusCode: userResult.statusCode,
+          success: userResult.success,
+          message: userResult.message
+        });
+        return {
+          success: false,
+          message: userResult.message || 'Failed to create user',
+          data: null
+        };
+      }
+
+      console.log('✅ [createUserWithRole] User created successfully');
+      return {
+        success: true,
+        message: userResult.message,
+        data: userResult.data
+      };
+    } catch (error) {
+      console.error('Error creating user with role:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to create user',
+        data: null
+      };
+    }
+  }
 }
 
 module.exports = UserService;

@@ -121,7 +121,7 @@ const departmentValidation = {
     q: Joi.string()
       .optional()
       .trim()
-      .allow('')
+      .min(1)
       .messages({
         'string.min': 'Search term must be at least 1 character long'
       }),
