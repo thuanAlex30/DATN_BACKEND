@@ -26,6 +26,7 @@
     "db:seed:full": "node scripts/seed-full-tenants.js",
     "db:create:admin": "node scripts/create-admin.js",
     "db:create:roles": "node scripts/create-roles.js",
+    "db:remove:team-leader": "node scripts/remove-team-leader-role.js",
     "db:reset:users": "node scripts/reset-and-create-users.js",
     "test:pricing-config": "node scripts/test-pricing-config.js",
     "test:payos": "node scripts/test-payos.js",

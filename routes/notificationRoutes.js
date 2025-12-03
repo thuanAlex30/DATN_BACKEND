@@ -2,6 +2,7 @@ const express = require('express');
 const NotificationController = require('../controllers/NotificationController');
 const AuthMiddleware = require('../middlewares/AuthMiddleware');
 const ValidationMiddleware = require('../middlewares/ValidationMiddleware');
+const ExpressValidatorMiddleware = require('../middlewares/ExpressValidatorMiddleware');
 const { body, query, param } = require('express-validator');
 
 const router = express.Router();
@@ -150,6 +151,16 @@ router.get('/categories',
 );
 
 /**
+ * @route GET /api/v1/notifications/settings
+ * @desc Get notification settings
+ * @access Private
+ */
+router.get('/settings',
+    AuthMiddleware.authenticate,
+    NotificationController.getNotificationSettings
+);
+
+/**
  * @route GET /api/v1/notifications/:id
  * @desc Get notification by ID
  * @access Private
@@ -243,16 +254,6 @@ router.delete('/bulk-delete',
 );
 
 /**
- * @route GET /api/v1/notifications/settings
- * @desc Get notification settings
- * @access Private
- */
-router.get('/settings',
-    AuthMiddleware.authenticate,
-    NotificationController.getNotificationSettings
-);
-
-/**
  * @route PUT /api/v1/notifications/settings
  * @desc Update notification settings
  * @access Private (Admin only)
@@ -261,7 +262,7 @@ router.put('/settings',
     AuthMiddleware.authenticate,
     AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     updateSettingsValidation,
-    ValidationMiddleware.validate,
+    ExpressValidatorMiddleware.handleValidationErrors,
     NotificationController.updateNotificationSettings
 );
 

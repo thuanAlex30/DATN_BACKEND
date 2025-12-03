@@ -200,7 +200,8 @@ class TrainingController {
     // ========== Training Session Controllers ==========
     static getAllTrainingSessions = ErrorMiddleware.asyncHandler(async (req, res) => {
         const filters = req.query;
-        const result = await trainingService.getAllTrainingSessions(filters);
+        const tenantId = req.user.tenant_id;
+        const result = await trainingService.getAllTrainingSessions(filters, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -211,8 +212,9 @@ class TrainingController {
 
     static getAvailableTrainingSessionsForEmployee = ErrorMiddleware.asyncHandler(async (req, res) => {
         const userId = req.user?.id;
+        const tenantId = req.user.tenant_id;
         const filters = req.query;
-        const result = await trainingService.getAvailableTrainingSessionsForEmployee(userId, filters);
+        const result = await trainingService.getAvailableTrainingSessionsForEmployee(userId, tenantId, filters);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -223,7 +225,8 @@ class TrainingController {
 
     static getTrainingSessionById = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { sessionId } = req.params;
-        const result = await trainingService.getTrainingSessionById(sessionId);
+        const tenantId = req.user.tenant_id;
+        const result = await trainingService.getTrainingSessionById(sessionId, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -234,7 +237,8 @@ class TrainingController {
 
     static createTrainingSession = ErrorMiddleware.asyncHandler(async (req, res) => {
         const sessionData = req.body;
-        const result = await trainingService.createTrainingSession(sessionData);
+        const tenantId = req.user.tenant_id;
+        const result = await trainingService.createTrainingSession(sessionData, tenantId);
         
         if (result.success) {
             // Emit training session created event
@@ -261,10 +265,11 @@ class TrainingController {
     static updateTrainingSession = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { sessionId } = req.params;
         const sessionData = req.body;
+        const tenantId = req.user.tenant_id;
         
         // Get old session data for comparison
-        const oldSessionResult = await trainingService.getTrainingSessionById(sessionId);
-        const result = await trainingService.updateTrainingSession(sessionId, sessionData);
+        const oldSessionResult = await trainingService.getTrainingSessionById(sessionId, tenantId);
+        const result = await trainingService.updateTrainingSession(sessionId, sessionData, tenantId);
         
         if (result.success) {
             // Emit training session updated event
@@ -292,10 +297,11 @@ class TrainingController {
 
     static deleteTrainingSession = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { sessionId } = req.params;
+        const tenantId = req.user.tenant_id;
         
         // Get session data before deletion
-        const oldSessionResult = await trainingService.getTrainingSessionById(sessionId);
-        const result = await trainingService.deleteTrainingSession(sessionId);
+        const oldSessionResult = await trainingService.getTrainingSessionById(sessionId, tenantId);
+        const result = await trainingService.deleteTrainingSession(sessionId, tenantId);
         
         if (result.success) {
             // Emit training session deleted event

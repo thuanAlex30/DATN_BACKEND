@@ -44,9 +44,16 @@ const roleSchema = new mongoose.Schema({
     min: 1,
     max: 100
   },
-  description: { 
+  description: {
     type: String, 
     trim: true 
+  },
+  // Thuộc tenant nào (đa tenant). Null hoặc undefined = role hệ thống (global)
+  tenant_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tenant',
+    default: null,
+    index: true
   },
   scope_rules: {
     type: scopeRulesSchema,

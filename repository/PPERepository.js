@@ -6,25 +6,44 @@ const User = require('../models/user');
 
 class PPERepository {
   // PPE Categories
-  async getAllCategories() {
-    return await PPECategory.find().sort({ category_name: 1 });
+  async getAllCategories(tenantId = null) {
+    const filter = {};
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+    return await PPECategory.find(filter).sort({ category_name: 1 });
   }
 
-  async getCategoryById(id) {
-    return await PPECategory.findById(id);
+  async getCategoryById(id, tenantId = null) {
+    const filter = { _id: id };
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+    return await PPECategory.findOne(filter);
   }
 
-  async createCategory(categoryData) {
-    const category = new PPECategory(categoryData);
+  async createCategory(categoryData, tenantId = null) {
+    const category = new PPECategory({
+      ...categoryData,
+      ...(tenantId ? { tenant_id: tenantId } : {})
+    });
     return await category.save();
   }
 
-  async updateCategory(id, categoryData) {
-    return await PPECategory.findByIdAndUpdate(id, categoryData, { new: true });
+  async updateCategory(id, categoryData, tenantId = null) {
+    const filter = { _id: id };
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+    return await PPECategory.findOneAndUpdate(filter, categoryData, { new: true });
   }
 
-  async deleteCategory(id) {
-    const result = await PPECategory.findByIdAndDelete(id);
+  async deleteCategory(id, tenantId = null) {
+    const filter = { _id: id };
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+    const result = await PPECategory.findOneAndDelete(filter);
     return !!result;
   }
 
@@ -135,9 +154,13 @@ class PPERepository {
   }
 
   // PPE Items
-  async getAllItems(filters = {}) {
+  async getAllItems(filters = {}, tenantId = null) {
     try {
       const query = {};
+
+      if (tenantId) {
+        query.tenant_id = tenantId;
+      }
       
       if (filters.category_id) {
         query.category_id = filters.category_id;
@@ -251,8 +274,13 @@ class PPERepository {
     }
   }
 
-  async getItemById(id) {
-    const item = await PPEItem.findById(id)
+  async getItemById(id, tenantId = null) {
+    const filter = { _id: id };
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+
+    const item = await PPEItem.findOne(filter)
       .populate('category_id', 'category_name description');
 
     if (!item) {
@@ -291,31 +319,50 @@ class PPERepository {
     };
   }
 
-  async createItem(itemData) {
-    const item = new PPEItem(itemData);
+  async createItem(itemData, tenantId = null) {
+    const item = new PPEItem({
+      ...itemData,
+      ...(tenantId ? { tenant_id: tenantId } : {})
+    });
     return await item.save();
   }
 
-  async updateItem(id, itemData) {
-    return await PPEItem.findByIdAndUpdate(id, itemData, { new: true });
+  async updateItem(id, itemData, tenantId = null) {
+    const filter = { _id: id };
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+    return await PPEItem.findOneAndUpdate(filter, itemData, { new: true });
   }
 
-  async deleteItem(id) {
-    const result = await PPEItem.findByIdAndDelete(id);
+  async deleteItem(id, tenantId = null) {
+    const filter = { _id: id };
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+    const result = await PPEItem.findOneAndDelete(filter);
     return !!result;
   }
 
   // PPE Items with quantity management
-  async updateItemQuantity(id, quantityData) {
-    return await PPEItem.findByIdAndUpdate(id, {
+  async updateItemQuantity(id, quantityData, tenantId = null) {
+    const filter = { _id: id };
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+    return await PPEItem.findOneAndUpdate(filter, {
       quantity_available: quantityData.quantity_available,
       quantity_allocated: quantityData.quantity_allocated
     }, { new: true });
   }
 
   // PPE Issuances
-  async getAllIssuances(filters = {}) {
+  async getAllIssuances(filters = {}, tenantId = null) {
     const query = {};
+
+    if (tenantId) {
+      query.tenant_id = tenantId;
+    }
     
     if (filters.user_id) {
       query.user_id = filters.user_id;
@@ -349,8 +396,12 @@ class PPERepository {
       .sort({ issued_date: -1 });
   }
 
-  async getIssuanceById(id) {
-    return await PPEIssuance.findById(id)
+  async getIssuanceById(id, tenantId = null) {
+    const filter = { _id: id };
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+    return await PPEIssuance.findOne(filter)
       .populate({
         path: 'user_id',
         select: 'full_name email',
@@ -369,14 +420,20 @@ class PPERepository {
       .populate('issued_by', 'full_name');
   }
 
-  async createIssuance(issuanceData) {
-    const issuance = new PPEIssuance(issuanceData);
+  async createIssuance(issuanceData, tenantId = null) {
+    const issuance = new PPEIssuance({
+      ...issuanceData,
+      ...(tenantId ? { tenant_id: tenantId } : {})
+    });
     return await issuance.save();
   }
 
   // Lấy danh sách PPE của user theo filters
-  async getIssuancesByUser(userId, filters = {}) {
+  async getIssuancesByUser(userId, filters = {}, tenantId = null) {
     const query = { user_id: userId, ...filters };
+    if (tenantId) {
+      query.tenant_id = tenantId;
+    }
     return await PPEIssuance.find(query)
       .populate('item_id', 'item_name item_code brand model')
       .populate('user_id', 'full_name email department')
@@ -386,8 +443,11 @@ class PPERepository {
   }
 
   // Lấy danh sách PPE của nhiều users theo filters
-  async getIssuancesByUsers(userIds, filters = {}) {
+  async getIssuancesByUsers(userIds, filters = {}, tenantId = null) {
     const query = { user_id: { $in: userIds }, ...filters };
+    if (tenantId) {
+      query.tenant_id = tenantId;
+    }
     return await PPEIssuance.find(query)
       .populate('item_id', 'item_name item_code brand model')
       .populate('user_id', 'full_name email department_id')
@@ -397,8 +457,11 @@ class PPERepository {
   }
 
   // Lấy danh sách PPE mà Manager đã phát cho employees
-  async getIssuancesByManager(managerId, filters = {}) {
+  async getIssuancesByManager(managerId, filters = {}, tenantId = null) {
     const query = { manager_id: managerId, ...filters };
+    if (tenantId) {
+      query.tenant_id = tenantId;
+    }
     return await PPEIssuance.find(query)
       .populate('item_id', 'item_name item_code brand model')
       .populate('user_id', 'full_name email department_id')

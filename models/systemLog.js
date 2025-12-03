@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const systemLogSchema = new mongoose.Schema({
+    tenant_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tenant',
+        required: false
+    },
     user_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -51,6 +56,7 @@ const systemLogSchema = new mongoose.Schema({
 
 // Indexes for better performance
 systemLogSchema.index({ timestamp: -1 });
+systemLogSchema.index({ tenant_id: 1 });
 systemLogSchema.index({ user_id: 1 });
 systemLogSchema.index({ module: 1 });
 systemLogSchema.index({ severity: 1 });
@@ -79,6 +85,7 @@ systemLogSchema.statics.getLogs = async function(filters = {}, page = 1, limit =
         
         // Apply filters
         if (filters.user_id) query.user_id = filters.user_id;
+        if (filters.tenant_id) query.tenant_id = filters.tenant_id;
         if (filters.module) query.module = filters.module;
         if (filters.severity) query.severity = filters.severity;
         if (filters.action) query.action = new RegExp(filters.action, 'i');
@@ -126,7 +133,7 @@ systemLogSchema.statics.getLogs = async function(filters = {}, page = 1, limit =
 };
 
 // Static method to get statistics
-systemLogSchema.statics.getStats = async function(timeRange = 'today') {
+systemLogSchema.statics.getStats = async function(timeRange = 'today', tenantId = null) {
     try {
         const now = new Date();
         let startDate;
@@ -148,11 +155,16 @@ systemLogSchema.statics.getStats = async function(timeRange = 'today') {
                 startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         }
         
+        const matchStage = {
+            timestamp: { $gte: startDate }
+        };
+        if (tenantId) {
+            matchStage.tenant_id = tenantId;
+        }
+
         const stats = await this.aggregate([
             {
-                $match: {
-                    timestamp: { $gte: startDate }
-                }
+                $match: matchStage
             },
             {
                 $group: {
@@ -234,24 +246,28 @@ systemLogSchema.statics.getStats = async function(timeRange = 'today') {
 };
 
 // Static method to get detailed statistics for export
-systemLogSchema.statics.getDetailedStats = async function() {
+systemLogSchema.statics.getDetailedStats = async function(tenantId = null) {
     try {
         const now = new Date();
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         const monthStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         
+        const baseFilter = tenantId ? { tenant_id: tenantId } : {};
+
         const [totalLogs, todayLogs, weekLogs, monthLogs, moduleStats, severityStats] = await Promise.all([
-            this.countDocuments(),
-            this.countDocuments({ timestamp: { $gte: todayStart } }),
-            this.countDocuments({ timestamp: { $gte: weekStart } }),
-            this.countDocuments({ timestamp: { $gte: monthStart } }),
+            this.countDocuments(baseFilter),
+            this.countDocuments({ ...baseFilter, timestamp: { $gte: todayStart } }),
+            this.countDocuments({ ...baseFilter, timestamp: { $gte: weekStart } }),
+            this.countDocuments({ ...baseFilter, timestamp: { $gte: monthStart } }),
             this.aggregate([
+                { $match: baseFilter },
                 { $group: { _id: '$module', count: { $sum: 1 } } },
                 { $sort: { count: -1 } },
                 { $limit: 1 }
             ]),
             this.aggregate([
+                { $match: baseFilter },
                 { $group: { _id: '$severity', count: { $sum: 1 } } },
                 { $sort: { count: -1 } },
                 { $limit: 1 }

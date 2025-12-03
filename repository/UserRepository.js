@@ -12,8 +12,6 @@ class UserRepository {
             query = query.populate('role_id', 'role_name role_code role_level scope_rules permissions is_active');
           } else if (field === 'department_id') {
             query = query.populate('department_id', 'department_name is_active');
-          } else if (field === 'position_id') {
-            query = query.populate('position_id', 'position_name level is_active');
           } else {
             query = query.populate(field);
           }
@@ -22,8 +20,7 @@ class UserRepository {
         // Default population
         query = query
           .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
-          .populate('department_id', 'department_name is_active')
-          .populate('position_id', 'position_name level is_active');
+          .populate('department_id', 'department_name is_active');
       }
       
       return await query.exec();
@@ -41,14 +38,20 @@ class UserRepository {
         search = '',
         role_id,
         department_id,
-        position_id,
         is_active,
         sort_by = 'created_at',
-        sort_order = 'desc'
+        sort_order = 'desc',
+        // ⭐ Thêm tenant_id để filter theo tenant
+        tenant_id
       } = options;
 
       const filter = {};
       
+      // Chỉ lấy user trong cùng tenant nếu có tenant_id
+      if (tenant_id) {
+        filter.tenant_id = tenant_id;
+      }
+
       if (search) {
         filter.$or = [
           { username: { $regex: search, $options: 'i' } },
@@ -59,7 +62,6 @@ class UserRepository {
 
       if (role_id) filter.role_id = role_id;
       if (department_id) filter.department_id = department_id;
-      if (position_id) filter.position_id = position_id;
       if (typeof is_active === 'boolean') filter.is_active = is_active;
 
       const sortOrder = sort_order === 'asc' ? 1 : -1;
@@ -71,7 +73,6 @@ class UserRepository {
         User.find(filter)
           .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
           .populate('department_id', 'department_name is_active')
-          .populate('position_id', 'position_name level is_active')
           .sort(sortObj)
           .skip(skip)
           .limit(limit),
@@ -125,8 +126,7 @@ class UserRepository {
         { new: true, runValidators: true }
       )
         .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
-        .populate('department_id', 'department_name is_active')
-        .populate('position_id', 'position_name level is_active');
+        .populate('department_id', 'department_name is_active');
     } catch (error) {
       throw error;
     }
@@ -210,7 +210,6 @@ class UserRepository {
 
       const result = await User.find(filter)
         .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
-        .populate('position_id', 'position_name level is_active')
         .sort(sortObj)
         .exec();
       
@@ -218,27 +217,6 @@ class UserRepository {
       return result;
     } catch (error) {
       console.error('UserRepository.findByDepartment - error:', error);
-      throw error;
-    }
-  }
-
-  // Find users by position
-  static async findByPosition(positionId, options = {}) {
-    try {
-      const { is_active = true, sort_by = 'full_name', sort_order = 'asc' } = options;
-      
-      const filter = { position_id: positionId };
-      if (typeof is_active === 'boolean') filter.is_active = is_active;
-
-      const sortOrder = sort_order === 'asc' ? 1 : -1;
-      const sortObj = { [sort_by]: sortOrder };
-
-      return await User.find(filter)
-        .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
-        .populate('department_id', 'department_name is_active')
-        .sort(sortObj)
-        .exec();
-    } catch (error) {
       throw error;
     }
   }
@@ -256,7 +234,6 @@ class UserRepository {
 
       return await User.find(filter)
         .populate('department_id', 'department_name is_active')
-        .populate('position_id', 'position_name level is_active')
         .sort(sortObj)
         .exec();
     } catch (error) {
@@ -275,18 +252,15 @@ class UserRepository {
 
       const users = await User.find(filter)
         .populate('role_id', 'role_name role_code role_level scope_rules permissions')
-        .populate('position_id', 'position_name level')
         .sort({ full_name: 1 })
         .exec();
 
-      // Filter users with management permissions or high-level positions
+      // Filter users with management permissions
       return users.filter(user => {
         const hasManagementRole = user.role_id && 
           (user.role_id.role_name === 'admin' || user.role_id.role_name === 'manager');
         
-        const hasManagementLevel = user.position_id && user.position_id.level >= 6;
-        
-        return hasManagementRole || hasManagementLevel;
+        return hasManagementRole;
       });
     } catch (error) {
       throw error;
@@ -318,8 +292,7 @@ class UserRepository {
         active,
         inactive,
         byRole,
-        byDepartment,
-        byPosition
+        byDepartment
       ] = await Promise.all([
         User.countDocuments({}),
         User.countDocuments({ is_active: true }),
@@ -357,23 +330,6 @@ class UserRepository {
               count: { $sum: 1 }
             }
           }
-        ]),
-        User.aggregate([
-          {
-            $lookup: {
-              from: 'positions',
-              localField: 'position_id',
-              foreignField: '_id',
-              as: 'position'
-            }
-          },
-          { $unwind: { path: '$position', preserveNullAndEmptyArrays: true } },
-          {
-            $group: {
-              _id: '$position.position_name',
-              count: { $sum: 1 }
-            }
-          }
         ])
       ]);
 
@@ -382,8 +338,7 @@ class UserRepository {
         active,
         inactive,
         by_role: byRole,
-        by_department: byDepartment,
-        by_position: byPosition
+        by_department: byDepartment
       };
     } catch (error) {
       throw error;
@@ -434,9 +389,13 @@ class UserRepository {
   }
 
   // Count methods
-  static async countByRole(role_id) {
+  static async countByRole(role_id, options = {}) {
     try {
-      return await User.countDocuments({ role_id, is_active: true });
+      const filter = { role_id, is_active: true };
+      if (options.tenant_id) {
+        filter.tenant_id = options.tenant_id;
+      }
+      return await User.countDocuments(filter);
     } catch (error) {
       throw error;
     }
@@ -445,14 +404,6 @@ class UserRepository {
   static async countByDepartment(department_id) {
     try {
       return await User.countDocuments({ department_id, is_active: true });
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  static async countByPosition(position_id) {
-    try {
-      return await User.countDocuments({ position_id, is_active: true });
     } catch (error) {
       throw error;
     }
@@ -527,7 +478,6 @@ class UserRepository {
         search = '',
         roles = [],
         departments = [],
-        positions = [],
         is_active,
         has_login,
         sort_by = 'full_name',
@@ -547,7 +497,6 @@ class UserRepository {
 
       if (roles.length > 0) filter.role_id = { $in: roles };
       if (departments.length > 0) filter.department_id = { $in: departments };
-      if (positions.length > 0) filter.position_id = { $in: positions };
       if (typeof is_active === 'boolean') filter.is_active = is_active;
       if (typeof has_login === 'boolean') {
         filter.last_login = has_login ? { $exists: true, $ne: null } : { $exists: false };
@@ -559,7 +508,6 @@ class UserRepository {
       return await User.find(filter)
         .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
         .populate('department_id', 'department_name is_active')
-        .populate('position_id', 'position_name level is_active')
         .sort(sortObj)
         .limit(limit)
         .exec();

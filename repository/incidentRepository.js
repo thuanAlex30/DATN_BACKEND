@@ -14,9 +14,14 @@ class IncidentRepository {
   }
 
   // Tìm sự cố theo ID
-  static async findById(id) {
+  static async findById(id, tenantId = null) {
     try {
-      const incident = await Incident.findById(id)
+      const filter = { _id: id };
+      if (tenantId) {
+        filter.tenant_id = tenantId;
+      }
+
+      const incident = await Incident.findOne(filter)
         .populate('createdBy', 'full_name email role')
         .populate('assignedTo', 'full_name email role')
         .populate('histories.performedBy', 'full_name email role')
@@ -33,9 +38,14 @@ class IncidentRepository {
   }
 
   // Tìm sự cố theo incidentId
-  static async findByIncidentId(incidentId) {
+  static async findByIncidentId(incidentId, tenantId = null) {
     try {
-      const incident = await Incident.findOne({ incidentId })
+      const filter = { incidentId };
+      if (tenantId) {
+        filter.tenant_id = tenantId;
+      }
+
+      const incident = await Incident.findOne(filter)
         .populate('createdBy', 'name email role')
         .populate('assignedTo', 'name email role')
         .populate('histories.performedBy', 'name email role');
@@ -67,6 +77,11 @@ class IncidentRepository {
 
       // Xây dựng query
       const query = {};
+
+      // ⭐ Tenant filter nếu có
+      if (filters.tenant_id) {
+        query.tenant_id = filters.tenant_id;
+      }
       
       if (status) query.status = status;
       if (severity) query.severity = severity;
@@ -106,10 +121,15 @@ class IncidentRepository {
   }
 
   // Cập nhật sự cố
-  static async updateById(id, updateData) {
+  static async updateById(id, updateData, tenantId = null) {
     try {
-      const incident = await Incident.findByIdAndUpdate(
-        id,
+      const filter = { _id: id };
+      if (tenantId) {
+        filter.tenant_id = tenantId;
+      }
+
+      const incident = await Incident.findOneAndUpdate(
+        filter,
         { $set: updateData },
         { new: true, runValidators: true }
       ).populate('createdBy', 'name email role')
@@ -126,10 +146,15 @@ class IncidentRepository {
   }
 
   // Thêm lịch sử sự cố
-  static async addHistory(id, historyData) {
+  static async addHistory(id, historyData, tenantId = null) {
     try {
-      const incident = await Incident.findByIdAndUpdate(
-        id,
+      const filter = { _id: id };
+      if (tenantId) {
+        filter.tenant_id = tenantId;
+      }
+
+      const incident = await Incident.findOneAndUpdate(
+        filter,
         { $push: { histories: historyData } },
         { new: true, runValidators: true }
       ).populate('createdBy', 'name email role')
@@ -146,9 +171,14 @@ class IncidentRepository {
   }
 
   // Xóa sự cố
-  static async deleteById(id) {
+  static async deleteById(id, tenantId = null) {
     try {
-      const incident = await Incident.findByIdAndDelete(id);
+      const filter = { _id: id };
+      if (tenantId) {
+        filter.tenant_id = tenantId;
+      }
+
+      const incident = await Incident.findOneAndDelete(filter);
       if (!incident) {
         throw new Error('Không tìm thấy sự cố');
       }

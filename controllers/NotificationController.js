@@ -415,58 +415,68 @@ class NotificationController {
 
     // Get notification settings
     static getNotificationSettings = ErrorMiddleware.asyncHandler(async (req, res) => {
-        try {
-            const settings = {
-                types: [
-                    { value: 'info', label: 'Thông tin', color: '#3498db', enabled: true },
-                    { value: 'warning', label: 'Cảnh báo', color: '#f39c12', enabled: true },
-                    { value: 'error', label: 'Lỗi', color: '#e74c3c', enabled: true },
-                    { value: 'success', label: 'Thành công', color: '#2ecc71', enabled: true }
-                ],
-                categories: [
-                    { value: 'system', label: 'Hệ thống', enabled: true },
-                    { value: 'training', label: 'Đào tạo', enabled: true },
-                    { value: 'safety', label: 'An toàn', enabled: true },
-                    { value: 'ppe', label: 'PPE', enabled: true },
-                    { value: 'project', label: 'Dự án', enabled: true },
-                    { value: 'user', label: 'Người dùng', enabled: true },
-                    { value: 'general', label: 'Chung', enabled: true }
-                ],
-                priorities: [
-                    { value: 'low', label: 'Thấp', color: '#95a5a6', enabled: true },
-                    { value: 'medium', label: 'Trung bình', color: '#f39c12', enabled: true },
-                    { value: 'high', label: 'Cao', color: '#e74c3c', enabled: true },
-                    { value: 'urgent', label: 'Khẩn cấp', color: '#8e44ad', enabled: true }
-                ],
-                auto_cleanup: {
-                    enabled: true,
-                    days: 30
-                },
-                real_time: {
-                    enabled: true,
-                    interval: 30
-                }
-            };
-            
-            ApiResponse.success(res, settings, 'Lấy cài đặt thông báo thành công');
-        } catch (error) {
-            console.error('Error getting notification settings:', error);
-            ApiResponse.error(res, 'Lỗi khi lấy cài đặt thông báo', 500, error.message);
-        }
+        console.log('📥 [NotificationSettings] Request received');
+        console.log('📥 [NotificationSettings] User:', req.user?.username || req.user?._id || 'Unknown');
+        
+        const settings = {
+            types: [
+                { value: 'info', label: 'Thông tin', color: '#3498db', enabled: true },
+                { value: 'warning', label: 'Cảnh báo', color: '#f39c12', enabled: true },
+                { value: 'error', label: 'Lỗi', color: '#e74c3c', enabled: true },
+                { value: 'success', label: 'Thành công', color: '#2ecc71', enabled: true }
+            ],
+            categories: [
+                { value: 'system', label: 'Hệ thống', enabled: true },
+                { value: 'training', label: 'Đào tạo', enabled: true },
+                { value: 'safety', label: 'An toàn', enabled: true },
+                { value: 'ppe', label: 'PPE', enabled: true },
+                { value: 'project', label: 'Dự án', enabled: true },
+                { value: 'user', label: 'Người dùng', enabled: true },
+                { value: 'general', label: 'Chung', enabled: true }
+            ],
+            priorities: [
+                { value: 'low', label: 'Thấp', color: '#95a5a6', enabled: true },
+                { value: 'medium', label: 'Trung bình', color: '#f39c12', enabled: true },
+                { value: 'high', label: 'Cao', color: '#e74c3c', enabled: true },
+                { value: 'urgent', label: 'Khẩn cấp', color: '#8e44ad', enabled: true }
+            ],
+            auto_cleanup: {
+                enabled: true,
+                days: 30
+            },
+            real_time: {
+                enabled: true,
+                interval: 30
+            }
+        };
+        
+        console.log('✅ [NotificationSettings] Returning settings');
+        return ApiResponse.success(res, settings, 'Lấy cài đặt thông báo thành công');
     });
 
     // Update notification settings
     static updateNotificationSettings = ErrorMiddleware.asyncHandler(async (req, res) => {
+        console.log('📥 [UpdateNotificationSettings] Request received');
+        console.log('📥 [UpdateNotificationSettings] User:', req.user?.username || req.user?._id || 'Unknown');
+        console.log('📥 [UpdateNotificationSettings] Body:', JSON.stringify(req.body, null, 2));
+        
         try {
             const { settings } = req.body;
+            
+            if (!settings) {
+                console.warn('⚠️ [UpdateNotificationSettings] No settings in body');
+                return ApiResponse.error(res, 'Thiếu dữ liệu cài đặt', 400);
+            }
             
             // In a real application, you would save these settings to a database
             // For now, we'll just return success
             
-            ApiResponse.success(res, settings, 'Cập nhật cài đặt thông báo thành công');
+            console.log('✅ [UpdateNotificationSettings] Returning success');
+            return ApiResponse.success(res, settings, 'Cập nhật cài đặt thông báo thành công');
         } catch (error) {
-            console.error('Error updating notification settings:', error);
-            ApiResponse.error(res, 'Lỗi khi cập nhật cài đặt thông báo', 500, error.message);
+            console.error('❌ [UpdateNotificationSettings] Error:', error);
+            console.error('❌ [UpdateNotificationSettings] Error stack:', error.stack);
+            return ApiResponse.error(res, 'Lỗi khi cập nhật cài đặt thông báo', 500, error.message);
         }
     });
 }

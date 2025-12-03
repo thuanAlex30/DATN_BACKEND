@@ -103,7 +103,7 @@ class ProjectAssignmentRepository {
     }
 
     // Validate role
-    const validRoles = ['PROJECT_MANAGER', 'TEAM_LEADER', 'MEMBER', 'OBSERVER'];
+    const validRoles = ['PROJECT_MANAGER', 'MEMBER', 'OBSERVER'];
     if (!validRoles.includes(role)) {
       return { valid: false, message: 'Vai trò không hợp lệ' };
     }

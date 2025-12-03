@@ -36,6 +36,11 @@ class SystemLogController {
                 setTimeout(() => reject(new Error('Request timeout')), 20000); // 20 second timeout
             });
 
+            const tenantId = req.user?.tenant_id || null;
+            if (tenantId) {
+                filters.tenant_id = tenantId;
+            }
+
             const resultPromise = SystemLog.getLogs(filters, parseInt(page), parseInt(limit));
             const result = await Promise.race([resultPromise, timeoutPromise]);
             
@@ -113,8 +118,14 @@ class SystemLogController {
     static getLogById = ErrorMiddleware.asyncHandler(async (req, res) => {
         try {
             const { id } = req.params;
+            const tenantId = req.user?.tenant_id || null;
             
-            const log = await SystemLog.findById(id).populate('user_id', 'full_name username');
+            const query = { _id: id };
+            if (tenantId) {
+                query.tenant_id = tenantId;
+            }
+
+            const log = await SystemLog.findOne(query).populate('user_id', 'full_name username');
             
             if (!log) {
                 return ApiResponse.error(res, 'Không tìm thấy nhật ký hệ thống', 404);
@@ -151,6 +162,7 @@ class SystemLogController {
             }
 
             const logData = {
+                tenant_id: req.user?.tenant_id || null,
                 user_id: user_id || null,
                 action,
                 module,
@@ -191,13 +203,14 @@ class SystemLogController {
     static getStats = ErrorMiddleware.asyncHandler(async (req, res) => {
         try {
             const { time_range = 'today' } = req.query;
+            const tenantId = req.user?.tenant_id || null;
             
             // Add timeout wrapper
             const timeoutPromise = new Promise((_, reject) => {
                 setTimeout(() => reject(new Error('Request timeout')), 15000); // 15 second timeout
             });
 
-            const statsPromise = SystemLog.getStats(time_range);
+            const statsPromise = SystemLog.getStats(time_range, tenantId);
             const stats = await Promise.race([statsPromise, timeoutPromise]);
             
             ApiResponse.success(res, stats, 'Lấy thống kê hệ thống thành công');
@@ -214,7 +227,8 @@ class SystemLogController {
     // Get detailed statistics for export
     static getDetailedStats = ErrorMiddleware.asyncHandler(async (req, res) => {
         try {
-            const stats = await SystemLog.getDetailedStats();
+            const tenantId = req.user?.tenant_id || null;
+            const stats = await SystemLog.getDetailedStats(tenantId);
             
             ApiResponse.success(res, stats, 'Lấy thống kê chi tiết thành công');
         } catch (error) {
@@ -243,6 +257,11 @@ class SystemLogController {
             if (start_date && end_date) {
                 filters.start_date = start_date;
                 filters.end_date = end_date;
+            }
+
+            const tenantId = req.user?.tenant_id || null;
+            if (tenantId) {
+                filters.tenant_id = tenantId;
             }
 
             // Get all logs without pagination for export
@@ -320,7 +339,11 @@ class SystemLogController {
             let actualDays = days;
             
             // Check if there are any logs older than the specified days
+            const tenantId = req.user?.tenant_id || null;
+            const baseFilter = tenantId ? { tenant_id: tenantId } : {};
+
             const oldLogsCount = await SystemLog.countDocuments({
+                ...baseFilter,
                 timestamp: { $lt: cutoffDate }
             });
             
@@ -331,10 +354,12 @@ class SystemLogController {
                 actualDays = '1 giờ';
                 
                 result = await SystemLog.deleteMany({
+                    ...baseFilter,
                     timestamp: { $lt: actualCutoffDate }
                 });
             } else {
                 result = await SystemLog.deleteMany({
+                    ...baseFilter,
                     timestamp: { $lt: cutoffDate }
                 });
             }
@@ -396,10 +421,14 @@ class SystemLogController {
     static bulkDeleteLogs = ErrorMiddleware.asyncHandler(async (req, res) => {
         try {
             const { log_ids } = req.body;
+            const tenantId = req.user?.tenant_id || null;
             
-            const result = await SystemLog.deleteMany({
-                _id: { $in: log_ids }
-            });
+            const filter = { _id: { $in: log_ids } };
+            if (tenantId) {
+                filter.tenant_id = tenantId;
+            }
+
+            const result = await SystemLog.deleteMany(filter);
             
             ApiResponse.success(res, {
                 deleted_count: result.deletedCount,
@@ -415,6 +444,7 @@ class SystemLogController {
     static getAnalytics = ErrorMiddleware.asyncHandler(async (req, res) => {
         try {
             const { time_range = 'week' } = req.query;
+            const tenantId = req.user?.tenant_id || null;
             
             // Add timeout wrapper
             const timeoutPromise = new Promise((_, reject) => {
@@ -443,13 +473,18 @@ class SystemLogController {
                 }
 
                 // Execute all aggregations in parallel for better performance
+                const baseMatch = {
+                    timestamp: { $gte: startDate }
+                };
+                if (tenantId) {
+                    baseMatch.tenant_id = tenantId;
+                }
+
                 const [severityStats, moduleStats, dailyActivity, topUsers] = await Promise.all([
                     // Get logs by severity
                     SystemLog.aggregate([
                         {
-                            $match: {
-                                timestamp: { $gte: startDate }
-                            }
+                            $match: baseMatch
                         },
                         {
                             $group: {
@@ -464,9 +499,7 @@ class SystemLogController {
                     // Get logs by module
                     SystemLog.aggregate([
                         {
-                            $match: {
-                                timestamp: { $gte: startDate }
-                            }
+                            $match: baseMatch
                         },
                         {
                             $group: {
@@ -481,9 +514,7 @@ class SystemLogController {
                     // Get daily activity
                     SystemLog.aggregate([
                         {
-                            $match: {
-                                timestamp: { $gte: startDate }
-                            }
+                            $match: baseMatch
                         },
                         {
                             $group: {
@@ -503,7 +534,7 @@ class SystemLogController {
                     SystemLog.aggregate([
                         {
                             $match: {
-                                timestamp: { $gte: startDate },
+                                ...baseMatch,
                                 user_id: { $ne: null }
                             }
                         },
@@ -569,12 +600,16 @@ class SystemLogController {
     static getNotifications = ErrorMiddleware.asyncHandler(async (req, res) => {
         try {
             const { page = 1, limit = 20, unread_only = false } = req.query;
+            const tenantId = req.user?.tenant_id || null;
             
             // Get recent error and critical logs as notifications
             const query = {
                 severity: { $in: ['error', 'critical', 'warning'] },
                 timestamp: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } // Last 7 days
             };
+            if (tenantId) {
+                query.tenant_id = tenantId;
+            }
             
             const skip = (page - 1) * limit;
             
@@ -627,10 +662,12 @@ class SystemLogController {
         try {
             const { logs } = req.body;
             const userId = req.user._id || req.user.id;
+            const tenantId = req.user?.tenant_id || null;
             
             // Process logs in batch
             const logPromises = logs.map(logData => {
                 const logEntry = {
+                    tenant_id: tenantId,
                     user_id: userId,
                     action: logData.action,
                     module: logData.module || 'frontend',
@@ -668,9 +705,15 @@ class SystemLogController {
     static exportSelectedLogs = ErrorMiddleware.asyncHandler(async (req, res) => {
         try {
             const { log_ids, format = 'json' } = req.body;
+            const tenantId = req.user?.tenant_id || null;
             
             // Get selected logs
-            const logs = await SystemLog.find({ _id: { $in: log_ids } })
+            const filter = { _id: { $in: log_ids } };
+            if (tenantId) {
+                filter.tenant_id = tenantId;
+            }
+
+            const logs = await SystemLog.find(filter)
                 .populate('user_id', 'full_name username')
                 .sort({ timestamp: -1 });
             

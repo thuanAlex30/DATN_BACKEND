@@ -62,7 +62,6 @@ Hệ thống sử dụng role level từ 1-100:
 - **90**: Company Admin (quản trị tenant)
 - **80**: Department Header (trưởng bộ phận)
 - **70**: Manager (quản lý)
-- **60**: Team Leader (tổ trưởng)
 - **55**: Trainer, Safety Officer
 - **50**: Warehouse Staff, Maintenance Staff
 - **10**: Employee (nhân viên)

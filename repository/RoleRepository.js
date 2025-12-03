@@ -114,7 +114,8 @@ class RoleRepository {
         search = '',
         is_active,
         sort_by = 'role_name',
-        sort_order = 'asc'
+        sort_order = 'asc',
+        tenant_id
       } = options;
 
       // Build filter object
@@ -129,6 +130,20 @@ class RoleRepository {
 
       if (typeof is_active === 'boolean') {
         filter.is_active = is_active;
+      }
+
+      // Tenant filter: nếu có tenant_id thì chỉ lấy role thuộc tenant đó
+      // nhưng vẫn cho phép xem các role global (tenant_id null/không tồn tại)
+      if (tenant_id) {
+        filter.$and = (filter.$and || []).concat([
+          {
+            $or: [
+              { tenant_id: tenant_id },
+              { tenant_id: null },
+              { tenant_id: { $exists: false } }
+            ]
+          }
+        ]);
       }
 
       // Build sort object

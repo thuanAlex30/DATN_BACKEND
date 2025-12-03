@@ -6,8 +6,13 @@ const { transformDocumentId, transformDocumentsId, POPULATED_FIELDS } = require(
 
 class ProjectRepository {
   // ========== PROJECT CRUD ==========
-  async getAllProjects(filters = {}) {
+  async getAllProjects(filters = {}, tenantId = null) {
     const query = {};
+
+    // ⭐ Tenant filter
+    if (tenantId) {
+      query.tenant_id = tenantId;
+    }
     
     if (filters.status) {
       query.status = filters.status;
@@ -36,8 +41,13 @@ class ProjectRepository {
     return projects;
   }
 
-  async getProjectById(id) {
-    const project = await Project.findById(id)
+  async getProjectById(id, tenantId = null) {
+    const filter = { _id: id };
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+
+    const project = await Project.findOne(filter)
       .populate('leader_id', 'full_name email phone')
       .populate('site_id', 'site_name address coordinates contact_person contact_phone contact_email');
     
@@ -46,16 +56,25 @@ class ProjectRepository {
     return project;
   }
 
-  async createProject(projectData) {
-    const project = new Project(projectData);
+  async createProject(projectData, tenantId = null) {
+    const project = new Project({
+      ...projectData,
+      // ⭐ Always set tenant_id from scope if provided
+      ...(tenantId ? { tenant_id: tenantId } : {})
+    });
     await project.save();
     
-    return await this.getProjectById(project._id);
+    return await this.getProjectById(project._id, tenantId);
   }
 
-  async updateProject(id, updateData) {
-    const project = await Project.findByIdAndUpdate(
-      id,
+  async updateProject(id, updateData, tenantId = null) {
+    const filter = { _id: id };
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+
+    const project = await Project.findOneAndUpdate(
+      filter,
       { ...updateData, updated_at: new Date() },
       { new: true }
     );
@@ -65,21 +84,34 @@ class ProjectRepository {
     return project;
   }
 
-  async deleteProject(id) {
-    const result = await Project.findByIdAndDelete(id);
+  async deleteProject(id, tenantId = null) {
+    const filter = { _id: id };
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+
+    const result = await Project.findOneAndDelete(filter);
     return !!result;
   }
 
   // ========== PROJECT STATISTICS ==========
-  async getProjectStats() {
-    const stats = await Project.aggregate([
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 }
-        }
+  async getProjectStats(tenantId = null) {
+    const pipeline = [];
+
+    if (tenantId) {
+      pipeline.push({
+        $match: { tenant_id: tenantId }
+      });
+    }
+
+    pipeline.push({
+      $group: {
+        _id: '$status',
+        count: { $sum: 1 }
       }
-    ]);
+    });
+
+    const stats = await Project.aggregate(pipeline);
 
     const result = {
       total: 0,

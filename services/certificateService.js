@@ -246,10 +246,10 @@ class CertificateService {
     }
   }
 
-  // Get certificate statistics
-  async getCertificateStats() {
+  // Get certificate statistics (scoped theo tenant nếu có tenantId)
+  async getCertificateStats(tenantId = null) {
     try {
-      const stats = await certificateRepository.getStats();
+      const stats = await certificateRepository.getStats(tenantId ? { tenant_id: tenantId } : {});
       return createResponse(200, 'Lấy thống kê chứng chỉ thành công', stats);
     } catch (error) {
       console.error('Error getting certificate statistics:', error);

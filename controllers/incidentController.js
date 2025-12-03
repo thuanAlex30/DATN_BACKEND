@@ -13,8 +13,9 @@ class IncidentController {
   static reportIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
     const incidentData = req.body;
     const userId = req.user._id;
+    const tenantId = req.user.tenant_id;
     
-    const result = await incidentService.createIncident(incidentData, userId);
+    const result = await incidentService.createIncident(incidentData, userId, tenantId);
     
     if (result.success) {
       // Emit WebSocket notification for incident reported
@@ -36,7 +37,8 @@ class IncidentController {
 
   // 2. Lấy tất cả incidents
   static getIncidents = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await incidentService.getAllIncidents();
+    const tenantId = req.user.tenant_id;
+    const result = await incidentService.getAllIncidents(tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -48,7 +50,8 @@ class IncidentController {
   // 3. Lấy incident theo ID
   static getIncidentById = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const result = await incidentService.getIncidentById(id);
+    const tenantId = req.user.tenant_id;
+    const result = await incidentService.getIncidentById(id, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -62,8 +65,9 @@ class IncidentController {
     const { id } = req.params;
     const { severity } = req.body;
     const userId = req.user._id;
+    const tenantId = req.user.tenant_id;
     
-    const result = await incidentService.classifyIncident(id, severity, userId);
+    const result = await incidentService.classifyIncident(id, severity, userId, tenantId);
     
     if (result.success) {
       // Emit WebSocket notification for incident classified
@@ -88,8 +92,9 @@ class IncidentController {
     const { id } = req.params;
     const { assignedTo } = req.body;
     const userId = req.user._id;
+    const tenantId = req.user.tenant_id;
     
-    const result = await incidentService.assignIncident(id, assignedTo, userId);
+    const result = await incidentService.assignIncident(id, assignedTo, userId, tenantId);
     
     if (result.success) {
       // Emit WebSocket notification for incident assigned
@@ -115,8 +120,9 @@ class IncidentController {
     const { id } = req.params;
     const investigationData = req.body;
     const userId = req.user._id;
+    const tenantId = req.user.tenant_id;
     
-    const result = await incidentService.investigateIncident(id, investigationData, userId);
+    const result = await incidentService.investigateIncident(id, investigationData, userId, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -130,8 +136,9 @@ class IncidentController {
     const { id } = req.params;
     const progressData = req.body;
     const userId = req.user._id;
+    const tenantId = req.user.tenant_id;
     
-    const result = await incidentService.updateIncidentProgress(id, progressData, userId);
+    const result = await incidentService.updateIncidentProgress(id, progressData, userId, tenantId);
     
     if (result.success) {
       // Emit WebSocket notification for incident progress updated
@@ -156,8 +163,9 @@ class IncidentController {
     const { id } = req.params;
     const closeData = req.body;
     const userId = req.user._id;
+    const tenantId = req.user.tenant_id;
     
-    const result = await incidentService.closeIncident(id, closeData, userId);
+    const result = await incidentService.closeIncident(id, closeData, userId, tenantId);
     
     if (result.success) {
       // Emit WebSocket notification for incident closed

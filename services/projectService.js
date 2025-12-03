@@ -5,9 +5,9 @@ const { createResponse } = require('../utils/response');
 
 class ProjectService {
   // ========== PROJECT MANAGEMENT ==========
-  async getAllProjects(filters = {}) {
+  async getAllProjects(filters = {}, tenantId = null) {
     try {
-      const projects = await projectRepository.getAllProjects(filters);
+      const projects = await projectRepository.getAllProjects(filters, tenantId);
       return createResponse(200, 'Lấy danh sách dự án thành công',
         transformDocumentsId(projects, POPULATED_FIELDS.PROJECT));
     } catch (error) {
@@ -16,9 +16,9 @@ class ProjectService {
     }
   }
 
-  async getProjectById(id) {
+  async getProjectById(id, tenantId = null) {
     try {
-      const project = await projectRepository.getProjectById(id);
+      const project = await projectRepository.getProjectById(id, tenantId);
       
       if (!project) {
         return createResponse(404, 'Không tìm thấy dự án');
@@ -37,7 +37,7 @@ class ProjectService {
     }
   }
 
-  async createProject(projectData, userId) {
+  async createProject(projectData, userId, tenantId = null) {
     try {
       // Validate required fields (site_id không bắt buộc)
       const requiredFields = ['project_name', 'description', 'start_date', 'end_date', 'leader_id'];
@@ -73,7 +73,7 @@ class ProjectService {
         created_by: userId
       };
       
-      const project = await projectRepository.createProject(projectDataWithCreatedBy);
+      const project = await projectRepository.createProject(projectDataWithCreatedBy, tenantId);
       
       return createResponse(201, 'Tạo dự án thành công',
         transformDocumentId(project, POPULATED_FIELDS.PROJECT));
@@ -98,9 +98,9 @@ class ProjectService {
     }
   }
 
-  async updateProject(id, updateData, userId) {
+  async updateProject(id, updateData, userId, tenantId = null) {
     try {
-      const existingProject = await projectRepository.getProjectById(id);
+      const existingProject = await projectRepository.getProjectById(id, tenantId);
       if (!existingProject) {
         return createResponse(404, 'Không tìm thấy dự án');
       }
@@ -135,7 +135,7 @@ class ProjectService {
         delete updateData.site_name;
       }
 
-      const project = await projectRepository.updateProject(id, updateData);
+      const project = await projectRepository.updateProject(id, updateData, tenantId);
       
       return createResponse(200, 'Cập nhật dự án thành công',
         transformDocumentId(project, POPULATED_FIELDS.PROJECT));
@@ -145,9 +145,9 @@ class ProjectService {
     }
   }
 
-  async deleteProject(id, userId) {
+  async deleteProject(id, userId, tenantId = null) {
     try {
-      const project = await projectRepository.getProjectById(id);
+      const project = await projectRepository.getProjectById(id, tenantId);
       if (!project) {
         return createResponse(404, 'Không tìm thấy dự án');
       }
@@ -161,7 +161,7 @@ class ProjectService {
         }
       }
 
-      const result = await projectRepository.deleteProject(id);
+      const result = await projectRepository.deleteProject(id, tenantId);
       
       if (result) {
         return createResponse(200, 'Xóa dự án thành công');
@@ -175,9 +175,9 @@ class ProjectService {
   }
 
   // ========== PROJECT STATISTICS ==========
-  async getProjectStats() {
+  async getProjectStats(tenantId = null) {
     try {
-      const stats = await projectRepository.getProjectStats();
+      const stats = await projectRepository.getProjectStats(tenantId);
       return createResponse(200, 'Lấy thống kê dự án thành công', stats);
     } catch (error) {
       console.error('Error getting project stats:', error);

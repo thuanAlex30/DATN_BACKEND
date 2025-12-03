@@ -11,9 +11,9 @@ const { createResponse } = require('../utils/response');
 
 class PPEService {
   // PPE Categories
-  async getAllCategories() {
+  async getAllCategories(tenantId = null) {
     try {
-      const categories = await ppeRepository.getAllCategories();
+      const categories = await ppeRepository.getAllCategories(tenantId);
       return createResponse(200, 'Lấy danh sách danh mục PPE thành công',
         transformDocumentsId(categories, POPULATED_FIELDS.PPE_CATEGORY));
     } catch (error) {
@@ -22,9 +22,9 @@ class PPEService {
     }
   }
 
-  async getCategoryById(id) {
+  async getCategoryById(id, tenantId = null) {
     try {
-      const category = await ppeRepository.getCategoryById(id);
+      const category = await ppeRepository.getCategoryById(id, tenantId);
       if (!category) {
         return createResponse(404, 'Không tìm thấy danh mục PPE');
       }
@@ -36,14 +36,14 @@ class PPEService {
     }
   }
 
-  async createCategory(categoryData) {
+  async createCategory(categoryData, tenantId = null) {
     try {
       // Validate required fields
       if (!categoryData.category_name) {
         return createResponse(400, 'Tên danh mục là bắt buộc');
       }
 
-      const category = await ppeRepository.createCategory(categoryData);
+      const category = await ppeRepository.createCategory(categoryData, tenantId);
       return createResponse(201, 'Tạo danh mục PPE thành công',
         transformDocumentId(category, POPULATED_FIELDS.PPE_CATEGORY));
     } catch (error) {
@@ -52,7 +52,7 @@ class PPEService {
     }
   }
 
-  async importCategoriesFromExcel(file) {
+  async importCategoriesFromExcel(file, tenantId = null) {
     try {
       // Read Excel file
       const workbook = new ExcelJS.Workbook();
@@ -80,7 +80,7 @@ class PPEService {
       };
 
       // Get existing categories for duplicate checking
-      const existingCategories = await ppeRepository.getAllCategories();
+      const existingCategories = await ppeRepository.getAllCategories(tenantId);
       const existingCategoryNames = new Set(
         existingCategories.map(cat => cat.category_name.toLowerCase())
       );
@@ -128,7 +128,7 @@ class PPEService {
           }
 
           // Create category
-          const createdCategory = await ppeRepository.createCategory(categoryData);
+          const createdCategory = await ppeRepository.createCategory(categoryData, tenantId);
           results.success.push({
             row: rowNumber,
             data: createdCategory
@@ -152,9 +152,9 @@ class PPEService {
     }
   }
 
-  async updateCategory(id, categoryData) {
+  async updateCategory(id, categoryData, tenantId = null) {
     try {
-      const category = await ppeRepository.updateCategory(id, categoryData);
+      const category = await ppeRepository.updateCategory(id, categoryData, tenantId);
       if (!category) {
         return createResponse(404, 'Không tìm thấy danh mục PPE để cập nhật');
       }
@@ -166,7 +166,7 @@ class PPEService {
     }
   }
 
-  async deleteCategory(id) {
+  async deleteCategory(id, tenantId = null) {
     try {
       // Validate ObjectId format
       if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
@@ -174,18 +174,18 @@ class PPEService {
       }
 
       // Check if category exists
-      const category = await ppeRepository.getCategoryById(id);
+      const category = await ppeRepository.getCategoryById(id, tenantId);
       if (!category) {
         return createResponse(404, 'Không tìm thấy danh mục PPE để xóa');
       }
 
       // Check if there are any PPE items using this category
-      const itemsUsingCategory = await ppeRepository.getAllItems({ category_id: id });
+      const itemsUsingCategory = await ppeRepository.getAllItems({ category_id: id }, tenantId);
       if (itemsUsingCategory && itemsUsingCategory.length > 0) {
         return createResponse(400, `Không thể xóa danh mục này vì còn ${itemsUsingCategory.length} thiết bị PPE đang sử dụng. Vui lòng xóa hoặc chuyển các thiết bị này sang danh mục khác trước.`);
       }
 
-      const deleted = await ppeRepository.deleteCategory(id);
+      const deleted = await ppeRepository.deleteCategory(id, tenantId);
       if (!deleted) {
         return createResponse(400, 'Không thể xóa danh mục PPE');
       }
@@ -207,9 +207,9 @@ class PPEService {
   }
 
   // PPE Items
-  async getAllItems(filters = {}) {
+  async getAllItems(filters = {}, tenantId = null) {
     try {
-      const items = await ppeRepository.getAllItems(filters);
+      const items = await ppeRepository.getAllItems(filters, tenantId);
       return createResponse(200, 'Lấy danh sách thiết bị PPE thành công',
         transformDocumentsId(items, POPULATED_FIELDS.PPE_ITEM));
     } catch (error) {
@@ -218,9 +218,9 @@ class PPEService {
     }
   }
 
-  async getItemById(id) {
+  async getItemById(id, tenantId = null) {
     try {
-      const item = await ppeRepository.getItemById(id);
+      const item = await ppeRepository.getItemById(id, tenantId);
       if (!item) {
         return createResponse(404, 'Không tìm thấy thiết bị PPE');
       }
@@ -232,7 +232,7 @@ class PPEService {
     }
   }
 
-  async createItem(itemData) {
+  async createItem(itemData, tenantId = null) {
     try {
       // Validate required fields
       if (!itemData.item_code || !itemData.item_name || !itemData.category_id) {
@@ -242,12 +242,12 @@ class PPEService {
       // Check if item code already exists
       const existingItem = await ppeRepository.getAllItems({ 
         search: itemData.item_code 
-      });
+      }, tenantId);
       if (existingItem.length > 0) {
         return createResponse(400, 'Mã thiết bị đã tồn tại');
       }
 
-      const item = await ppeRepository.createItem(itemData);
+      const item = await ppeRepository.createItem(itemData, tenantId);
       return createResponse(201, 'Tạo thiết bị PPE thành công',
         transformDocumentId(item, POPULATED_FIELDS.PPE_ITEM));
     } catch (error) {
@@ -256,9 +256,9 @@ class PPEService {
     }
   }
 
-  async updateItem(id, itemData) {
+  async updateItem(id, itemData, tenantId = null) {
     try {
-      const item = await ppeRepository.updateItem(id, itemData);
+      const item = await ppeRepository.updateItem(id, itemData, tenantId);
       if (!item) {
         return createResponse(404, 'Không tìm thấy thiết bị PPE để cập nhật');
       }
@@ -270,9 +270,9 @@ class PPEService {
     }
   }
 
-  async deleteItem(id) {
+  async deleteItem(id, tenantId = null) {
     try {
-      const deleted = await ppeRepository.deleteItem(id);
+      const deleted = await ppeRepository.deleteItem(id, tenantId);
       if (!deleted) {
         return createResponse(404, 'Không tìm thấy thiết bị PPE để xóa');
       }
@@ -284,9 +284,9 @@ class PPEService {
   }
 
   // PPE Items with quantity management
-  async updateItemQuantity(id, quantityData) {
+  async updateItemQuantity(id, quantityData, tenantId = null) {
     try {
-      const item = await ppeRepository.updateItemQuantity(id, quantityData);
+      const item = await ppeRepository.updateItemQuantity(id, quantityData, tenantId);
       if (!item) {
         return createResponse(404, 'Không tìm thấy thiết bị PPE để cập nhật số lượng');
       }
@@ -299,9 +299,9 @@ class PPEService {
   }
 
   // PPE Issuances
-  async getAllIssuances(filters = {}) {
+  async getAllIssuances(filters = {}, tenantId = null) {
     try {
-      const issuances = await ppeRepository.getAllIssuances(filters);
+      const issuances = await ppeRepository.getAllIssuances(filters, tenantId);
       return createResponse(200, 'Lấy danh sách phát PPE thành công',
         transformDocumentsId(issuances, POPULATED_FIELDS.PPE_ISSUANCE));
     } catch (error) {
@@ -310,9 +310,9 @@ class PPEService {
     }
   }
 
-  async getIssuanceById(id) {
+  async getIssuanceById(id, tenantId = null) {
     try {
-      const issuance = await ppeRepository.getIssuanceById(id);
+      const issuance = await ppeRepository.getIssuanceById(id, tenantId);
       if (!issuance) {
         return createResponse(404, 'Không tìm thấy bản ghi phát PPE');
       }
@@ -325,7 +325,7 @@ class PPEService {
   }
 
   // Manager phát PPE cho Employee
-  async createIssuanceToEmployee(issuanceData) {
+  async createIssuanceToEmployee(issuanceData, tenantId = null) {
     const session = await mongoose.startSession();
     
     try {
@@ -401,7 +401,7 @@ class PPEService {
           issuance_level: 'manager_to_employee',
           manager_id: issuanceData.issued_by
         };
-        issuance = await ppeRepository.createIssuance(issuancePayload);
+        issuance = await ppeRepository.createIssuance(issuancePayload, tenantId);
       });
       
       return createResponse(201, 'Manager phát PPE cho Employee thành công', {
@@ -419,12 +419,12 @@ class PPEService {
   }
 
   // Employee xác nhận nhận PPE từ Manager
-  async confirmReceivedPPE(id, confirmationData) {
+  async confirmReceivedPPE(id, confirmationData, tenantId = null) {
     try {
       console.log('🔍 confirmReceivedPPE - id:', id);
       console.log('🔍 confirmReceivedPPE - confirmationData:', confirmationData);
       
-      const issuance = await ppeRepository.getIssuanceById(id);
+      const issuance = await ppeRepository.getIssuanceById(id, tenantId);
       if (!issuance) {
         return createResponse(404, 'Không tìm thấy bản ghi phát PPE');
       }
@@ -455,7 +455,7 @@ class PPEService {
         confirmation_notes: confirmationData.confirmation_notes || ''
       };
 
-      const updatedIssuance = await ppeRepository.updateIssuance(id, updateData);
+      const updatedIssuance = await ppeRepository.updateIssuance(id, { ...updateData, tenant_id: tenantId });
       
       // Lấy thông tin Employee và Manager để gửi WebSocket
       const employee = await User.findById(issuance.user_id);
@@ -473,9 +473,9 @@ class PPEService {
   }
 
   // Employee trả PPE cho Manager
-  async returnIssuanceToManager(id, returnData) {
+  async returnIssuanceToManager(id, returnData, tenantId = null) {
     try {
-      const issuance = await ppeRepository.getIssuanceById(id);
+      const issuance = await ppeRepository.getIssuanceById(id, tenantId);
       if (!issuance) {
         return createResponse(404, 'Không tìm thấy bản ghi phát PPE');
       }
@@ -521,13 +521,13 @@ class PPEService {
   }
 
   // Manager trả PPE cho Admin
-  async returnIssuanceToAdmin(id, returnData) {
+  async returnIssuanceToAdmin(id, returnData, tenantId = null) {
     const session = await mongoose.startSession();
     
     try {
       let issuance, returner, item, updatedIssuance;
       await session.withTransaction(async () => {
-        issuance = await ppeRepository.getIssuanceById(id);
+        issuance = await ppeRepository.getIssuanceById(id, tenantId);
         if (!issuance) {
           throw new Error('Không tìm thấy bản ghi phát PPE');
         }
@@ -551,7 +551,7 @@ class PPEService {
 
         // Get returner and item info
         returner = await User.findById(issuance.user_id);
-        item = await ppeRepository.getItemById(issuance.item_id);
+        item = await ppeRepository.getItemById(issuance.item_id, tenantId);
 
         // Compute aggregated available-to-return from manager stats (in-hand only)
         const stats = await ppeRepository.getManagerPPEStats(issuance.user_id._id || issuance.user_id, issuance.item_id._id || issuance.item_id);
@@ -618,13 +618,13 @@ class PPEService {
   }
 
   // Manager xác nhận nhận PPE từ Employee
-  async confirmEmployeeReturn(id, managerId) {
+  async confirmEmployeeReturn(id, managerId, tenantId = null) {
     const session = await mongoose.startSession();
     
     try {
       let issuance, employee, manager;
       await session.withTransaction(async () => {
-        issuance = await ppeRepository.getIssuanceById(id);
+        issuance = await ppeRepository.getIssuanceById(id, tenantId);
         if (!issuance) {
           throw new Error('Không tìm thấy bản ghi phát PPE');
         }
@@ -675,7 +675,7 @@ class PPEService {
   }
 
   // Lấy danh sách PPE của Manager - Sử dụng aggregation để tính toán chính xác
-  async getManagerPPE(managerId) {
+  async getManagerPPE(managerId, tenantId = null) {
     try {
       // ✅ Lấy TẤT CẢ PPE items mà Manager đã nhận từ Admin (bao gồm cả đã trả)
       const receivedIssuances = await ppeRepository.getIssuancesByUser(managerId, {
@@ -734,7 +734,7 @@ class PPEService {
   }
 
   // Lấy danh sách PPE của Employee
-  async getEmployeePPE(employeeId) {
+  async getEmployeePPE(employeeId, tenantId = null) {
     try {
       const issuances = await ppeRepository.getIssuancesByUser(employeeId, {
         issuance_level: 'manager_to_employee',
@@ -752,7 +752,7 @@ class PPEService {
   }
 
   // Lấy danh sách PPE của Employees trong department (dành cho manager)
-  async getDepartmentEmployeesPPE(managerId) {
+  async getDepartmentEmployeesPPE(managerId, tenantId = null) {
     try {
       // Lấy thông tin manager và department
       const managerResult = await UserService.getUserById(managerId);
@@ -787,7 +787,7 @@ class PPEService {
   }
 
   // Lấy lịch sử PPE của Manager
-  async getManagerPPEHistory(managerId) {
+  async getManagerPPEHistory(managerId, tenantId = null) {
     try {
       // Lấy tất cả PPE issuances liên quan đến Manager (nhận từ Admin)
       const managerIssuances = await ppeRepository.getIssuancesByUser(managerId, {
@@ -1152,13 +1152,14 @@ class PPEService {
     }
   }
 
-  // Get overdue PPE issuances
-  async getOverdueIssuances() {
+  // Get overdue PPE issuances (scoped theo tenant)
+  async getOverdueIssuances(tenantId) {
     try {
       const now = new Date();
       const issuances = await ppeRepository.getAllIssuances({
         status: 'issued',
-        expected_return_date: { $lt: now }
+        expected_return_date: { $lt: now },
+        ...(tenantId ? { tenant_id: tenantId } : {})
       });
       return createResponse(200, 'Lấy PPE quá hạn thành công',
         transformDocumentsId(issuances, POPULATED_FIELDS.PPE_ISSUANCE));
@@ -1168,10 +1169,10 @@ class PPEService {
     }
   }
 
-  // Statistics and Reports
-  async getStockStatus() {
+  // Statistics and Reports (scoped theo tenant)
+  async getStockStatus(tenantId) {
     try {
-      const stockStatus = await ppeRepository.getStockStatus();
+      const stockStatus = await ppeRepository.getStockStatus(tenantId);
       return createResponse(200, 'Lấy trạng thái tồn kho thành công', stockStatus);
     } catch (error) {
       console.error('Error getting stock status:', error);
@@ -1179,9 +1180,9 @@ class PPEService {
     }
   }
 
-  async getLowStockItems() {
+  async getLowStockItems(tenantId) {
     try {
-      const lowStockItems = await ppeRepository.getLowStockItems();
+      const lowStockItems = await ppeRepository.getLowStockItems(tenantId);
       return createResponse(200, 'Lấy danh sách thiết bị sắp hết thành công',
         transformDocumentsId(lowStockItems, POPULATED_FIELDS.PPE_ITEM));
     } catch (error) {
@@ -1190,9 +1191,9 @@ class PPEService {
     }
   }
 
-  async getIssuanceStatistics() {
+  async getIssuanceStatistics(tenantId) {
     try {
-      const stats = await ppeRepository.getIssuanceStats();
+      const stats = await ppeRepository.getIssuanceStats(tenantId);
       return createResponse(200, 'Lấy thống kê phát PPE thành công', stats);
     } catch (error) {
       console.error('Error getting issuance statistics:', error);
@@ -1200,10 +1201,10 @@ class PPEService {
     }
   }
 
-  // Get comprehensive quantity statistics
-  async getQuantityStatistics() {
+  // Get comprehensive quantity statistics (scoped theo tenant)
+  async getQuantityStatistics(tenantId) {
     try {
-      const stats = await ppeRepository.getQuantityStatistics();
+      const stats = await ppeRepository.getQuantityStatistics(tenantId);
       return createResponse(200, 'Lấy thống kê số lượng thành công', stats);
     } catch (error) {
       console.error('Error getting quantity statistics:', error);
@@ -1398,8 +1399,8 @@ class PPEService {
     }
   }
 
-  // Dashboard Statistics
-  async getDashboardStats() {
+  // Dashboard Statistics (scoped theo tenant)
+  async getDashboardStats(tenantId) {
     try {
       const [
         totalCategories,
@@ -1409,12 +1410,12 @@ class PPEService {
         overdueIssuances,
         activeIssuances
       ] = await Promise.all([
-        ppeRepository.getAllCategories(),
-        ppeRepository.getAllItems(),
-        ppeRepository.getAllIssuances(),
-        ppeRepository.getLowStockItems(),
-        ppeRepository.getOverdueIssuances(),
-        ppeRepository.getAllIssuances({ status: 'issued' })
+        ppeRepository.getAllCategories(tenantId),
+        ppeRepository.getAllItems({}, tenantId),
+        ppeRepository.getAllIssuances({}, tenantId),
+        ppeRepository.getLowStockItems(tenantId),
+        ppeRepository.getOverdueIssuances(tenantId),
+        ppeRepository.getAllIssuances({ status: 'issued' }, tenantId)
       ]);
 
       const stats = {

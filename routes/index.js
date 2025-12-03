@@ -3,7 +3,6 @@ const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
 const roleRoutes = require('./roleRoutes');
 const departmentRoutes = require('./departmentRoutes');
-const positionRoutes = require('./positionRoutes');
 const systemLogRoutes = require('./systemLogRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const ppeRoutes = require('./ppeRoutes');
@@ -82,7 +81,6 @@ router.get('/health', (req, res) => {
         users: '/api/users',
         roles: '/api/roles',
         departments: '/api/departments',
-        positions: '/api/positions',
         systemLogs: '/api/system-logs',
         notifications: '/api/notifications',
         ppe: '/api/ppe',
@@ -115,7 +113,6 @@ router.get('/health', (req, res) => {
         users: '/api/users',
         roles: '/api/roles',
         departments: '/api/departments',
-        positions: '/api/positions',
         systemLogs: '/api/system-logs',
         notifications: '/api/notifications',
         ppe: '/api/ppe',
@@ -143,7 +140,6 @@ router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/roles', roleRoutes);
 router.use('/departments', departmentRoutes);
-router.use('/positions', positionRoutes);
 router.use('/system-logs', systemLogRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/ppe', ppeRoutes);
@@ -200,7 +196,6 @@ router.use('*', (req, res) => {
         'GET /api/users',
         'GET /api/roles',
         'GET /api/departments',
-        'GET /api/positions',
         'GET /api/system-logs',
         'GET /api/notifications',
         'GET /api/ppe/categories',

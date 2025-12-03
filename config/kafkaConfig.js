@@ -38,7 +38,6 @@ const topics = {
   SYSTEM_EVENTS: process.env.KAFKA_TOPIC_SYSTEM_EVENTS || 'system-events',
   ROLE_EVENTS: process.env.KAFKA_TOPIC_ROLE_EVENTS || 'role-events',
   DEPARTMENT_EVENTS: process.env.KAFKA_TOPIC_DEPARTMENT_EVENTS || 'department-events',
-  POSITION_EVENTS: process.env.KAFKA_TOPIC_POSITION_EVENTS || 'position-events',
   TRAINING_EVENTS: process.env.KAFKA_TOPIC_TRAINING_EVENTS || 'training-events',
   QUALITY_EVENTS: process.env.KAFKA_TOPIC_QUALITY_EVENTS || 'quality-events',
   CERTIFICATE_EVENTS: process.env.KAFKA_TOPIC_CERTIFICATE_EVENTS || 'certificate-events'
@@ -145,14 +144,6 @@ const eventTypes = {
   EMPLOYEE_TRANSFERRED_TO_DEPARTMENT: 'employee_transferred_to_department',
   EMPLOYEE_REMOVED_FROM_DEPARTMENT: 'employee_removed_from_department',
 
-  // Position Events
-  POSITION_CREATED: 'position_created',
-  POSITION_UPDATED: 'position_updated',
-  POSITION_DELETED: 'position_deleted',
-  POSITION_CLONED: 'position_cloned',
-  POSITION_BULK_DELETED: 'position_bulk_deleted',
-  POSITION_LEVEL_CHANGED: 'position_level_changed',
-  POSITION_STATUS_TOGGLED: 'position_status_toggled',
 
   // Training Events
   COURSE_SET_CREATED: 'course_set_created',

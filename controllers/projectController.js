@@ -7,6 +7,7 @@ const ProjectEvents = require('../events/projectEvents');
 class ProjectController {
   // ========== PROJECT MANAGEMENT ==========
   static getAllProjects = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const tenantId = req.user.tenant_id;
     const filters = {
       status: req.query.status,
       site_id: req.query.site_id,
@@ -14,7 +15,7 @@ class ProjectController {
       search: req.query.search
     };
 
-    const result = await projectService.getAllProjects(filters);
+    const result = await projectService.getAllProjects(filters, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, 200);
@@ -25,7 +26,8 @@ class ProjectController {
 
   static getProjectById = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const result = await projectService.getProjectById(id);
+    const tenantId = req.user.tenant_id;
+    const result = await projectService.getProjectById(id, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, 200);
@@ -37,8 +39,9 @@ class ProjectController {
   static createProject = ErrorMiddleware.asyncHandler(async (req, res) => {
     const projectData = req.body;
     const userId = req.user._id || req.user.id;
+    const tenantId = req.user.tenant_id;
     
-    const result = await projectService.createProject(projectData, userId);
+    const result = await projectService.createProject(projectData, userId, tenantId);
     
     // Emit WebSocket event for project created
     if (result.success && result.data) {
@@ -68,8 +71,9 @@ class ProjectController {
     const { id } = req.params;
     const updateData = req.body;
     const userId = req.user._id || req.user.id;
+    const tenantId = req.user.tenant_id;
     
-    const result = await projectService.updateProject(id, updateData, userId);
+    const result = await projectService.updateProject(id, updateData, userId, tenantId);
     
     // Emit WebSocket event for project updated
     if (result.success && result.data) {
@@ -102,11 +106,12 @@ class ProjectController {
   static deleteProject = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id || req.user.id;
+    const tenantId = req.user.tenant_id;
     
     // Get project data before deletion for event
-    const projectData = await projectService.getProjectById(id);
+    const projectData = await projectService.getProjectById(id, tenantId);
     
-    const result = await projectService.deleteProject(id, userId);
+    const result = await projectService.deleteProject(id, userId, tenantId);
     
     // Emit Kafka event for project deleted
     if (result.success && projectData.success) {
@@ -129,7 +134,8 @@ class ProjectController {
 
   // ========== PROJECT STATISTICS ==========
   static getProjectStats = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await projectService.getProjectStats();
+    const tenantId = req.user.tenant_id;
+    const result = await projectService.getProjectStats(tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, 200);
