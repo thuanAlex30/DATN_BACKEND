@@ -1,7 +1,13 @@
 const JWTConfig = require('../config/jwt');
+<<<<<<< HEAD
 const ApiResponse = require('../utils/response');
 const UserRepository = require('../repository/UserRepository');
 const { PermissionUtils } = require('../utils/permissions');
+=======
+const { ApiResponse } = require('../utils/response');
+const UserRepository = require('../repository/UserRepository');
+const { PermissionUtils, getHighestRole } = require('../utils/permissions');
+>>>>>>> origin/main
 
 class AuthMiddleware {
   // Verify JWT token and extract user info
@@ -33,11 +39,58 @@ class AuthMiddleware {
         return ApiResponse.unauthorized(res, 'Account is deactivated');
       }
 
+<<<<<<< HEAD
       // Populate role information
       await user.populate('role_id');
       
       if (!user.role_id || !user.role_id.is_active) {
         return ApiResponse.unauthorized(res, 'Invalid or inactive role');
+=======
+      // Populate role and department information
+      await user.populate({
+        path: 'role_id',
+        select: 'role_name role_code role_level scope_rules permissions is_active description'
+      });
+      await user.populate('department_id', 'department_name is_active');
+      await user.populate('tenant_id', 'tenant_code name is_active');
+      
+      if (!user.role_id) {
+        return ApiResponse.unauthorized(res, 'User role not found');
+      }
+      
+      if (!user.role_id.is_active) {
+        return ApiResponse.unauthorized(res, 'User role is inactive');
+      }
+      
+      // Ensure role has required fields
+      if (!user.role_id.role_code) {
+        console.error('Role missing role_code:', user.role_id);
+        return ApiResponse.error(res, 'Invalid role configuration: missing role_code', 500);
+      }
+
+      // Support for multi-role: if user has multiple roles, select the one with highest level
+      // Currently user has single role_id, but designed for future expansion
+      let roles = [user.role_id]; // Array for future multi-role support
+      
+      // If user has multiple roles (future: user.roles array), use getHighestRole
+      // For now, user has single role_id, but we prepare for multi-role support
+      let primaryRole = getHighestRole(roles);
+      
+      // Fallback: if no role selected, use the first one
+      if (!primaryRole && roles.length > 0) {
+        primaryRole = roles[0];
+      }
+
+      // Validate primaryRole exists
+      if (!primaryRole) {
+        return ApiResponse.unauthorized(res, 'User role not found');
+      }
+
+      // Ensure role has required properties
+      if (!primaryRole._id || !primaryRole.role_code) {
+        console.error('Invalid role structure:', primaryRole);
+        return ApiResponse.error(res, 'Invalid role configuration', 500);
+>>>>>>> origin/main
       }
 
       // Attach user info to request
@@ -47,6 +100,7 @@ class AuthMiddleware {
         username: user.username,
         email: user.email,
         full_name: user.full_name,
+<<<<<<< HEAD
         role: {
           _id: user.role_id._id,
           role_name: user.role_id.role_name,
@@ -56,6 +110,40 @@ class AuthMiddleware {
         department_id: user.department_id,
         position_id: user.position_id,
         permissions: user.role_id.permissions || {}
+=======
+        tenant_id: user.tenant_id?._id || user.tenant_id,
+        tenant: user.tenant_id ? {
+          _id: user.tenant_id._id || user.tenant_id,
+          tenant_code: user.tenant_id.tenant_code,
+          name: user.tenant_id.name
+        } : null,
+        role: {
+          _id: primaryRole._id,
+          role_name: primaryRole.role_name || '',
+          role_code: primaryRole.role_code || '',
+          role_level: primaryRole.role_level || 0,
+          scope_rules: primaryRole.scope_rules || {},
+          permissions: primaryRole.permissions || {}
+        },
+        role_id: primaryRole._id,
+        role_code: primaryRole.role_code || '',
+        role_level: primaryRole.role_level || 0,
+        scope_rules: primaryRole.scope_rules || {},
+        department_id: user.department_id?._id || user.department_id,
+        department: user.department_id ? {
+          _id: user.department_id._id || user.department_id,
+          department_name: user.department_id.department_name
+        } : null,
+        position_id: user.position_id,
+        permissions: primaryRole.permissions || {},
+        // Store all roles for future multi-role support
+        roles: roles.map(r => ({
+          _id: r._id,
+          role_code: r.role_code || '',
+          role_level: r.role_level || 0,
+          scope_rules: r.scope_rules || {}
+        }))
+>>>>>>> origin/main
       };
 
       next();
@@ -135,25 +223,249 @@ class AuthMiddleware {
     };
   }
 
+<<<<<<< HEAD
   // Check if user has specific role
   static authorizeRole(roles) {
     const allowedRoles = Array.isArray(roles) ? roles : [roles];
     
     return (req, res, next) => {
       try {
+=======
+  // Check if user has specific role (legacy - use authorizeScope instead)
+  static authorizeRole(roles) {
+    const allowedRoles = (Array.isArray(roles) ? roles : [roles]).map(role =>
+      typeof role === 'string' ? role.trim().toLowerCase() : role
+    );
+    
+    return (req, res, next) => {
+      try {
+        const normalizedUserRole = (() => {
+          const rawRole = req.user?.role?.role_name || req.user?.role;
+          if (!rawRole) return null;
+          return typeof rawRole === 'string' ? rawRole.trim().toLowerCase() : rawRole;
+        })();
+
+        console.log('🔍 Role Authorization Debug:', {
+          allowedRoles,
+          user: req.user ? {
+            id: req.user.id,
+            username: req.user.username,
+            role: req.user.role
+          } : null,
+          userRoleName: normalizedUserRole,
+          hasAccess: normalizedUserRole ? allowedRoles.includes(normalizedUserRole) : false
+        });
+
         if (!req.user) {
+          console.log('❌ No user found in request');
           return ApiResponse.unauthorized(res, 'Authentication required');
         }
 
-        const userRoleName = req.user.role?.role_name || req.user.role;
-        if (!allowedRoles.includes(userRoleName)) {
+        if (!normalizedUserRole || !allowedRoles.includes(normalizedUserRole)) {
+          console.log('❌ User role not in allowed roles:', {
+            userRoleName: normalizedUserRole || req.user.role?.role_name || req.user.role,
+            allowedRoles
+          });
           return ApiResponse.forbidden(res, 'Insufficient role permissions');
         }
 
+        console.log('✅ Role authorization successful');
         next();
       } catch (error) {
         console.error('Role authorization error:', error);
         return ApiResponse.error(res, 'Role authorization failed', 500);
+      }
+    };
+  }
+
+  /**
+   * Advanced scope-based authorization with permission matrix support
+   * @param {Object} options - Authorization options
+   * @param {string|string[]} options.modules - Module name(s) to check (e.g., 'user', 'project', 'training')
+   * @param {string|string[]} options.action - Action name(s) to check (e.g., 'create', 'read', 'update', 'delete')
+   * @param {string|string[]|number|number[]} options.roles - Allowed role codes/names or role levels (legacy)
+   * @param {string} options.tenantScope - Required tenant scope: 'global', 'tenant', 'self'
+   * @param {string} options.departmentScope - Required department scope: 'all', 'hierarchy', 'own', 'none'
+   * @param {number|number[]} options.minRoleLevel - Minimum role level required
+   * @param {number|number[]} options.maxRoleLevel - Maximum role level allowed
+   * @param {boolean} options.requireExactTenant - Require exact tenant_id match
+   * @param {boolean} options.requireExactDepartment - Require exact department_id match
+   * @returns {Function} Express middleware
+   */
+  static authorizeScope(options = {}) {
+    const {
+      modules = null,
+      action = null,
+      roles = null,
+      tenantScope = null,
+      departmentScope = null,
+      minRoleLevel = null,
+      maxRoleLevel = null,
+      requireExactTenant = false,
+      requireExactDepartment = false
+    } = options;
+
+    return (req, res, next) => {
+      try {
+>>>>>>> origin/main
+        if (!req.user) {
+          return ApiResponse.unauthorized(res, 'Authentication required');
+        }
+
+<<<<<<< HEAD
+        const userRoleName = req.user.role?.role_name || req.user.role;
+        if (!allowedRoles.includes(userRoleName)) {
+          return ApiResponse.forbidden(res, 'Insufficient role permissions');
+=======
+        const userRole = req.user.role;
+        const userTenantId = req.user.tenant_id;
+        const userDepartmentId = req.user.department_id;
+
+        // Check permission matrix if modules and action provided
+        if (modules && action) {
+          const moduleList = Array.isArray(modules) ? modules : [modules];
+          const actionList = Array.isArray(action) ? action : [action];
+          
+          // Check if user has permission for any module:action combination
+          const hasPermission = moduleList.some(module => 
+            actionList.some(act => {
+              const hasPerm = PermissionUtils.hasMatrixPermission(userRole, module, act);
+              if (!hasPerm) {
+                console.log(`🔍 Permission check failed:`, {
+                  module,
+                  action,
+                  userRole: {
+                    role_code: userRole.role_code,
+                    role_level: userRole.role_level,
+                    role_name: userRole.role_name
+                  },
+                  path: req.path
+                });
+              }
+              return hasPerm;
+            })
+          );
+          
+          if (!hasPermission) {
+            console.log(`❌ Authorization failed for ${req.path}:`, {
+              userRole: {
+                role_code: userRole.role_code,
+                role_level: userRole.role_level,
+                role_name: userRole.role_name
+              },
+              requiredModules: moduleList,
+              requiredActions: actionList
+            });
+            return ApiResponse.forbidden(res, `Insufficient permissions for ${moduleList.join(',')}:${actionList.join(',')}`);
+          }
+        }
+
+        // Check role codes/names if provided (legacy support)
+        if (roles) {
+          const allowedRoles = Array.isArray(roles) ? roles : [roles];
+          const roleMatches = allowedRoles.some(allowed => {
+            // Check by role code
+            if (userRole.role_code && 
+                (typeof allowed === 'string' && userRole.role_code.toLowerCase() === allowed.toLowerCase())) {
+              return true;
+            }
+            // Check by role name
+            if (userRole.role_name && 
+                (typeof allowed === 'string' && userRole.role_name.toLowerCase() === allowed.toLowerCase())) {
+              return true;
+            }
+            // Check by role level (if allowed is a number)
+            if (typeof allowed === 'number' && userRole.role_level === allowed) {
+              return true;
+            }
+            return false;
+          });
+
+          if (!roleMatches) {
+            return ApiResponse.forbidden(res, 'Insufficient role permissions');
+          }
+        }
+
+        // Check minimum role level if provided
+        if (minRoleLevel !== null) {
+          if (!userRole.role_level || userRole.role_level < minRoleLevel) {
+            return ApiResponse.forbidden(res, 'Insufficient role level');
+          }
+        }
+
+        // Check maximum role level if provided
+        if (maxRoleLevel !== null) {
+          if (!userRole.role_level || userRole.role_level > maxRoleLevel) {
+            return ApiResponse.forbidden(res, 'Role level too high');
+          }
+        }
+
+        // Check tenant scope
+        if (tenantScope || requireExactTenant) {
+          if (!userRole.scope_rules) {
+            return ApiResponse.forbidden(res, 'Role scope rules not configured');
+          }
+
+          const scopeRules = userRole.scope_rules;
+          const userTenantScope = scopeRules.tenant_scope || 'tenant';
+
+          if (requireExactTenant) {
+            // For exact tenant match, check if resource tenant_id matches user tenant_id
+            const resourceTenantId = req.params.tenant_id || req.body.tenant_id || req.query.tenant_id;
+            if (resourceTenantId && userTenantId) {
+              if (resourceTenantId.toString() !== userTenantId.toString()) {
+                return ApiResponse.forbidden(res, 'Tenant access denied');
+              }
+            }
+          } else if (tenantScope) {
+            // Check if user's scope allows the required tenant scope
+            if (tenantScope === 'global' && userTenantScope !== 'global') {
+              return ApiResponse.forbidden(res, 'Global tenant access required');
+            }
+            if (tenantScope === 'tenant' && userTenantScope === 'self') {
+              return ApiResponse.forbidden(res, 'Tenant scope insufficient');
+            }
+          }
+        }
+
+        // Check department scope
+        if (departmentScope || requireExactDepartment) {
+          if (!userRole.scope_rules) {
+            return ApiResponse.forbidden(res, 'Role scope rules not configured');
+          }
+
+          const scopeRules = userRole.scope_rules;
+          const userDeptScope = scopeRules.department_scope || 'own';
+
+          if (requireExactDepartment) {
+            // For exact department match, check if resource department_id matches user department_id
+            const resourceDeptId = req.params.department_id || req.body.department_id || req.query.department_id;
+            if (resourceDeptId && userDepartmentId) {
+              if (resourceDeptId.toString() !== userDepartmentId.toString()) {
+                return ApiResponse.forbidden(res, 'Department access denied');
+              }
+            }
+          } else if (departmentScope) {
+            // Check if user's scope allows the required department scope
+            if (departmentScope === 'all' && userDeptScope !== 'all') {
+              return ApiResponse.forbidden(res, 'All departments access required');
+            }
+            if (departmentScope === 'hierarchy' && userDeptScope === 'own') {
+              return ApiResponse.forbidden(res, 'Department hierarchy scope required');
+            }
+          }
+>>>>>>> origin/main
+        }
+
+        next();
+      } catch (error) {
+<<<<<<< HEAD
+        console.error('Role authorization error:', error);
+        return ApiResponse.error(res, 'Role authorization failed', 500);
+=======
+        console.error('Scope authorization error:', error);
+        return ApiResponse.error(res, 'Scope authorization failed', 500);
+>>>>>>> origin/main
       }
     };
   }

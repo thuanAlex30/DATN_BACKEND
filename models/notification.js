@@ -118,10 +118,26 @@ notificationSchema.statics.formatDateTime = function(date) {
 
 notificationSchema.statics.getNotifications = async function(userId, filters = {}) {
     try {
+<<<<<<< HEAD
         console.log('getNotifications called with userId:', userId, 'filters:', filters);
         
         if (!userId) {
             throw new Error('User ID is required');
+=======
+        console.log('🔍 getNotifications called with userId:', userId, 'filters:', filters);
+        
+        if (!userId) {
+            console.log('❌ No userId provided, returning empty result');
+            return {
+                notifications: [],
+                pagination: {
+                    page: 1,
+                    limit: 10,
+                    total: 0,
+                    pages: 0
+                }
+            };
+>>>>>>> origin/main
         }
 
         const {
@@ -132,8 +148,13 @@ notificationSchema.statics.getNotifications = async function(userId, filters = {
             search
         } = filters;
 
+<<<<<<< HEAD
         // Build query
         const query = { user_id: mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId };
+=======
+        // Build query - simplified for better performance
+        const query = { user_id: mongoose.isValidObjectId(userId) ? new mongoose.Types.ObjectId(userId) : userId };
+>>>>>>> origin/main
 
         if (type) query.type = type;
         if (is_read !== undefined) query.is_read = is_read;
@@ -144,23 +165,38 @@ notificationSchema.statics.getNotifications = async function(userId, filters = {
             ];
         }
 
+<<<<<<< HEAD
         console.log('Final query:', JSON.stringify(query, null, 2));
 
         // Optimize query - remove populate for better performance
+=======
+        console.log('🔍 Final query:', JSON.stringify(query, null, 2));
+
+        // Optimize query - use lean() and reduce timeout
+>>>>>>> origin/main
         const notifications = await this.find(query)
             .sort({ created_at: -1 })
             .skip((page - 1) * limit)
             .limit(parseInt(limit))
             .lean()
+<<<<<<< HEAD
             .maxTimeMS(10000); // 10 second timeout
 
         const total = await this.countDocuments(query).maxTimeMS(5000); // 5 second timeout
 
         console.log('Found notifications:', notifications.length, 'Total:', total);
+=======
+            .maxTimeMS(3000); // Reduced to 3 seconds
+
+        const total = await this.countDocuments(query).maxTimeMS(2000); // Reduced to 2 seconds
+
+        console.log('✅ Found notifications:', notifications.length, 'Total:', total);
+>>>>>>> origin/main
 
         return {
             notifications,
             pagination: {
+<<<<<<< HEAD
                 page: parseInt(page),
                 limit: parseInt(limit),
                 total,
@@ -170,6 +206,26 @@ notificationSchema.statics.getNotifications = async function(userId, filters = {
     } catch (error) {
         console.error('Error in getNotifications:', error);
         throw error;
+=======
+                current_page: parseInt(page),
+                total_pages: Math.ceil(total / limit),
+                total_items: total,
+                items_per_page: parseInt(limit)
+            }
+        };
+    } catch (error) {
+        console.error('❌ Error in getNotifications:', error);
+        // Return empty result instead of throwing error
+        return {
+            notifications: [],
+            pagination: {
+                current_page: 1,
+                total_pages: 0,
+                total_items: 0,
+                items_per_page: 10
+            }
+        };
+>>>>>>> origin/main
     }
 };
 

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 const ApiResponse = require('../utils/response');
+=======
+const { ApiResponse } = require('../utils/response');
+>>>>>>> origin/main
 
 class ErrorMiddleware {
   // Global error handler

@@ -1,6 +1,18 @@
 const mongoose = require('mongoose');
+<<<<<<< HEAD
 require('./employee');
 const departmentSchema = new mongoose.Schema({
+=======
+const { getDefaultTenantObjectId } = require('../utils/tenancy');
+require('./employee');
+const departmentSchema = new mongoose.Schema({
+  tenant_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tenant',
+    required: true,
+    default: getDefaultTenantObjectId
+  },
+>>>>>>> origin/main
   department_name: {
     type: String,
     required: true,
@@ -26,6 +38,10 @@ const departmentSchema = new mongoose.Schema({
 });
 
 // Indexes
+<<<<<<< HEAD
+=======
+departmentSchema.index({ tenant_id: 1 });
+>>>>>>> origin/main
 departmentSchema.index({ department_name: 1 });
 departmentSchema.index({ is_active: 1 });
 

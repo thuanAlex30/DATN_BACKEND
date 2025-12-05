@@ -1,18 +1,45 @@
 const Notification = require('../models/notification');
+<<<<<<< HEAD
 const ApiResponse = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 const mongoose = require('mongoose');
+=======
+const { ApiResponse } = require('../utils/response');
+const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
+const mongoose = require('mongoose');
+const websocketService = require('../services/websocketService');
+const NotificationEvents = require('../events/notificationEvents');
+>>>>>>> origin/main
 
 class NotificationController {
     // Get notifications for current user
     static getNotifications = ErrorMiddleware.asyncHandler(async (req, res) => {
         try {
+<<<<<<< HEAD
             console.log('req.user:', JSON.stringify(req.user, null, 2));
+=======
+            console.log('📥 Getting notifications for user...');
+            console.log('req.user:', JSON.stringify(req.user, null, 2));
+            
+>>>>>>> origin/main
             const userId = req.user._id || req.user.id;
             console.log('userId extracted:', userId);
             
             if (!userId) {
+<<<<<<< HEAD
                 return ApiResponse.error(res, 'User ID không hợp lệ', 400);
+=======
+                console.log('❌ No user ID found, returning empty notifications');
+                return ApiResponse.success(res, {
+                    notifications: [],
+                    pagination: {
+                        current_page: 1,
+                        total_pages: 0,
+                        total_items: 0,
+                        items_per_page: 10
+                    }
+                }, 'No notifications found');
+>>>>>>> origin/main
             }
             
             const {
@@ -23,6 +50,7 @@ class NotificationController {
                 search
             } = req.query;
 
+<<<<<<< HEAD
             const filters = {};
             
             if (type) filters.type = type;
@@ -32,21 +60,52 @@ class NotificationController {
             // Add timeout wrapper
             const timeoutPromise = new Promise((_, reject) => {
                 setTimeout(() => reject(new Error('Request timeout')), 15000); // 15 second timeout
+=======
+            console.log('Query params:', { page, limit, type, is_read, search });
+
+            // Simple timeout wrapper - reduced to 5 seconds
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Request timeout')), 5000);
+>>>>>>> origin/main
             });
 
             const resultPromise = Notification.getNotifications(userId, {
                 page: parseInt(page),
                 limit: parseInt(limit),
+<<<<<<< HEAD
                 ...filters
+=======
+                type,
+                is_read,
+                search
+>>>>>>> origin/main
             });
 
             const result = await Promise.race([resultPromise, timeoutPromise]);
             
+<<<<<<< HEAD
             ApiResponse.success(res, result, 'Lấy danh sách thông báo thành công');
         } catch (error) {
             console.error('Error getting notifications:', error);
             if (error.message === 'Request timeout') {
                 ApiResponse.error(res, 'Yêu cầu quá thời gian chờ', 408, 'Timeout');
+=======
+            console.log('✅ Notifications retrieved successfully:', result.notifications?.length || 0);
+            ApiResponse.success(res, result, 'Lấy danh sách thông báo thành công');
+        } catch (error) {
+            console.error('❌ Error getting notifications:', error);
+            if (error.message === 'Request timeout') {
+                console.log('⏰ Request timeout, returning empty notifications');
+                return ApiResponse.success(res, {
+                    notifications: [],
+                    pagination: {
+                        current_page: 1,
+                        total_pages: 0,
+                        total_items: 0,
+                        items_per_page: 10
+                    }
+                }, 'No notifications found (timeout)');
+>>>>>>> origin/main
             } else {
                 ApiResponse.error(res, 'Lỗi khi lấy danh sách thông báo', 500, error.message);
             }
@@ -163,6 +222,19 @@ class NotificationController {
             const notification = await Notification.createNotification(notificationData);
             console.log('Notification created successfully:', notification._id);
             
+<<<<<<< HEAD
+=======
+            // Emit WebSocket event for notification created
+            websocketService.emitNotificationCreated(notification);
+            
+            // Emit Kafka event for notification sent
+            try {
+                await NotificationEvents.emitNotificationSent(notification, req.user || { _id: 'system', role: 'admin', full_name: 'System' });
+            } catch (eventError) {
+                console.error('Failed to emit notification sent event:', eventError);
+            }
+            
+>>>>>>> origin/main
             ApiResponse.success(res, notification, 'Tạo thông báo thành công', 201);
         } catch (error) {
             console.error('Error creating notification:', error);
@@ -178,6 +250,19 @@ class NotificationController {
             
             const notification = await Notification.markAsRead(id, userId);
             
+<<<<<<< HEAD
+=======
+            // Emit WebSocket event for notification read
+            websocketService.emitNotificationRead(notification, req.user);
+            
+            // Emit Kafka event for notification read
+            try {
+                await NotificationEvents.emitNotificationRead(notification, req.user);
+            } catch (eventError) {
+                console.error('Failed to emit notification read event:', eventError);
+            }
+            
+>>>>>>> origin/main
             ApiResponse.success(res, notification, 'Đánh dấu thông báo đã đọc thành công');
         } catch (error) {
             console.error('Error marking notification as read:', error);
@@ -270,6 +355,19 @@ class NotificationController {
                 });
 
                 createdNotifications.push(notification);
+<<<<<<< HEAD
+=======
+                
+                // Emit WebSocket event for each notification
+                websocketService.emitNotificationCreated(notification);
+                
+                // Emit Kafka event for each notification
+                try {
+                    await NotificationEvents.emitNotificationSent(notification, req.user || { _id: 'system', role: 'admin', full_name: 'System' });
+                } catch (eventError) {
+                    console.error('Failed to emit notification sent event:', eventError);
+                }
+>>>>>>> origin/main
             }
             
             ApiResponse.success(res, {
@@ -364,6 +462,7 @@ class NotificationController {
 
     // Get notification settings
     static getNotificationSettings = ErrorMiddleware.asyncHandler(async (req, res) => {
+<<<<<<< HEAD
         try {
             const settings = {
                 types: [
@@ -402,10 +501,50 @@ class NotificationController {
             console.error('Error getting notification settings:', error);
             ApiResponse.error(res, 'Lỗi khi lấy cài đặt thông báo', 500, error.message);
         }
+=======
+        console.log('📥 [NotificationSettings] Request received');
+        console.log('📥 [NotificationSettings] User:', req.user?.username || req.user?._id || 'Unknown');
+        
+        const settings = {
+            types: [
+                { value: 'info', label: 'Thông tin', color: '#3498db', enabled: true },
+                { value: 'warning', label: 'Cảnh báo', color: '#f39c12', enabled: true },
+                { value: 'error', label: 'Lỗi', color: '#e74c3c', enabled: true },
+                { value: 'success', label: 'Thành công', color: '#2ecc71', enabled: true }
+            ],
+            categories: [
+                { value: 'system', label: 'Hệ thống', enabled: true },
+                { value: 'training', label: 'Đào tạo', enabled: true },
+                { value: 'safety', label: 'An toàn', enabled: true },
+                { value: 'ppe', label: 'PPE', enabled: true },
+                { value: 'project', label: 'Dự án', enabled: true },
+                { value: 'user', label: 'Người dùng', enabled: true },
+                { value: 'general', label: 'Chung', enabled: true }
+            ],
+            priorities: [
+                { value: 'low', label: 'Thấp', color: '#95a5a6', enabled: true },
+                { value: 'medium', label: 'Trung bình', color: '#f39c12', enabled: true },
+                { value: 'high', label: 'Cao', color: '#e74c3c', enabled: true },
+                { value: 'urgent', label: 'Khẩn cấp', color: '#8e44ad', enabled: true }
+            ],
+            auto_cleanup: {
+                enabled: true,
+                days: 30
+            },
+            real_time: {
+                enabled: true,
+                interval: 30
+            }
+        };
+        
+        console.log('✅ [NotificationSettings] Returning settings');
+        return ApiResponse.success(res, settings, 'Lấy cài đặt thông báo thành công');
+>>>>>>> origin/main
     });
 
     // Update notification settings
     static updateNotificationSettings = ErrorMiddleware.asyncHandler(async (req, res) => {
+<<<<<<< HEAD
         try {
             const { settings } = req.body;
             
@@ -416,6 +555,29 @@ class NotificationController {
         } catch (error) {
             console.error('Error updating notification settings:', error);
             ApiResponse.error(res, 'Lỗi khi cập nhật cài đặt thông báo', 500, error.message);
+=======
+        console.log('📥 [UpdateNotificationSettings] Request received');
+        console.log('📥 [UpdateNotificationSettings] User:', req.user?.username || req.user?._id || 'Unknown');
+        console.log('📥 [UpdateNotificationSettings] Body:', JSON.stringify(req.body, null, 2));
+        
+        try {
+            const { settings } = req.body;
+            
+            if (!settings) {
+                console.warn('⚠️ [UpdateNotificationSettings] No settings in body');
+                return ApiResponse.error(res, 'Thiếu dữ liệu cài đặt', 400);
+            }
+            
+            // In a real application, you would save these settings to a database
+            // For now, we'll just return success
+            
+            console.log('✅ [UpdateNotificationSettings] Returning success');
+            return ApiResponse.success(res, settings, 'Cập nhật cài đặt thông báo thành công');
+        } catch (error) {
+            console.error('❌ [UpdateNotificationSettings] Error:', error);
+            console.error('❌ [UpdateNotificationSettings] Error stack:', error.stack);
+            return ApiResponse.error(res, 'Lỗi khi cập nhật cài đặt thông báo', 500, error.message);
+>>>>>>> origin/main
         }
     });
 }

@@ -1,6 +1,14 @@
 const mongoose = require('mongoose');
 
 const systemLogSchema = new mongoose.Schema({
+<<<<<<< HEAD
+=======
+    tenant_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tenant',
+        required: false
+    },
+>>>>>>> origin/main
     user_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -51,6 +59,10 @@ const systemLogSchema = new mongoose.Schema({
 
 // Indexes for better performance
 systemLogSchema.index({ timestamp: -1 });
+<<<<<<< HEAD
+=======
+systemLogSchema.index({ tenant_id: 1 });
+>>>>>>> origin/main
 systemLogSchema.index({ user_id: 1 });
 systemLogSchema.index({ module: 1 });
 systemLogSchema.index({ severity: 1 });
@@ -79,9 +91,17 @@ systemLogSchema.statics.getLogs = async function(filters = {}, page = 1, limit =
         
         // Apply filters
         if (filters.user_id) query.user_id = filters.user_id;
+<<<<<<< HEAD
         if (filters.module) query.module = filters.module;
         if (filters.severity) query.severity = filters.severity;
         if (filters.action) query.action = new RegExp(filters.action, 'i');
+=======
+        if (filters.tenant_id) query.tenant_id = filters.tenant_id;
+        if (filters.module) query.module = filters.module;
+        if (filters.severity) query.severity = filters.severity;
+        if (filters.action) query.action = new RegExp(filters.action, 'i');
+        if (filters.ip_address) query.ip_address = new RegExp(filters.ip_address, 'i');
+>>>>>>> origin/main
         if (filters.start_date || filters.end_date) {
             query.timestamp = {};
             if (filters.start_date) {
@@ -91,6 +111,17 @@ systemLogSchema.statics.getLogs = async function(filters = {}, page = 1, limit =
                 query.timestamp.$lte = new Date(filters.end_date);
             }
         }
+<<<<<<< HEAD
+=======
+        if (filters.search) {
+            const searchRegex = new RegExp(filters.search, 'i');
+            query.$or = [
+                { action: searchRegex },
+                { module: searchRegex },
+                { ip_address: searchRegex }
+            ];
+        }
+>>>>>>> origin/main
         
         const skip = (page - 1) * limit;
         
@@ -117,7 +148,11 @@ systemLogSchema.statics.getLogs = async function(filters = {}, page = 1, limit =
 };
 
 // Static method to get statistics
+<<<<<<< HEAD
 systemLogSchema.statics.getStats = async function(timeRange = 'today') {
+=======
+systemLogSchema.statics.getStats = async function(timeRange = 'today', tenantId = null) {
+>>>>>>> origin/main
     try {
         const now = new Date();
         let startDate;
@@ -139,11 +174,24 @@ systemLogSchema.statics.getStats = async function(timeRange = 'today') {
                 startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         }
         
+<<<<<<< HEAD
         const stats = await this.aggregate([
             {
                 $match: {
                     timestamp: { $gte: startDate }
                 }
+=======
+        const matchStage = {
+            timestamp: { $gte: startDate }
+        };
+        if (tenantId) {
+            matchStage.tenant_id = tenantId;
+        }
+
+        const stats = await this.aggregate([
+            {
+                $match: matchStage
+>>>>>>> origin/main
             },
             {
                 $group: {
@@ -225,24 +273,44 @@ systemLogSchema.statics.getStats = async function(timeRange = 'today') {
 };
 
 // Static method to get detailed statistics for export
+<<<<<<< HEAD
 systemLogSchema.statics.getDetailedStats = async function() {
+=======
+systemLogSchema.statics.getDetailedStats = async function(tenantId = null) {
+>>>>>>> origin/main
     try {
         const now = new Date();
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         const monthStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         
+<<<<<<< HEAD
         const [totalLogs, todayLogs, weekLogs, monthLogs, moduleStats, severityStats] = await Promise.all([
             this.countDocuments(),
             this.countDocuments({ timestamp: { $gte: todayStart } }),
             this.countDocuments({ timestamp: { $gte: weekStart } }),
             this.countDocuments({ timestamp: { $gte: monthStart } }),
             this.aggregate([
+=======
+        const baseFilter = tenantId ? { tenant_id: tenantId } : {};
+
+        const [totalLogs, todayLogs, weekLogs, monthLogs, moduleStats, severityStats] = await Promise.all([
+            this.countDocuments(baseFilter),
+            this.countDocuments({ ...baseFilter, timestamp: { $gte: todayStart } }),
+            this.countDocuments({ ...baseFilter, timestamp: { $gte: weekStart } }),
+            this.countDocuments({ ...baseFilter, timestamp: { $gte: monthStart } }),
+            this.aggregate([
+                { $match: baseFilter },
+>>>>>>> origin/main
                 { $group: { _id: '$module', count: { $sum: 1 } } },
                 { $sort: { count: -1 } },
                 { $limit: 1 }
             ]),
             this.aggregate([
+<<<<<<< HEAD
+=======
+                { $match: baseFilter },
+>>>>>>> origin/main
                 { $group: { _id: '$severity', count: { $sum: 1 } } },
                 { $sort: { count: -1 } },
                 { $limit: 1 }

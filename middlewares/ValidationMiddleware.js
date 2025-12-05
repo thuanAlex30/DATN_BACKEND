@@ -1,15 +1,31 @@
+<<<<<<< HEAD
 const ApiResponse = require('../utils/response');
+=======
+const { ApiResponse } = require('../utils/response');
+>>>>>>> origin/main
 
 class ValidationMiddleware {
   // Validate request body
   static validateBody(schema) {
     return (req, res, next) => {
+<<<<<<< HEAD
       const { error, value } = schema.validate(req.body, {
         abortEarly: false,
         stripUnknown: true
       });
 
       if (error) {
+=======
+      console.log('🔍 ValidationMiddleware - req.body BEFORE validation:', req.body);
+      
+      const { error, value } = schema.validate(req.body, {
+        abortEarly: false,
+        stripUnknown: false
+      });
+
+      if (error) {
+        console.log('❌ ValidationMiddleware - Validation error:', error.details);
+>>>>>>> origin/main
         const errors = error.details.map(detail => ({
           field: detail.path.join('.'),
           message: detail.message
@@ -18,6 +34,10 @@ class ValidationMiddleware {
         return ApiResponse.validationError(res, errors);
       }
 
+<<<<<<< HEAD
+=======
+      console.log('✅ ValidationMiddleware - req.body AFTER validation:', value);
+>>>>>>> origin/main
       req.body = value;
       next();
     };
