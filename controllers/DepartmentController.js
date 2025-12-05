@@ -7,13 +7,15 @@ const DepartmentEvents = require('../events/departmentEvents');
 class DepartmentController {
   
   static getAllDepartments = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const tenantId = req.user?.tenant_id || null;
     const options = {
       page: req.query.page || 1,
       limit: req.query.limit || 10,
       search: req.query.search || '',
       is_active: req.query.is_active,
       sort_by: req.query.sort_by || 'created_at',
-      sort_order: req.query.sort_order || 'desc'
+      sort_order: req.query.sort_order || 'desc',
+      tenant_id: tenantId || undefined
     };
 
     const result = await DepartmentRepository.findAll(options);
@@ -23,8 +25,9 @@ class DepartmentController {
 
   static getDepartmentById = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const tenantId = req.user?.tenant_id || null;
     
-    const department = await DepartmentRepository.findById(id);
+    const department = await DepartmentRepository.findById(id, tenantId);
     
     if (!department) {
       return ApiResponse.notFound(res, 'Department not found');
@@ -34,10 +37,18 @@ class DepartmentController {
   });
 
   static createDepartment = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const departmentData = req.body;
+    const tenantId = req.user?.tenant_id || null;
+    const departmentData = {
+      ...req.body,
+      tenant_id: tenantId || req.body.tenant_id
+    };
 
     // Check if department name already exists
-    const nameExists = await DepartmentRepository.existsByName(departmentData.department_name);
+    const nameExists = await DepartmentRepository.existsByName(
+      departmentData.department_name,
+      null,
+      tenantId || null
+    );
     if (nameExists) {
       return ApiResponse.error(res, 'Department name already exists', 409);
     }
@@ -86,9 +97,14 @@ class DepartmentController {
 
   static updateDepartment = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const updateData = req.body;
+    const tenantId = req.user?.tenant_id || null;
+    const updateData = { ...req.body };
+    // Không cho phép đổi tenant_id qua API
+    if (updateData.tenant_id) {
+      delete updateData.tenant_id;
+    }
 
-    const existingDepartment = await DepartmentRepository.findById(id);
+    const existingDepartment = await DepartmentRepository.findById(id, tenantId);
     if (!existingDepartment) {
       return ApiResponse.notFound(res, 'Department not found');
     }
@@ -106,7 +122,8 @@ class DepartmentController {
     if (updateData.department_name) {
       const nameExists = await DepartmentRepository.existsByName(
         updateData.department_name,
-        id
+        id,
+        tenantId || null
       );
       if (nameExists) {
         return ApiResponse.error(res, 'Department name already exists', 409);
@@ -127,7 +144,8 @@ class DepartmentController {
       const existingManagement = await DepartmentRepository.findAll({
         manager_id: updateData.manager_id,
         is_active: true,
-        limit: 10
+        limit: 10,
+        tenant_id: tenantId || undefined
       });
       
       const otherManagement = existingManagement.departments.filter(
@@ -161,8 +179,9 @@ class DepartmentController {
 
   static deleteDepartment = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const tenantId = req.user?.tenant_id || null;
 
-    const department = await DepartmentRepository.findById(id);
+    const department = await DepartmentRepository.findById(id, tenantId);
     if (!department) {
       return ApiResponse.notFound(res, 'Department not found');
     }
@@ -198,7 +217,8 @@ class DepartmentController {
 
   // Get department statistics
   static getDepartmentStats = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const stats = await DepartmentRepository.getStats();
+    const tenantId = req.user?.tenant_id || null;
+    const stats = await DepartmentRepository.getStats(tenantId || null);
 
     return ApiResponse.success(res, stats, 'Department statistics retrieved successfully');
   });
@@ -256,11 +276,13 @@ class DepartmentController {
   });
 
   static getDepartmentOptions = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const tenantId = req.user?.tenant_id || null;
     const departments = await DepartmentRepository.findAll({
       is_active: true,
       limit: 1000,
       sort_by: 'department_name',
-      sort_order: 'asc'
+      sort_order: 'asc',
+      tenant_id: tenantId || undefined
     });
 
     const options = departments.departments.map(dept => ({
@@ -283,12 +305,14 @@ class DepartmentController {
       limit = 20
     } = req.query;
 
+    const tenantId = req.user?.tenant_id || null;
     const options = {
       search,
       is_active: true,
       limit: parseInt(limit),
       sort_by: 'department_name',
-      sort_order: 'asc'
+      sort_order: 'asc',
+      tenant_id: tenantId || undefined
     };
 
     const result = await DepartmentRepository.findAll(options);
@@ -322,7 +346,8 @@ class DepartmentController {
 
   // Get all active departments (simple list)
   static getActiveDepartments = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const departments = await DepartmentRepository.getAllActive();
+    const tenantId = req.user?.tenant_id || null;
+    const departments = await DepartmentRepository.getAllActive(tenantId || null);
 
     return ApiResponse.success(res, departments, 'Active departments retrieved successfully');
   });
@@ -372,8 +397,9 @@ class DepartmentController {
   // Get department summary
   static getDepartmentSummary = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const tenantId = req.user?.tenant_id || null;
     
-    const department = await DepartmentRepository.findById(id);
+    const department = await DepartmentRepository.findById(id, tenantId);
     if (!department) {
       return ApiResponse.notFound(res, 'Department not found');
     }

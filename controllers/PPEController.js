@@ -8,7 +8,8 @@ const PPEEvents = require('../events/ppeEvents');
 class PPEController {
   // PPE Categories
   static getAllCategories = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await ppeService.getAllCategories();
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getAllCategories(tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -19,7 +20,8 @@ class PPEController {
 
   static getCategoryById = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const result = await ppeService.getCategoryById(id);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getCategoryById(id, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -30,7 +32,8 @@ class PPEController {
 
   static createCategory = ErrorMiddleware.asyncHandler(async (req, res) => {
     const categoryData = req.body;
-    const result = await ppeService.createCategory(categoryData);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.createCategory(categoryData, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -45,7 +48,8 @@ class PPEController {
     }
 
     console.log(`📁 Processing file: ${req.file.originalname}, size: ${req.file.size} bytes`);
-    const result = await ppeService.importCategoriesFromExcel(req.file);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.importCategoriesFromExcel(req.file, tenantId);
     console.log(`✅ Import completed: ${result.success.length} success, ${result.errors.length} errors`);
     
     if (result.success) {
@@ -58,7 +62,8 @@ class PPEController {
   static updateCategory = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
     const categoryData = req.body;
-    const result = await ppeService.updateCategory(id, categoryData);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.updateCategory(id, categoryData, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -69,7 +74,8 @@ class PPEController {
 
   static deleteCategory = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const result = await ppeService.deleteCategory(id);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.deleteCategory(id, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -102,7 +108,8 @@ class PPEController {
         search: req.query.search
       };
       
-      const result = await ppeService.getAllItems(filters);
+      const tenantId = req.user.tenant_id;
+      const result = await ppeService.getAllItems(filters, tenantId);
       
       if (result.success) {
         // Use enhanced response handler with BSON error recovery
@@ -122,7 +129,8 @@ class PPEController {
 
   static getItemById = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const result = await ppeService.getItemById(id);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getItemById(id, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -133,7 +141,8 @@ class PPEController {
 
   static createItem = ErrorMiddleware.asyncHandler(async (req, res) => {
     const itemData = req.body;
-    const result = await ppeService.createItem(itemData);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.createItem(itemData, tenantId);
     
     // Emit Kafka event for PPE item created
     if (result.success && result.data) {
@@ -154,7 +163,8 @@ class PPEController {
   static updateItem = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
     const itemData = req.body;
-    const result = await ppeService.updateItem(id, itemData);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.updateItem(id, itemData, tenantId);
     
     // Emit Kafka event for PPE item updated
     if (result.success && result.data) {
@@ -179,7 +189,8 @@ class PPEController {
   static updateItemQuantity = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
     const quantityData = req.body; // { quantity_available, quantity_allocated }
-    const result = await ppeService.updateItemQuantity(id, quantityData);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.updateItemQuantity(id, quantityData, tenantId);
     
     // Emit Kafka event for PPE item stock updated
     if (result.success && result.data) {
@@ -208,9 +219,10 @@ class PPEController {
     const { id } = req.params;
     
     // Get item data before deletion for event
-    const itemData = await ppeService.getItemById(id);
+    const tenantId = req.user.tenant_id;
+    const itemData = await ppeService.getItemById(id, tenantId);
     
-    const result = await ppeService.deleteItem(id);
+    const result = await ppeService.deleteItem(id, tenantId);
     
     // Emit Kafka event for PPE item deleted
     if (result.success && itemData.success) {
@@ -582,7 +594,8 @@ class PPEController {
   // PPE Issuances
   static getAllIssuances = ErrorMiddleware.asyncHandler(async (req, res) => {
     const filters = req.query;
-    const result = await ppeService.getAllIssuances(filters);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getAllIssuances(filters, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -593,7 +606,8 @@ class PPEController {
 
   static getMyIssuances = ErrorMiddleware.asyncHandler(async (req, res) => {
     const userId = req.user.id;
-    const result = await ppeService.getIssuancesByUser(userId);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getIssuancesByUser(userId, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -604,7 +618,8 @@ class PPEController {
 
   static getIssuanceById = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const result = await ppeService.getIssuanceById(id);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getIssuanceById(id, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -615,7 +630,8 @@ class PPEController {
 
   static getIssuancesByUser = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { userId } = req.params;
-    const result = await ppeService.getIssuancesByUser(userId);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getIssuancesByUser(userId, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -625,7 +641,8 @@ class PPEController {
   });
 
   static getActiveIssuances = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await ppeService.getActiveIssuances();
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getActiveIssuances(tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -635,7 +652,8 @@ class PPEController {
   });
 
   static getExpiringIssuances = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await ppeService.getExpiringIssuances();
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getExpiringIssuances(tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -652,7 +670,8 @@ class PPEController {
       issued_by: req.user.id
     };
     
-    const result = await ppeService.createIssuance(issuanceData);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.createIssuance({ ...issuanceData, tenant_id: tenantId });
     
     if (result.success) {
       // Emit WebSocket notification for PPE issued to manager
@@ -686,7 +705,8 @@ class PPEController {
     console.log('🔍 issueToEmployee - issuanceData:', issuanceData);
     
     try {
-      const result = await ppeService.createIssuanceToEmployee(issuanceData);
+      const tenantId = req.user.tenant_id;
+      const result = await ppeService.createIssuanceToEmployee(issuanceData, tenantId);
       console.log('🔍 issueToEmployee - result:', result);
       
       if (result.success) {
@@ -721,7 +741,8 @@ class PPEController {
     console.log('🔍 confirmReceivedPPE - confirmationData:', confirmationData);
     
     try {
-      const result = await ppeService.confirmReceivedPPE(id, confirmationData);
+      const tenantId = req.user.tenant_id;
+      const result = await ppeService.confirmReceivedPPE(id, confirmationData, tenantId);
       console.log('🔍 confirmReceivedPPE - result:', result);
       
       if (result.success) {
@@ -752,7 +773,8 @@ class PPEController {
       returned_by: req.user.id
     };
     
-    const result = await ppeService.returnIssuanceToManager(id, returnData);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.returnIssuanceToManager(id, returnData, tenantId);
     
     if (result.success) {
       // Emit WebSocket notification for PPE returned to manager
@@ -778,7 +800,8 @@ class PPEController {
       returned_by: req.user.id
     };
     
-    const result = await ppeService.returnIssuanceToAdmin(id, returnData);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.returnIssuanceToAdmin(id, returnData, tenantId);
     
     if (result.success) {
       // Emit WebSocket notification for PPE returned to admin
@@ -801,7 +824,8 @@ class PPEController {
     const { id } = req.params;
     const managerId = req.user.id;
     
-    const result = await ppeService.confirmEmployeeReturn(id, managerId);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.confirmEmployeeReturn(id, managerId, tenantId);
     
     if (result.success) {
       // Emit WebSocket notification for PPE return confirmed
@@ -822,7 +846,8 @@ class PPEController {
   // Lấy danh sách PPE của Manager
   static getManagerPPE = ErrorMiddleware.asyncHandler(async (req, res) => {
     const managerId = req.user.id;
-    const result = await ppeService.getManagerPPE(managerId);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getManagerPPE(managerId, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -834,7 +859,8 @@ class PPEController {
   // Lấy danh sách PPE của Employee
   static getEmployeePPE = ErrorMiddleware.asyncHandler(async (req, res) => {
     const employeeId = req.user.id;
-    const result = await ppeService.getEmployeePPE(employeeId);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getEmployeePPE(employeeId, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -854,7 +880,8 @@ class PPEController {
         department_id: req.user.department_id
       } : null
     });
-    const result = await ppeService.getDepartmentEmployeesPPE(managerId);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getDepartmentEmployeesPPE(managerId, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -866,7 +893,8 @@ class PPEController {
   // Lấy lịch sử PPE của Manager
   static getManagerPPEHistory = ErrorMiddleware.asyncHandler(async (req, res) => {
     const managerId = req.user.id;
-    const result = await ppeService.getManagerPPEHistory(managerId);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getManagerPPEHistory(managerId, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -878,7 +906,8 @@ class PPEController {
   // Legacy method - giữ lại để tương thích
   static createIssuance = ErrorMiddleware.asyncHandler(async (req, res) => {
     const issuanceData = req.body;
-    const result = await ppeService.createIssuance(issuanceData);
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.createIssuance({ ...issuanceData, tenant_id: tenantId });
     
     if (result.success) {
       // Emit WebSocket notification for PPE issued
@@ -977,7 +1006,8 @@ class PPEController {
 
   // Statistics and Reports
   static getStockStatus = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await ppeService.getInventoryStats();
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getInventoryStats(tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -987,7 +1017,8 @@ class PPEController {
   });
 
   static getOverdueIssuances = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await ppeService.getOverdueIssuances();
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getOverdueIssuances(tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -997,7 +1028,8 @@ class PPEController {
   });
 
   static getLowStockItems = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await ppeService.getLowStockItems();
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getLowStockItems(tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -1007,7 +1039,8 @@ class PPEController {
   });
 
   static getIssuanceStatistics = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await ppeService.getIssuanceStatistics();
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getIssuanceStatistics(tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -1017,7 +1050,8 @@ class PPEController {
   });
 
   static getQuantityStatistics = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await ppeService.getQuantityStatistics();
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getQuantityStatistics(tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -1027,7 +1061,8 @@ class PPEController {
   });
 
   static getDashboardData = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await ppeService.getDashboardStats();
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.getDashboardStats(tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

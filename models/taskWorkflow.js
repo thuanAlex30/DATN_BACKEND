@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const { getDefaultTenantObjectId } = require('../utils/tenancy');
 
-const TASK_LEVELS = ['DEPARTMENT_HEADER', 'MANAGER', 'TEAM_LEADER', 'EMPLOYEE'];
+const TASK_LEVELS = ['DEPARTMENT_HEADER', 'MANAGER', 'EMPLOYEE'];
 const TASK_STATUSES = ['NEW', 'IN_PROGRESS', 'COMPLETED', 'ON_HOLD', 'CANCELLED'];
 
 const taskWorkflowSchema = new mongoose.Schema({

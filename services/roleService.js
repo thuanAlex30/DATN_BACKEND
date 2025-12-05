@@ -114,7 +114,9 @@ class RoleService {
       // Get user counts for each role
       const rolesWithUserCount = await Promise.all(
         result.roles.map(async (role) => {
-          const userCount = await UserRepository.countByRole(role._id);
+          const userCount = await UserRepository.countByRole(role._id, {
+            tenant_id: options.tenant_id || undefined
+          });
           return {
             id: role._id,
             role_name: role.role_name,

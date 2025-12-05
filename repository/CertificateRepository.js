@@ -209,14 +209,17 @@ class CertificateRepository {
     }
   }
 
-  // Get statistics
-  async getStats() {
+  // Get statistics (optionally scoped by filter, e.g. tenant_id)
+  async getStats(filter = {}) {
     try {
-      const total = await this.count();
-      const active = await this.countActive();
-      const inactive = await this.count({ status: 'INACTIVE' });
-      const expired = await this.count({ status: 'EXPIRED' });
+      const baseFilter = { ...filter };
+
+      const total = await this.count(baseFilter);
+      const active = await this.countActive(baseFilter);
+      const inactive = await this.count({ ...baseFilter, status: 'INACTIVE' });
+      const expired = await this.count({ ...baseFilter, status: 'EXPIRED' });
       const expiring = await this.count({
+        ...baseFilter,
         status: 'ACTIVE',
         expiryDate: { 
           $lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -225,7 +228,9 @@ class CertificateRepository {
       });
 
       // Get category statistics
+      const matchStage = Object.keys(baseFilter).length ? [{ $match: baseFilter }] : [];
       const categoryStats = await Certificate.aggregate([
+        ...matchStage,
         { $group: { _id: '$category', count: { $sum: 1 } } },
         { $sort: { count: -1 } }
       ]);

@@ -1,7 +1,6 @@
 const UserRepository = require('../repository/UserRepository');
 const RoleRepository = require('../repository/RoleRepository');
 const DepartmentRepository = require('../repository/DepartmentRepository');
-const PositionRepository = require('../repository/PositionRepository');
 const HashUtils = require('../utils/hash');
 const ExcelJS = require('exceljs');
 const { transformDocumentId, transformDocumentsId, POPULATED_FIELDS } = require('../utils/transformId');
@@ -32,7 +31,7 @@ class UserService {
       // Hash password
       const password_hash = await HashUtils.hashPassword(userData.password);
       
-      // Create user data
+      // Create user data - đảm bảo không bị override tenant_id ngoài ý muốn trong service khác
       const userCreateData = {
         ...userData,
         password_hash
@@ -43,7 +42,7 @@ class UserService {
       const user = await UserRepository.create(userCreateData);
       
       // Populate related data
-      await user.populate(['role_id', 'department_id', 'position_id']);
+      await user.populate(['role_id', 'department_id']);
 
       return createResponse(201, 'Tạo người dùng thành công', {
         id: user._id,
@@ -55,7 +54,6 @@ class UserService {
         address: user.address,
         role: user.role_id,
         department: user.department_id,
-        position: user.position_id,
         is_active: user.is_active,
         created_at: user.created_at
       });
@@ -68,7 +66,7 @@ class UserService {
   // Get user by ID
   static async getUserById(id) {
     try {
-      const user = await UserRepository.findById(id, ['role_id', 'department_id', 'position_id']);
+      const user = await UserRepository.findById(id, ['role_id', 'department_id']);
       
       if (!user) {
         return createResponse(404, 'Không tìm thấy người dùng');
@@ -87,7 +85,6 @@ class UserService {
           id: user.department_id._id || user.department_id.id,
           department_name: user.department_id.department_name
         } : null,
-        position: user.position_id,
         is_active: user.is_active,
         last_login: user.last_login,
         created_at: user.created_at,
@@ -134,7 +131,7 @@ class UserService {
       }
 
       // Populate related data
-      await updatedUser.populate(['role_id', 'department_id', 'position_id']);
+      await updatedUser.populate(['role_id', 'department_id']);
 
       return createResponse(200, 'Cập nhật người dùng thành công', {
         id: updatedUser._id,
@@ -146,7 +143,6 @@ class UserService {
         address: updatedUser.address,
         role: updatedUser.role_id,
         department: updatedUser.department_id,
-        position: updatedUser.position_id,
         is_active: updatedUser.is_active,
         updated_at: updatedUser.updated_at
       });
@@ -186,7 +182,6 @@ class UserService {
           phone: user.phone,
           role: user.role_id,
           department: user.department_id,
-          position: user.position_id,
           is_active: user.is_active,
           last_login: user.last_login,
           created_at: user.created_at
@@ -199,12 +194,13 @@ class UserService {
     }
   }
 
-  // Get all active users
-  static async getAllUsers() {
+  // Get all active users (scoped theo tenant nếu tenantId được truyền vào)
+  static async getAllUsers(tenantId = null) {
     try {
       const result = await UserRepository.findAll({ 
         limit: 1000,
-        is_active: true // Only get active users
+        is_active: true, // Only get active users
+        tenant_id: tenantId || undefined
       });
       
       // Check if result has users array
@@ -219,7 +215,6 @@ class UserService {
         full_name: user.full_name,
         role: user.role_id,
         department: user.department_id,
-        position: user.position_id,
         is_active: user.is_active,
         created_at: user.created_at
       }));
@@ -241,7 +236,6 @@ class UserService {
           email: manager.email,
           full_name: manager.full_name,
           role: manager.role_id,
-          position: manager.position_id,
           is_active: manager.is_active
         }))
       });
@@ -295,19 +289,32 @@ class UserService {
     }
   }
 
-  // Get user statistics
-  static async getUserStats() {
+  // Get user statistics (only count users with role_level < 90), scoped theo tenant nếu có tenantId
+  static async getUserStats(tenantId = null) {
     try {
       const [totalResult, activeResult, inactiveResult] = await Promise.all([
-        UserRepository.findAll({ limit: 10000 }), // Get all users without pagination
-        UserRepository.findAll({ limit: 10000, is_active: true }),
-        UserRepository.findAll({ limit: 10000, is_active: false })
+        UserRepository.findAll({ limit: 10000, tenant_id: tenantId || undefined }), // Get all users within tenant
+        UserRepository.findAll({ limit: 10000, is_active: true, tenant_id: tenantId || undefined }),
+        UserRepository.findAll({ limit: 10000, is_active: false, tenant_id: tenantId || undefined })
       ]);
 
+      // Filter users with role_level < 90 (exclude Company Admin and System Admin)
+      const filterByRoleLevel = (users) => {
+        if (!Array.isArray(users)) return [];
+        return users.filter(user => {
+          const roleLevel = user.role_id?.role_level ?? 0;
+          return roleLevel < 90;
+        });
+      };
+
+      const totalUsers = filterByRoleLevel(totalResult.users || []);
+      const activeUsers = filterByRoleLevel(activeResult.users || []);
+      const inactiveUsers = filterByRoleLevel(inactiveResult.users || []);
+
       return createResponse(200, 'Lấy thống kê người dùng thành công', {
-        total: totalResult.users ? totalResult.users.length : 0,
-        active: activeResult.users ? activeResult.users.length : 0,
-        inactive: inactiveResult.users ? inactiveResult.users.length : 0
+        total: totalUsers.length,
+        active: activeUsers.length,
+        inactive: inactiveUsers.length
       });
     } catch (error) {
       console.error('Error getting user stats:', error);
@@ -316,7 +323,7 @@ class UserService {
   }
 
   // Import users from Excel
-  static async importUsersFromExcel(file) {
+  static async importUsersFromExcel(file, tenantId = null) {
     try {
       // Read Excel file
       const workbook = new ExcelJS.Workbook();
@@ -343,19 +350,16 @@ class UserService {
         total: data.length
       };
 
-      // Get all roles, departments, and positions for validation
+      // Get all roles and departments for validation
       const roles = await RoleRepository.findAll();
       const departmentsResult = await DepartmentRepository.findAll({ limit: 1000 }); // Get all departments
-      const positionsResult = await PositionRepository.findAll({ limit: 1000 }); // Get all positions
 
       // Extract arrays from paginated results
       const departments = departmentsResult.departments || [];
-      const positions = positionsResult.positions || [];
 
       // Create lookup maps
       const roleMap = new Map(roles.map(role => [role.role_name.toLowerCase(), role._id]));
       const departmentMap = new Map(departments.map(dept => [dept.department_name.toLowerCase(), dept._id]));
-      const positionMap = new Map(positions.map(pos => [pos.position_name.toLowerCase(), pos._id]));
 
       for (let i = 0; i < data.length; i++) {
         const row = data[i];
@@ -407,34 +411,10 @@ class UserService {
             }
           }
 
-          // Validate position_name (if provided)
-          let positionId = null;
-          let roleId = null;
-          if (row.position_name) {
-            positionId = positionMap.get(row.position_name.toLowerCase());
-            if (!positionId) {
-              results.errors.push({
-                row: rowNumber,
-                error: `Invalid position_name '${row.position_name}'`
-              });
-              continue;
-            }
-            
-            // Auto-assign role based on position
-            const position = positions.find(pos => pos._id.toString() === positionId.toString());
-            if (position) {
-              if (position.position_name.toLowerCase() === 'manager') {
-                roleId = roleMap.get('manager');
-              } else {
-                roleId = roleMap.get('employee');
-              }
-            }
-          } else {
-            // Default to employee role if no position specified
-            roleId = roleMap.get('employee');
-          }
+          // Default to employee role
+          let roleId = roleMap.get('employee');
 
-          // Prepare user data
+          // Prepare user data - luôn gán tenant_id theo context truyền vào
           const userData = {
             username: row.username.trim(),
             email: row.email.trim(),
@@ -444,9 +424,9 @@ class UserService {
             address: row.address ? row.address.trim() : '',
             role_id: roleId,
             department_id: departmentId,
-            position_id: positionId,
             password: row.password || 'Password123', // Default password
-            is_active: row.is_active !== undefined ? Boolean(row.is_active) : true
+            is_active: row.is_active !== undefined ? Boolean(row.is_active) : true,
+            tenant_id: tenantId || undefined
           };
 
           // Hash password
@@ -456,7 +436,7 @@ class UserService {
 
           // Create user
           const user = await UserRepository.create(userData);
-          await user.populate(['role_id', 'department_id', 'position_id']);
+          await user.populate(['role_id', 'department_id']);
 
           results.success.push({
             row: rowNumber,

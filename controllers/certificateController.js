@@ -440,17 +440,44 @@ class CertificateController {
         }
     }
 
-    // Xuất dữ liệu chứng chỉ
+    // Xuất dữ liệu chứng chỉ (được scope theo tenant hoặc global nếu là System Admin)
     static async exportCertificates(req, res) {
         try {
             const { format = 'json' } = req.query;
-            const result = await certificateService.getAllCertificates({ limit: 1000 });
+
+            const currentUser = req.user;
+            const tenantId = currentUser?.tenant_id || null;
+            const userRole = currentUser?.role || {};
+            const isSystemAdmin =
+                userRole.role_code === 'system_admin' ||
+                userRole.role_level === 100 ||
+                userRole.scope_rules?.tenant_scope === 'global';
+
+            // Chỉ System Admin mới được export toàn bộ certificates (global)
+            const filters = {};
+            if (!isSystemAdmin) {
+                if (!tenantId) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Tenant ID not found in user context'
+                    });
+                }
+                filters.tenant_id = tenantId;
+            }
+
+            const result = await certificateService.getAllCertificates({
+                limit: 1000,
+                filters
+            });
+
             if (result.statusCode < 400) {
                 res.json({
                     success: true,
                     message: 'Xuất dữ liệu chứng chỉ thành công',
                     data: result.data.data,
-                    format
+                    format,
+                    scope: isSystemAdmin ? 'global' : 'tenant',
+                    tenant_id: isSystemAdmin ? null : tenantId
                 });
             } else {
                 res.status(result.statusCode).json({

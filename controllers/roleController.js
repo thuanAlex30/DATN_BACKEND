@@ -4,6 +4,23 @@ const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 const RoleEvents = require('../events/roleEvents');
 
 class RoleController {
+  static _ensureCanModifyRole(req, res, role) {
+    const isSystemRole = role?.role_code === 'system_admin' ||
+      role?.role_name?.toLowerCase?.() === 'system admin' ||
+      role?.role_level === 100;
+
+    const userRole = req.user?.role;
+    const isSystemAdminUser = userRole?.role_code === 'system_admin' ||
+      userRole?.role_name?.toLowerCase?.() === 'system admin' ||
+      userRole?.role_level === 100;
+
+    if (isSystemRole && !isSystemAdminUser) {
+      return ApiResponse.forbidden(res, 'Only System Admin can modify System Admin role');
+    }
+
+    return null;
+  }
+
   // Create new role
   static createRole = ErrorMiddleware.asyncHandler(async (req, res) => {
     const result = await RoleService.createRole(req.body);
@@ -39,6 +56,9 @@ class RoleController {
     
     // Get old role data for comparison
     const oldRole = await RoleService.getRoleById(id);
+    const guard = RoleController._ensureCanModifyRole(req, res, oldRole);
+    if (guard) return guard;
+
     const result = await RoleService.updateRole(id, req.body);
     
     // Emit role updated event
@@ -65,6 +85,9 @@ class RoleController {
     
     // Get role data before deletion
     const roleData = await RoleService.getRoleById(id);
+    const guard = RoleController._ensureCanModifyRole(req, res, roleData);
+    if (guard) return guard;
+
     const result = await RoleService.deleteRole(id);
     
     // Emit role deleted event
@@ -87,7 +110,24 @@ class RoleController {
 
   // Get roles with pagination and filters
   static getRoles = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await RoleService.getRoles(req.query);
+    // Multi-tenant: System Admin có thể xem tất cả role, Company Admin chỉ xem trong tenant của mình
+    const userRole = req.user?.role || {};
+    const isSystemAdminUser =
+      userRole.role_code === 'system_admin' ||
+      userRole.role_name?.toLowerCase?.() === 'system admin' ||
+      userRole.role_level === 100;
+
+    const options = { ...req.query };
+
+    if (!isSystemAdminUser) {
+      const tenant = req.user?.tenant_id;
+      const tenantId = tenant && typeof tenant === 'object' ? (tenant._id || tenant.id || tenant) : tenant;
+      if (tenantId) {
+        options.tenant_id = tenantId.toString();
+      }
+    }
+
+    const result = await RoleService.getRoles(options);
     return ApiResponse.success(res, result, 'Roles retrieved successfully');
   });
 
@@ -109,6 +149,8 @@ class RoleController {
     
     // Get old role data for comparison
     const oldRole = await RoleService.getRoleById(id);
+    const guard = RoleController._ensureCanModifyRole(req, res, oldRole);
+    if (guard) return guard;
     const result = await RoleService.toggleRoleStatus(id);
     
     // Emit role status toggled event
@@ -148,6 +190,8 @@ class RoleController {
     
     // Get old role data for comparison
     const oldRole = await RoleService.getRoleById(id);
+    const guard = RoleController._ensureCanModifyRole(req, res, oldRole);
+    if (guard) return guard;
     const result = await RoleService.updateRolePermissions(id, permissions);
     
     // Emit role permissions updated event

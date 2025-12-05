@@ -287,23 +287,51 @@ class ProjectRiskService {
     }
   }
 
+  /**
+   * Get all risks with optional filters (for dashboards, analytics, etc.)
+   */
   async getAllRisks(filters = {}) {
     try {
-      const risks = await ProjectRiskRepository.getAllRisks(filters);
-      
+      const query = {};
+
+      if (filters.project_id) {
+        query.project_id = filters.project_id;
+      }
+      if (filters.risk_level) {
+        query.risk_level = filters.risk_level;
+      }
+      if (filters.status) {
+        query.status = filters.status;
+      }
+      if (typeof filters.is_active !== 'undefined') {
+        query.is_active = filters.is_active;
+      }
+
+      // Simple text search on name/description
+      if (filters.search) {
+        query.$or = [
+          { risk_name: { $regex: filters.search, $options: 'i' } },
+          { description: { $regex: filters.search, $options: 'i' } }
+        ];
+      }
+
+      const risks = await ProjectRisk.find(query)
+        .populate('project_id', 'project_name')
+        .populate('phase_id', 'phase_name')
+        .populate('owner_id', 'full_name email')
+        .sort({ risk_score: -1, identified_date: -1 });
+
       return {
         success: true,
         data: risks,
-        message: 'Lấy danh sách tất cả rủi ro thành công',
-        statusCode: 200
+        message: 'Lấy danh sách rủi ro thành công'
       };
     } catch (error) {
       console.error('Error getting all risks:', error);
       return {
         success: false,
         message: 'Lỗi khi lấy danh sách rủi ro',
-        error: error.message,
-        statusCode: 500
+        error: error.message
       };
     }
   }

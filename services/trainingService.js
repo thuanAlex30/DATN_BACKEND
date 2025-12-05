@@ -134,27 +134,27 @@ class TrainingService {
     }
 
     // ========== Training Session Services ==========
-    async getAllTrainingSessions(filters = {}) {
+    async getAllTrainingSessions(filters = {}, tenantId = null) {
         try {
-            const sessions = await trainingRepository.getAllTrainingSessions(filters);
+            const sessions = await trainingRepository.getAllTrainingSessions(filters, tenantId);
             return createResponse(200, 'Training sessions retrieved successfully', sessions);
         } catch (error) {
             throw error;
         }
     }
 
-    async getAvailableTrainingSessionsForEmployee(userId, filters = {}) {
+    async getAvailableTrainingSessionsForEmployee(userId, tenantId = null, filters = {}) {
         try {
-            const sessions = await trainingRepository.getAvailableTrainingSessionsForEmployee(userId, filters);
+            const sessions = await trainingRepository.getAvailableTrainingSessionsForEmployee(userId, tenantId, filters);
             return createResponse(200, 'Available training sessions retrieved successfully', sessions);
         } catch (error) {
             throw error;
         }
     }
 
-    async getTrainingSessionById(sessionId) {
+    async getTrainingSessionById(sessionId, tenantId = null) {
         try {
-            const session = await trainingRepository.getTrainingSessionById(sessionId);
+            const session = await trainingRepository.getTrainingSessionById(sessionId, tenantId);
             if (!session) {
                 return createResponse(404, 'Training session not found');
             }
@@ -164,7 +164,7 @@ class TrainingService {
         }
     }
 
-    async createTrainingSession(sessionData) {
+    async createTrainingSession(sessionData, tenantId = null) {
         try {
             console.log('Service received session data:', sessionData);
             
@@ -200,7 +200,7 @@ class TrainingService {
             }
 
             console.log('Validation passed, creating session...');
-            const session = await trainingRepository.createTrainingSession(sessionData);
+            const session = await trainingRepository.createTrainingSession(sessionData, tenantId);
             console.log('Session created successfully:', session);
             return createResponse(201, 'Training session created successfully', session);
         } catch (error) {
@@ -212,7 +212,7 @@ class TrainingService {
         }
     }
 
-    async updateTrainingSession(sessionId, sessionData) {
+    async updateTrainingSession(sessionId, sessionData, tenantId = null) {
         try {
             // Validate session dates if provided
             if (sessionData.start_time && sessionData.end_time) {
@@ -221,7 +221,7 @@ class TrainingService {
                 }
             }
 
-            const session = await trainingRepository.updateTrainingSession(sessionId, sessionData);
+            const session = await trainingRepository.updateTrainingSession(sessionId, sessionData, tenantId);
             return createResponse(200, 'Training session updated successfully', session);
         } catch (error) {
             if (error.message === 'Training session not found') {
@@ -231,9 +231,9 @@ class TrainingService {
         }
     }
 
-    async deleteTrainingSession(sessionId) {
+    async deleteTrainingSession(sessionId, tenantId = null) {
         try {
-            await trainingRepository.deleteTrainingSession(sessionId);
+            await trainingRepository.deleteTrainingSession(sessionId, tenantId);
             return createResponse(200, 'Training session deleted successfully');
         } catch (error) {
             if (error.message === 'Training session not found') {

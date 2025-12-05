@@ -288,12 +288,34 @@ class AuthMiddleware {
           
           // Check if user has permission for any module:action combination
           const hasPermission = moduleList.some(module => 
-            actionList.some(act => 
-              PermissionUtils.hasMatrixPermission(userRole, module, act)
-            )
+            actionList.some(act => {
+              const hasPerm = PermissionUtils.hasMatrixPermission(userRole, module, act);
+              if (!hasPerm) {
+                console.log(`🔍 Permission check failed:`, {
+                  module,
+                  action,
+                  userRole: {
+                    role_code: userRole.role_code,
+                    role_level: userRole.role_level,
+                    role_name: userRole.role_name
+                  },
+                  path: req.path
+                });
+              }
+              return hasPerm;
+            })
           );
           
           if (!hasPermission) {
+            console.log(`❌ Authorization failed for ${req.path}:`, {
+              userRole: {
+                role_code: userRole.role_code,
+                role_level: userRole.role_level,
+                role_name: userRole.role_name
+              },
+              requiredModules: moduleList,
+              requiredActions: actionList
+            });
             return ApiResponse.forbidden(res, `Insufficient permissions for ${moduleList.join(',')}:${actionList.join(',')}`);
           }
         }

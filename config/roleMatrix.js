@@ -3,7 +3,6 @@ const ROLE_CODES = {
   COMPANY_ADMIN: 'company_admin',
   DEPARTMENT_HEADER: 'department_header',
   MANAGER: 'manager',
-  TEAM_LEADER: 'team_leader',
   EMPLOYEE: 'employee',
   TRAINER: 'trainer',
   SAFETY_OFFICER: 'safety_officer',
@@ -71,7 +70,7 @@ const ROLE_DEFINITIONS = [
     },
     permissions: buildPermissions({
       user: ['create_user', 'read_user', 'update_user', 'delete_user'],
-      role: ['read_role', 'assign_role'],
+      role: ['read_role', 'assign_role', 'update_role'],
       department: ['create_department', 'read_department', 'update_department', 'delete_department'],
       project: ['create_project', 'read_project', 'update_project', 'delete_project'],
       training: ['create_training', 'read_training', 'update_training', 'delete_training', 'enroll_training'],
@@ -125,27 +124,6 @@ const ROLE_DEFINITIONS = [
       ppe: ['read_ppe', 'issue_ppe'],
       incident: ['create_incident', 'read_incident', 'update_incident'],
       analytics: ['view_department_metrics']
-    }),
-    is_default: true
-  },
-  {
-    role_code: ROLE_CODES.TEAM_LEADER,
-    role_name: 'Team Leader',
-    role_level: 60,
-    description: 'Tổ trưởng/Leader',
-    scope_rules: {
-      tenant_scope: 'tenant',
-      department_scope: 'own',
-      data_scope: 'department',
-      can_assign_lower_roles: false
-    },
-    permissions: buildPermissions({
-      user: ['read_user'],
-      project: ['read_project', 'update_project'],
-      training: ['read_training', 'enroll_training'],
-      safety: ['create_safety', 'read_safety'],
-      ppe: ['read_ppe', 'issue_ppe'],
-      incident: ['create_incident', 'read_incident', 'update_incident']
     }),
     is_default: true
   },

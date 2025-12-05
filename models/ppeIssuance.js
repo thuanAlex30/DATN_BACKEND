@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const ppeIssuanceSchema = new mongoose.Schema({
+  tenant_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tenant',
+    required: false
+  },
   // Người nhận PPE (có thể là Manager hoặc Employee)
   user_id: {
     type: mongoose.Schema.Types.ObjectId,

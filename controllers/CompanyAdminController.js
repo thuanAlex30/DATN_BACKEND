@@ -34,6 +34,27 @@ class CompanyAdminController {
       return ApiResponse.notFound(res, 'Role not found');
     }
 
+    // Không cho phép Company Admin (hoặc bất kỳ ai) tự đổi role của chính mình qua endpoint này
+    if (req.user._id?.toString() === user._id.toString() || req.user.id?.toString() === user._id.toString()) {
+      return ApiResponse.error(res, 'Bạn không được phép thay đổi vai trò của chính mình qua endpoint này', 403);
+    }
+
+    // Nếu role hiện tại có thể gán role thấp hơn (can_assign_lower_roles), kiểm tra level
+    const currentUserRole = req.user.role;
+    if (currentUserRole && currentUserRole.scope_rules?.can_assign_lower_roles) {
+      const currentLevel = currentUserRole.role_level || 0;
+      const targetLevel = role.role_level || 0;
+
+      // Chỉ được gán role có level nhỏ hơn role của mình
+      if (targetLevel >= currentLevel) {
+        return ApiResponse.error(
+          res,
+          'Bạn chỉ được phép gán các vai trò có level thấp hơn vai trò hiện tại của bạn',
+          403
+        );
+      }
+    }
+
     // Update user role
     const updatedUser = await UserRepository.updateById(user_id, { role_id });
 
@@ -173,6 +194,27 @@ class CompanyAdminController {
     const role = await Role.findById(role_id);
     if (!role) {
       return ApiResponse.notFound(res, 'Role not found');
+    }
+
+    // Không cho phép Company Admin bulk-assign vai trò cho chính mình
+    const currentUserId = req.user._id?.toString() || req.user.id?.toString();
+    if (currentUserId && user_ids.some(uid => uid.toString() === currentUserId)) {
+      return ApiResponse.error(res, 'Bạn không được phép thay đổi vai trò của chính mình qua bulk-assign', 403);
+    }
+
+    // Nếu role hiện tại có thể gán role thấp hơn (can_assign_lower_roles), kiểm tra level
+    const currentUserRole = req.user.role;
+    if (currentUserRole && currentUserRole.scope_rules?.can_assign_lower_roles) {
+      const currentLevel = currentUserRole.role_level || 0;
+      const targetLevel = role.role_level || 0;
+
+      if (targetLevel >= currentLevel) {
+        return ApiResponse.error(
+          res,
+          'Bạn chỉ được phép gán các vai trò có level thấp hơn vai trò hiện tại của bạn',
+          403
+        );
+      }
     }
 
     // Verify all users exist and belong to tenant

@@ -13,14 +13,9 @@ class IncidentController {
   static reportIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
     const incidentData = req.body;
     const userId = req.user._id;
+    const tenantId = req.user.tenant_id;
     
-    // Thêm tenant_id từ user nếu chưa có
-    if (!incidentData.tenant_id && req.user.tenant_id) {
-      // Xử lý cả trường hợp tenant_id là object (sau populate) hoặc string
-      incidentData.tenant_id = req.user.tenant_id._id || req.user.tenant_id;
-    }
-    
-    const result = await incidentService.createIncident(incidentData, userId);
+    const result = await incidentService.createIncident(incidentData, userId, tenantId);
     
     if (result.success) {
       // Emit WebSocket notification for incident reported
@@ -42,30 +37,21 @@ class IncidentController {
 
   // 2. Lấy tất cả incidents
   static getIncidents = ErrorMiddleware.asyncHandler(async (req, res) => {
-    try {
-      const userId = req.user?._id;
-      const filters = {
-        ...req.query
-      };
-      
-      const result = await incidentService.getAllIncidents(userId, filters, req.user);
-      
-      if (result.success) {
-        return ApiResponse.success(res, result.data, result.message, result.statusCode, result.pagination);
-      } else {
-        return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
-      }
-    } catch (error) {
-      console.error('❌ Error in getIncidents controller:', error);
-      console.error('❌ Error stack:', error.stack);
-      return ApiResponse.error(res, error.message || 'Lỗi khi lấy danh sách incidents', 500);
+    const tenantId = req.user.tenant_id;
+    const result = await incidentService.getAllIncidents(tenantId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
     }
   });
 
   // 3. Lấy incident theo ID
   static getIncidentById = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const result = await incidentService.getIncidentById(id);
+    const tenantId = req.user.tenant_id;
+    const result = await incidentService.getIncidentById(id, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -79,8 +65,9 @@ class IncidentController {
     const { id } = req.params;
     const { severity } = req.body;
     const userId = req.user._id;
+    const tenantId = req.user.tenant_id;
     
-    const result = await incidentService.classifyIncident(id, severity, userId);
+    const result = await incidentService.classifyIncident(id, severity, userId, tenantId);
     
     if (result.success) {
       // Emit WebSocket notification for incident classified
@@ -105,8 +92,9 @@ class IncidentController {
     const { id } = req.params;
     const { assignedTo } = req.body;
     const userId = req.user._id;
+    const tenantId = req.user.tenant_id;
     
-    const result = await incidentService.assignIncident(id, assignedTo, userId);
+    const result = await incidentService.assignIncident(id, assignedTo, userId, tenantId);
     
     if (result.success) {
       // Emit WebSocket notification for incident assigned
@@ -132,8 +120,9 @@ class IncidentController {
     const { id } = req.params;
     const investigationData = req.body;
     const userId = req.user._id;
+    const tenantId = req.user.tenant_id;
     
-    const result = await incidentService.investigateIncident(id, investigationData, userId);
+    const result = await incidentService.investigateIncident(id, investigationData, userId, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -147,8 +136,9 @@ class IncidentController {
     const { id } = req.params;
     const progressData = req.body;
     const userId = req.user._id;
+    const tenantId = req.user.tenant_id;
     
-    const result = await incidentService.updateIncidentProgress(id, progressData, userId);
+    const result = await incidentService.updateIncidentProgress(id, progressData, userId, tenantId);
     
     if (result.success) {
       // Emit WebSocket notification for incident progress updated
@@ -173,8 +163,9 @@ class IncidentController {
     const { id } = req.params;
     const closeData = req.body;
     const userId = req.user._id;
+    const tenantId = req.user.tenant_id;
     
-    const result = await incidentService.closeIncident(id, closeData, userId);
+    const result = await incidentService.closeIncident(id, closeData, userId, tenantId);
     
     if (result.success) {
       // Emit WebSocket notification for incident closed

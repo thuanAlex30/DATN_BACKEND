@@ -4073,6 +4073,7 @@
 {"timestamp":"2025-11-19T12:33:05.582Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"691c15640298912ebc6dca7f","role":"header_department","socketId":"YBGpl1LsItMMMAzEAAAV"},"pid":1920,"hostname":"Bravo"}
 {"timestamp":"2025-11-19T13:32:26.942Z","level":"INFO","message":"User disconnected","metadata":{"userId":"691c15640298912ebc6dca7f","socketId":"xHE_V1yjH2bJ8JYvAAAT"},"pid":1920,"hostname":"Bravo"}
 {"timestamp":"2025-11-19T13:32:27.047Z","level":"INFO","message":"User disconnected","metadata":{"userId":"691c15640298912ebc6dca7f","socketId":"YBGpl1LsItMMMAzEAAAV"},"pid":1920,"hostname":"Bravo"}
+<<<<<<< HEAD
 {"timestamp":"2025-11-23T10:30:34.583Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":11948,"hostname":"MSI"}
 {"timestamp":"2025-11-23T10:30:34.601Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":11948,"hostname":"MSI"}
 {"timestamp":"2025-11-23T10:30:40.723Z","level":"INFO","message":"User connected","metadata":{"socketId":"KH4CguGHqvnGpO5PAAAE"},"pid":11948,"hostname":"MSI"}
@@ -4304,10 +4305,9 @@
 {"timestamp":"2025-11-23T12:09:16.806Z","level":"INFO","message":"User connected","metadata":{"socketId":"VrH9AC1RH4ADa94hAAA3"},"pid":5196,"hostname":"MSI"}
 {"timestamp":"2025-11-23T12:09:16.808Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"VrH9AC1RH4ADa94hAAA3"},"pid":5196,"hostname":"MSI"}
 {"timestamp":"2025-11-23T12:09:55.114Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"VrH9AC1RH4ADa94hAAA3"},"pid":5196,"hostname":"MSI"}
+{"timestamp":"2025-11-23T12:10:03.043Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":5196,"hostname":"MSI"}
+=======
 {"timestamp":"2025-11-23T10:15:32.619Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":16680,"hostname":"Bravo"}
-{"timestamp":"2025-11-23T10:15:32.766Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":16680,"hostname":"Bravo"}
-{"timestamp":"2025-11-23T10:30:34.583Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":11948,"hostname":"MSI"}
-{"timestamp":"2025-11-23T10:30:34.601Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":11948,"hostname":"MSI"}
 {"timestamp":"2025-11-23T10:15:32.766Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":16680,"hostname":"Bravo"}
 {"timestamp":"2025-11-23T10:15:58.973Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":20836,"hostname":"Bravo"}
 {"timestamp":"2025-11-23T10:15:59.041Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":20836,"hostname":"Bravo"}
@@ -4477,10 +4477,7 @@
 {"timestamp":"2025-11-23T12:30:29.674Z","level":"INFO","message":"User connected","metadata":{"socketId":"Lz_jSUCFa2i_iGv7AACO"},"pid":16820,"hostname":"Bravo"}
 {"timestamp":"2025-11-23T12:30:29.720Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709d","role":"Department Header","socketId":"Lz_jSUCFa2i_iGv7AACO"},"pid":16820,"hostname":"Bravo"}
 <<<<<<< HEAD
-=======
-<<<<<<< HEAD
 >>>>>>> bc3c494d7909e8bf48f732719bb2d27329933ef1
->>>>>>> origin/ThuanDH30
 {"timestamp":"2025-11-24T07:21:35.959Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":27144,"hostname":"MSI"}
 {"timestamp":"2025-11-24T07:21:35.976Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":27144,"hostname":"MSI"}
 {"timestamp":"2025-11-24T07:21:52.262Z","level":"INFO","message":"User connected","metadata":{"socketId":"HwRkj-Jv5Ndo-6q3AAAC"},"pid":27144,"hostname":"MSI"}
@@ -5120,63 +5117,8 @@
 {"timestamp":"2025-12-01T05:37:59.482Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":12292,"hostname":"MSI"}
 {"timestamp":"2025-12-01T05:37:59.498Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":12292,"hostname":"MSI"}
 {"timestamp":"2025-12-01T06:01:49.305Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":12292,"hostname":"MSI"}
-<<<<<<< HEAD
-{"timestamp":"2025-12-01T06:07:43.190Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":8064,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:07:43.206Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":8064,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:11:28.248Z","level":"INFO","message":"User connected","metadata":{"socketId":"YQStUytkYA6HTr__AAAC"},"pid":8064,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:11:28.250Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"YQStUytkYA6HTr__AAAC"},"pid":8064,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:11:28.468Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692c2a38f4919c95296718f3","socketId":"YQStUytkYA6HTr__AAAC"},"pid":8064,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:11:28.521Z","level":"INFO","message":"User connected","metadata":{"socketId":"gS1SFVun0kpDdMrZAAAF"},"pid":8064,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:11:28.525Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"gS1SFVun0kpDdMrZAAAF"},"pid":8064,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:11:31.783Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692c2a38f4919c95296718f3","socketId":"gS1SFVun0kpDdMrZAAAF"},"pid":8064,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:53:39.962Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:53:39.979Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:39.906Z","level":"INFO","message":"User connected","metadata":{"socketId":"YpG58K0RMzi6gdqpAAAC"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:39.908Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"YpG58K0RMzi6gdqpAAAC"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:40.137Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692c2a38f4919c95296718f3","socketId":"YpG58K0RMzi6gdqpAAAC"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:40.187Z","level":"INFO","message":"User connected","metadata":{"socketId":"0Gc4VQ0BGRlky0WYAAAF"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:40.190Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"0Gc4VQ0BGRlky0WYAAAF"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:46.635Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692c2a38f4919c95296718f3","socketId":"0Gc4VQ0BGRlky0WYAAAF"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:47.088Z","level":"INFO","message":"User connected","metadata":{"socketId":"0FODhfjSyXV-r206AAAJ"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:47.090Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"0FODhfjSyXV-r206AAAJ"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:47.208Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692c2a38f4919c95296718f3","socketId":"0FODhfjSyXV-r206AAAJ"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:47.241Z","level":"INFO","message":"User connected","metadata":{"socketId":"EcKTS-I1jiwhkGIRAAAM"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:47.243Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"EcKTS-I1jiwhkGIRAAAM"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:55.193Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692c2a38f4919c95296718f3","socketId":"EcKTS-I1jiwhkGIRAAAM"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:55.567Z","level":"INFO","message":"User connected","metadata":{"socketId":"tBPtYvcFUaogz1rTAAAP"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:55.569Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"tBPtYvcFUaogz1rTAAAP"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:58.458Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692c2a38f4919c95296718f3","socketId":"tBPtYvcFUaogz1rTAAAP"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:58.481Z","level":"INFO","message":"User connected","metadata":{"socketId":"GNFS8VB1KPG9QffyAAAS"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:58.483Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"GNFS8VB1KPG9QffyAAAS"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:58.643Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692c2a38f4919c95296718f3","socketId":"GNFS8VB1KPG9QffyAAAS"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:58.708Z","level":"INFO","message":"User connected","metadata":{"socketId":"Cs5ThRmNeXuk7TwTAAAV"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:56:58.710Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"Cs5ThRmNeXuk7TwTAAAV"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:57:02.750Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692c2a38f4919c95296718f3","socketId":"Cs5ThRmNeXuk7TwTAAAV"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:57:02.765Z","level":"INFO","message":"User connected","metadata":{"socketId":"yOGxqJUyMFit3oHPAAAY"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:57:02.766Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"yOGxqJUyMFit3oHPAAAY"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:57:02.933Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692c2a38f4919c95296718f3","socketId":"yOGxqJUyMFit3oHPAAAY"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:57:03.008Z","level":"INFO","message":"User connected","metadata":{"socketId":"eKovI7kh1-HlrqSyAAAb"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:57:03.010Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"eKovI7kh1-HlrqSyAAAb"},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:57:29.076Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":3656,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:58:47.243Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":468,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:58:47.260Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":468,"hostname":"MSI"}
-{"timestamp":"2025-12-01T06:59:06.604Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":468,"hostname":"MSI"}
-{"timestamp":"2025-12-01T07:33:39.644Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":17612,"hostname":"MSI"}
-{"timestamp":"2025-12-01T07:33:39.662Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":17612,"hostname":"MSI"}
-{"timestamp":"2025-12-01T07:33:46.413Z","level":"INFO","message":"User connected","metadata":{"socketId":"OQTfE9H1HRKp8QuOAAAC"},"pid":17612,"hostname":"MSI"}
-{"timestamp":"2025-12-01T07:33:46.415Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"OQTfE9H1HRKp8QuOAAAC"},"pid":17612,"hostname":"MSI"}
-{"timestamp":"2025-12-01T07:33:46.620Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692c2a38f4919c95296718f3","socketId":"OQTfE9H1HRKp8QuOAAAC"},"pid":17612,"hostname":"MSI"}
-{"timestamp":"2025-12-01T07:33:46.672Z","level":"INFO","message":"User connected","metadata":{"socketId":"K-_5KY2czRXpujjhAAAF"},"pid":17612,"hostname":"MSI"}
-{"timestamp":"2025-12-01T07:33:46.676Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"K-_5KY2czRXpujjhAAAF"},"pid":17612,"hostname":"MSI"}
-{"timestamp":"2025-12-01T07:54:58.128Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692c2a38f4919c95296718f3","socketId":"K-_5KY2czRXpujjhAAAF"},"pid":17612,"hostname":"MSI"}
-{"timestamp":"2025-12-01T07:54:58.647Z","level":"INFO","message":"User connected","metadata":{"socketId":"p9PSOz3df4SAsth5AAAI"},"pid":17612,"hostname":"MSI"}
-{"timestamp":"2025-12-01T07:54:58.649Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"p9PSOz3df4SAsth5AAAI"},"pid":17612,"hostname":"MSI"}
-{"timestamp":"2025-11-23T12:47:45.698Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":17984,"hostname":"Bravo"}
-{"timestamp":"2025-12-01T07:55:11.762Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":17612,"hostname":"MSI"}
-=======
 =======
 {"timestamp":"2025-11-23T12:47:45.698Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":17984,"hostname":"Bravo"}
->>>>>>> origin/ThuanDH30
 {"timestamp":"2025-11-23T12:47:45.778Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":17984,"hostname":"Bravo"}
 {"timestamp":"2025-11-23T12:49:29.011Z","level":"INFO","message":"User connected","metadata":{"socketId":"UJIyIC5G80sUH3fqAAAE"},"pid":17984,"hostname":"Bravo"}
 {"timestamp":"2025-11-23T12:49:29.031Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709d","role":"Department Header","socketId":"UJIyIC5G80sUH3fqAAAE"},"pid":17984,"hostname":"Bravo"}
@@ -5355,40 +5297,6 @@
 {"timestamp":"2025-11-24T08:48:07.507Z","level":"INFO","message":"User connected","metadata":{"socketId":"hx63krA411vTlbqXAAAM"},"pid":16312,"hostname":"Bravo"}
 {"timestamp":"2025-11-24T08:48:07.512Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df7099","role":"System Admin","socketId":"hx63krA411vTlbqXAAAM"},"pid":16312,"hostname":"Bravo"}
 {"timestamp":"2025-11-24T08:48:29.523Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":16312,"hostname":"Bravo"}
-<<<<<<< HEAD
->>>>>>> origin/ThuanDH30
-{"timestamp":"2025-12-01T08:18:18.322Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:18:18.338Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:18:27.944Z","level":"INFO","message":"User connected","metadata":{"socketId":"ymy3OSgP5166QBk9AAAC"},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:18:27.946Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"ymy3OSgP5166QBk9AAAC"},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:18:28.161Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692c2a38f4919c95296718f3","socketId":"ymy3OSgP5166QBk9AAAC"},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:18:28.208Z","level":"INFO","message":"User connected","metadata":{"socketId":"HVCsZQ5Skl4Ap9SeAAAF"},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:18:28.213Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"HVCsZQ5Skl4Ap9SeAAAF"},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:18:35.309Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692c2a38f4919c95296718f3","socketId":"HVCsZQ5Skl4Ap9SeAAAF"},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:18:35.333Z","level":"INFO","message":"User connected","metadata":{"socketId":"WxX9f2xOIw0iIpJkAAAI"},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:18:35.335Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709d","role":"Department Header","socketId":"WxX9f2xOIw0iIpJkAAAI"},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:18:40.984Z","level":"INFO","message":"User connected","metadata":{"socketId":"I0TclE8h2fbfc0-XAAAL"},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:18:40.987Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709d","role":"Department Header","socketId":"I0TclE8h2fbfc0-XAAAL"},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:18:40.989Z","level":"INFO","message":"User connected","metadata":{"socketId":"jovpRtwEb2nD0nmZAAAM"},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:18:40.990Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709d","role":"Department Header","socketId":"jovpRtwEb2nD0nmZAAAM"},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:19:45.432Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709d","socketId":"WxX9f2xOIw0iIpJkAAAI"},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:19:51.159Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709d","socketId":"I0TclE8h2fbfc0-XAAAL"},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:19:51.160Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709d","socketId":"jovpRtwEb2nD0nmZAAAM"},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:20:42.867Z","level":"INFO","message":"User connected","metadata":{"socketId":"yC207YPqMo1aKIi4AAAQ"},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:20:42.869Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709d","role":"Department Header","socketId":"yC207YPqMo1aKIi4AAAQ"},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:21:07.992Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":26596,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:21:12.326Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":27652,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:21:12.342Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":27652,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:21:13.954Z","level":"INFO","message":"User connected","metadata":{"socketId":"nIVM-XpfWcMZdpboAAAB"},"pid":27652,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:21:13.958Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709d","role":"Department Header","socketId":"nIVM-XpfWcMZdpboAAAB"},"pid":27652,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:21:15.900Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709d","socketId":"nIVM-XpfWcMZdpboAAAB"},"pid":27652,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:21:15.919Z","level":"INFO","message":"User connected","metadata":{"socketId":"ekjCHWBrRpThhzkdAAAE"},"pid":27652,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:21:15.921Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"ekjCHWBrRpThhzkdAAAE"},"pid":27652,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:21:16.178Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692c2a38f4919c95296718f3","socketId":"ekjCHWBrRpThhzkdAAAE"},"pid":27652,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:21:16.232Z","level":"INFO","message":"User connected","metadata":{"socketId":"NCYeowKvUlduW60bAAAH"},"pid":27652,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:21:16.234Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692c2a38f4919c95296718f3","role":"Company Admin","socketId":"NCYeowKvUlduW60bAAAH"},"pid":27652,"hostname":"MSI"}
-{"timestamp":"2025-12-01T08:37:18.719Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":27652,"hostname":"MSI"}
-=======
 <<<<<<< HEAD
 {"timestamp":"2025-11-24T08:52:19.037Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":9920,"hostname":"Bravo"}
 {"timestamp":"2025-11-24T08:52:19.125Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":9920,"hostname":"Bravo"}
@@ -5817,6 +5725,7 @@
 {"timestamp":"2025-12-01T08:03:06.944Z","level":"INFO","message":"User connected","metadata":{"socketId":"v5UH6q1-ohluwCQXAAAs"},"pid":16780,"hostname":"Bravo"}
 {"timestamp":"2025-12-01T08:03:06.964Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df7099","role":"System Admin","socketId":"v5UH6q1-ohluwCQXAAAs"},"pid":16780,"hostname":"Bravo"}
 {"timestamp":"2025-12-01T08:37:41.124Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":16780,"hostname":"Bravo"}
+<<<<<<< HEAD
 >>>>>>> origin/ThuanDH30
 {"timestamp":"2025-12-01T08:41:27.833Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":22268,"hostname":"MSI"}
 {"timestamp":"2025-12-01T08:41:27.849Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":22268,"hostname":"MSI"}
@@ -7616,3 +7525,612 @@
 {"timestamp":"2025-12-05T11:50:11.634Z","level":"INFO","message":"Audit event processed","metadata":{"eventType":"system_health_check","eventId":"3511787a-07ed-4a41-a550-ccfb658238c2","action":"unknown","resource":"system:kafka-monitor","timestamp":"2025-12-05T11:50:11.629Z"},"pid":29808,"hostname":"MSI"}
 {"timestamp":"2025-12-05T11:50:41.646Z","level":"INFO","message":"Audit event processed","metadata":{"eventType":"system_health_check","eventId":"7fca2748-a748-4389-8ffe-bf0072cd237b","action":"unknown","resource":"system:kafka-monitor","timestamp":"2025-12-05T11:50:41.642Z"},"pid":29808,"hostname":"MSI"}
 {"timestamp":"2025-12-05T11:50:58.054Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":29808,"hostname":"MSI"}
+=======
+{"timestamp":"2025-12-01T14:53:23.670Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":6200,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T14:53:23.812Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":6200,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T14:56:36.084Z","level":"INFO","message":"User connected","metadata":{"socketId":"wIppXKXM2C16KPp4AAAE"},"pid":6200,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T14:56:36.151Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5b683a815ca4df70a0","role":"Department Manager","socketId":"wIppXKXM2C16KPp4AAAE"},"pid":6200,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T14:56:38.733Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5b683a815ca4df70a0","socketId":"wIppXKXM2C16KPp4AAAE"},"pid":6200,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T14:56:38.809Z","level":"INFO","message":"User connected","metadata":{"socketId":"9ERhL5SdnnDZqSZaAAAH"},"pid":6200,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T14:56:38.814Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5b683a815ca4df70ac","role":"Employee","socketId":"9ERhL5SdnnDZqSZaAAAH"},"pid":6200,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T14:56:57.577Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5b683a815ca4df70ac","socketId":"9ERhL5SdnnDZqSZaAAAH"},"pid":6200,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T14:56:57.621Z","level":"INFO","message":"User connected","metadata":{"socketId":"yZbQGx2-N_65QSTGAAAK"},"pid":6200,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T14:56:57.625Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df7099","role":"System Admin","socketId":"yZbQGx2-N_65QSTGAAAK"},"pid":6200,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T14:56:57.900Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df7099","socketId":"yZbQGx2-N_65QSTGAAAK"},"pid":6200,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T14:56:58.005Z","level":"INFO","message":"User connected","metadata":{"socketId":"Zmxw3jm1jH883MJdAAAN"},"pid":6200,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T14:56:58.011Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df7099","role":"System Admin","socketId":"Zmxw3jm1jH883MJdAAAN"},"pid":6200,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T14:56:59.858Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df7099","socketId":"Zmxw3jm1jH883MJdAAAN"},"pid":6200,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T14:57:06.638Z","level":"INFO","message":"User connected","metadata":{"socketId":"dr9OiFSkYb41YSzQAAAQ"},"pid":6200,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T14:57:06.643Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709d","role":"Department Header","socketId":"dr9OiFSkYb41YSzQAAAQ"},"pid":6200,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:00:06.945Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":6200,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:07:35.213Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:07:35.261Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:09:11.233Z","level":"INFO","message":"User connected","metadata":{"socketId":"Q_CIRG-HyIDr_AfjAAAE"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:09:11.240Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709d","role":"Department Header","socketId":"Q_CIRG-HyIDr_AfjAAAE"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:09:19.769Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709d","socketId":"Q_CIRG-HyIDr_AfjAAAE"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:09:19.813Z","level":"INFO","message":"User connected","metadata":{"socketId":"Gem046vJW6TqFrWdAAAH"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:09:19.816Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709d","role":"Department Header","socketId":"Gem046vJW6TqFrWdAAAH"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:12:08.695Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709d","socketId":"Gem046vJW6TqFrWdAAAH"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:12:11.144Z","level":"INFO","message":"User connected","metadata":{"socketId":"1IBjAkYhtNvGsC89AAAM"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:12:11.157Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709d","role":"Department Header","socketId":"1IBjAkYhtNvGsC89AAAM"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:12:21.693Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709d","socketId":"1IBjAkYhtNvGsC89AAAM"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:12:21.736Z","level":"INFO","message":"User connected","metadata":{"socketId":"d6nGKWG0vpA-X7IuAAAP"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:12:21.741Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"d6nGKWG0vpA-X7IuAAAP"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:12:22.027Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"d6nGKWG0vpA-X7IuAAAP"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:12:22.145Z","level":"INFO","message":"User connected","metadata":{"socketId":"zI_1heqNXkn5tYw-AAAS"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:12:22.149Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"zI_1heqNXkn5tYw-AAAS"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:12:36.913Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"zI_1heqNXkn5tYw-AAAS"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:12:36.959Z","level":"INFO","message":"User connected","metadata":{"socketId":"KfFfQFSSPct4kGIfAAAV"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:12:36.963Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"KfFfQFSSPct4kGIfAAAV"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:12:37.439Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"KfFfQFSSPct4kGIfAAAV"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:12:37.531Z","level":"INFO","message":"User connected","metadata":{"socketId":"BAd3CDdXUMy9GzSyAAAY"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:12:37.534Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"BAd3CDdXUMy9GzSyAAAY"},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:43:57.502Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":4868,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:44:05.505Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:44:05.556Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:44:05.632Z","level":"INFO","message":"User connected","metadata":{"socketId":"2ePQmxaMBcDYOURNAAAB"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:44:05.641Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"2ePQmxaMBcDYOURNAAAB"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:44:26.452Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"2ePQmxaMBcDYOURNAAAB"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:44:28.805Z","level":"INFO","message":"User connected","metadata":{"socketId":"2cueCAQUTw6EEOLOAAAI"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:44:28.810Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"2cueCAQUTw6EEOLOAAAI"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:47:32.954Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"2cueCAQUTw6EEOLOAAAI"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:47:35.186Z","level":"INFO","message":"User connected","metadata":{"socketId":"jd_w6hZgnyFEI-LDAAAO"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:47:35.191Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"jd_w6hZgnyFEI-LDAAAO"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:49:06.669Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"jd_w6hZgnyFEI-LDAAAO"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:49:09.576Z","level":"INFO","message":"User connected","metadata":{"socketId":"8irLcgcAudeW6HAIAAAS"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:49:09.579Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"8irLcgcAudeW6HAIAAAS"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:49:10.499Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"8irLcgcAudeW6HAIAAAS"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:49:10.645Z","level":"INFO","message":"User connected","metadata":{"socketId":"EW82FHlEdld8hQKCAAAV"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:49:10.648Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"EW82FHlEdld8hQKCAAAV"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:54:23.556Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"EW82FHlEdld8hQKCAAAV"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:54:32.862Z","level":"INFO","message":"User connected","metadata":{"socketId":"50GUWEnBrpnXqmivAAAc"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:54:32.877Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"50GUWEnBrpnXqmivAAAc"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:55:24.696Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"50GUWEnBrpnXqmivAAAc"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:55:30.517Z","level":"INFO","message":"User connected","metadata":{"socketId":"W_tp7p8guzig6p_XAAAh"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:55:30.522Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"W_tp7p8guzig6p_XAAAh"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:55:31.331Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"W_tp7p8guzig6p_XAAAh"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:55:31.955Z","level":"INFO","message":"User connected","metadata":{"socketId":"pewM4Ei0ZcTD7eFBAAAk"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:55:31.965Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"pewM4Ei0ZcTD7eFBAAAk"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:55:45.287Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"pewM4Ei0ZcTD7eFBAAAk"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:55:58.708Z","level":"INFO","message":"User connected","metadata":{"socketId":"IFg0BnizCeBlzYuAAAAp"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:55:58.713Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"IFg0BnizCeBlzYuAAAAp"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:55:59.071Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"IFg0BnizCeBlzYuAAAAp"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:55:59.251Z","level":"INFO","message":"User connected","metadata":{"socketId":"L6L3Mwyi6xvdI-25AAAs"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:55:59.289Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"L6L3Mwyi6xvdI-25AAAs"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:56:14.441Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"L6L3Mwyi6xvdI-25AAAs"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:56:21.447Z","level":"INFO","message":"User connected","metadata":{"socketId":"oPPAFTGIOxSF6EfSAAAz"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:56:21.457Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"oPPAFTGIOxSF6EfSAAAz"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:59:05.502Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"oPPAFTGIOxSF6EfSAAAz"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:59:10.779Z","level":"INFO","message":"User connected","metadata":{"socketId":"f-xEX7oI34gAOct9AAA6"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:59:10.790Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"f-xEX7oI34gAOct9AAA6"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:59:25.723Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"f-xEX7oI34gAOct9AAA6"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:59:31.145Z","level":"INFO","message":"User connected","metadata":{"socketId":"9vshlhXrhnzsY3LFAAA_"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:59:31.193Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"9vshlhXrhnzsY3LFAAA_"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:59:31.675Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"9vshlhXrhnzsY3LFAAA_"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:59:32.264Z","level":"INFO","message":"User connected","metadata":{"socketId":"KDZyNbXwBB5SlGn-AABC"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T15:59:32.281Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"KDZyNbXwBB5SlGn-AABC"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:00:43.572Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"KDZyNbXwBB5SlGn-AABC"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:00:43.764Z","level":"INFO","message":"User connected","metadata":{"socketId":"r0kskKCFbya_hkDxAABF"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:00:43.767Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"r0kskKCFbya_hkDxAABF"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:00:44.427Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"r0kskKCFbya_hkDxAABF"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:00:44.532Z","level":"INFO","message":"User connected","metadata":{"socketId":"0OtF7PeQFvaSBj5tAABI"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:00:44.537Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"0OtF7PeQFvaSBj5tAABI"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:00:46.455Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"0OtF7PeQFvaSBj5tAABI"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:00:46.522Z","level":"INFO","message":"User connected","metadata":{"socketId":"I5KagCvM7CXhyjnyAABL"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:00:46.527Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"I5KagCvM7CXhyjnyAABL"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:00:54.670Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"I5KagCvM7CXhyjnyAABL"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:00:57.431Z","level":"INFO","message":"User connected","metadata":{"socketId":"lx8okD2a7UtDF8MrAABP"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:00:57.435Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"lx8okD2a7UtDF8MrAABP"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:00:58.641Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"lx8okD2a7UtDF8MrAABP"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:00:58.794Z","level":"INFO","message":"User connected","metadata":{"socketId":"8CoqsiwQvmZy3R1QAABS"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:00:58.797Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"8CoqsiwQvmZy3R1QAABS"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:01:02.339Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"8CoqsiwQvmZy3R1QAABS"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:01:05.810Z","level":"INFO","message":"User connected","metadata":{"socketId":"hnYcLq-HB31lLKHOAABZ"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:01:05.816Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"hnYcLq-HB31lLKHOAABZ"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:03:16.849Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"hnYcLq-HB31lLKHOAABZ"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:03:20.973Z","level":"INFO","message":"User connected","metadata":{"socketId":"zSdZfe2YxHxCoHdcAABg"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:03:20.978Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"zSdZfe2YxHxCoHdcAABg"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:13:00.469Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"zSdZfe2YxHxCoHdcAABg"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:13:03.404Z","level":"INFO","message":"User connected","metadata":{"socketId":"JrFIWJT6dLruBp4-AABm"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:13:03.413Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"JrFIWJT6dLruBp4-AABm"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:22:52.836Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"JrFIWJT6dLruBp4-AABm"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:22:55.064Z","level":"INFO","message":"User connected","metadata":{"socketId":"-ShQ5plNnfMGtJ13AABt"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:22:55.070Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"-ShQ5plNnfMGtJ13AABt"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:25:08.528Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"-ShQ5plNnfMGtJ13AABt"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:25:10.354Z","level":"INFO","message":"User connected","metadata":{"socketId":"67FTwSdegawttRWvAABx"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:25:10.357Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"67FTwSdegawttRWvAABx"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:25:10.558Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"67FTwSdegawttRWvAABx"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:25:10.659Z","level":"INFO","message":"User connected","metadata":{"socketId":"twZwYH8RT1ATwcXMAAB0"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:25:10.667Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"twZwYH8RT1ATwcXMAAB0"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:28:00.723Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"twZwYH8RT1ATwcXMAAB0"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:30:20.585Z","level":"INFO","message":"User connected","metadata":{"socketId":"7ep3gI4cGD8RVPcDAAB2"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:30:20.591Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"7ep3gI4cGD8RVPcDAAB2"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:30:22.443Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"7ep3gI4cGD8RVPcDAAB2"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:30:24.757Z","level":"INFO","message":"User connected","metadata":{"socketId":"GmQOHVuSyUZSb5wIAAB8"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:30:24.766Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"GmQOHVuSyUZSb5wIAAB8"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:51:16.413Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"GmQOHVuSyUZSb5wIAAB8"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:51:18.980Z","level":"INFO","message":"User connected","metadata":{"socketId":"71K3E72SYaDjkWR4AACA"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:51:18.984Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"71K3E72SYaDjkWR4AACA"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:51:19.951Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"71K3E72SYaDjkWR4AACA"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:51:20.077Z","level":"INFO","message":"User connected","metadata":{"socketId":"w83GiEBAEWj5bumBAACD"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:51:20.080Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"w83GiEBAEWj5bumBAACD"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:52:17.802Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"w83GiEBAEWj5bumBAACD"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:52:20.100Z","level":"INFO","message":"User connected","metadata":{"socketId":"dx6zvfKWO0ujLwVEAACH"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:52:20.103Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"dx6zvfKWO0ujLwVEAACH"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:52:20.560Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"dx6zvfKWO0ujLwVEAACH"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:52:20.724Z","level":"INFO","message":"User connected","metadata":{"socketId":"vQaWb3PniNaSb_QVAACK"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T16:52:20.728Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"vQaWb3PniNaSb_QVAACK"},"pid":16668,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:13:59.870Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":16484,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:13:59.917Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":16484,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:15:11.666Z","level":"INFO","message":"User connected","metadata":{"socketId":"uy4Lvusv08KA9243AAAF"},"pid":16484,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:15:11.676Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"uy4Lvusv08KA9243AAAF"},"pid":16484,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:26:34.624Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"uy4Lvusv08KA9243AAAF"},"pid":16484,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:26:38.226Z","level":"INFO","message":"User connected","metadata":{"socketId":"QrHw8xqFYy_onIP7AAAM"},"pid":16484,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:26:38.230Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"QrHw8xqFYy_onIP7AAAM"},"pid":16484,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:43:37.116Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":19988,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:43:37.166Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":19988,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:44:33.550Z","level":"INFO","message":"User connected","metadata":{"socketId":"GiImB4qXEZ6_47lHAAAG"},"pid":19988,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:44:33.558Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"GiImB4qXEZ6_47lHAAAG"},"pid":19988,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:46:25.945Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"GiImB4qXEZ6_47lHAAAG"},"pid":19988,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:46:26.929Z","level":"INFO","message":"User connected","metadata":{"socketId":"C2VunQQJ1CBfZxayAAAI"},"pid":19988,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:46:26.932Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"C2VunQQJ1CBfZxayAAAI"},"pid":19988,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:46:52.722Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"C2VunQQJ1CBfZxayAAAI"},"pid":19988,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:46:53.683Z","level":"INFO","message":"User connected","metadata":{"socketId":"Q9dekCkdFreqIb6yAAAK"},"pid":19988,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:46:53.687Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"Q9dekCkdFreqIb6yAAAK"},"pid":19988,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:50:20.210Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":19988,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:50:29.103Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":18180,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:50:29.178Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":18180,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:50:29.578Z","level":"INFO","message":"User connected","metadata":{"socketId":"RrB8U2AcOs0-MYetAAAB"},"pid":18180,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:50:29.645Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"RrB8U2AcOs0-MYetAAAB"},"pid":18180,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:50:52.589Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"RrB8U2AcOs0-MYetAAAB"},"pid":18180,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:50:58.661Z","level":"INFO","message":"User connected","metadata":{"socketId":"ZfuAgCfGN0rYgYNiAAAI"},"pid":18180,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:50:58.667Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"ZfuAgCfGN0rYgYNiAAAI"},"pid":18180,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:55:03.373Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":18180,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:55:12.808Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":15252,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:55:12.864Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":15252,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:55:13.263Z","level":"INFO","message":"User connected","metadata":{"socketId":"O1YHTRoHvUtq6TRmAAAB"},"pid":15252,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:55:13.270Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"O1YHTRoHvUtq6TRmAAAB"},"pid":15252,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:55:17.126Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"O1YHTRoHvUtq6TRmAAAB"},"pid":15252,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:55:22.377Z","level":"INFO","message":"User connected","metadata":{"socketId":"c1x94VHqKHQpqR-QAAAG"},"pid":15252,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:55:22.384Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"c1x94VHqKHQpqR-QAAAG"},"pid":15252,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:55:23.410Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"c1x94VHqKHQpqR-QAAAG"},"pid":15252,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:55:24.611Z","level":"INFO","message":"User connected","metadata":{"socketId":"gQHBtsc2P0gJQtMQAAAJ"},"pid":15252,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T17:55:24.621Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"gQHBtsc2P0gJQtMQAAAJ"},"pid":15252,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:02:22.045Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":15252,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:02:37.341Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":2512,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:02:37.389Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":2512,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:02:37.585Z","level":"INFO","message":"User connected","metadata":{"socketId":"WpzAakXk-IQ0cqBeAAAB"},"pid":2512,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:02:37.592Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"WpzAakXk-IQ0cqBeAAAB"},"pid":2512,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:07:40.020Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":2512,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:07:49.069Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":19860,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:07:49.115Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":19860,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:07:49.281Z","level":"INFO","message":"User connected","metadata":{"socketId":"eRLrS05_VagVjT8hAAAB"},"pid":19860,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:07:49.291Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"eRLrS05_VagVjT8hAAAB"},"pid":19860,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:08:21.068Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"eRLrS05_VagVjT8hAAAB"},"pid":19860,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:08:26.817Z","level":"INFO","message":"User connected","metadata":{"socketId":"m4Wv6-gIstgGrFsGAAAH"},"pid":19860,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:08:26.822Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"m4Wv6-gIstgGrFsGAAAH"},"pid":19860,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:11:52.935Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"m4Wv6-gIstgGrFsGAAAH"},"pid":19860,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:11:54.775Z","level":"INFO","message":"User connected","metadata":{"socketId":"noSX3Smt5_ecJ1Z7AAAJ"},"pid":19860,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:11:54.780Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"noSX3Smt5_ecJ1Z7AAAJ"},"pid":19860,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:13:11.640Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"noSX3Smt5_ecJ1Z7AAAJ"},"pid":19860,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:13:12.364Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":19860,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:13:21.897Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":15800,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:13:21.950Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":15800,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:13:32.279Z","level":"INFO","message":"User connected","metadata":{"socketId":"ViqeLwyhjPjuyBNYAAAB"},"pid":15800,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:13:32.287Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"ViqeLwyhjPjuyBNYAAAB"},"pid":15800,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:21:56.130Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"ViqeLwyhjPjuyBNYAAAB"},"pid":15800,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:22:09.249Z","level":"INFO","message":"User connected","metadata":{"socketId":"5iGcM2DjWROE2RiZAAAM"},"pid":15800,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:22:09.254Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"5iGcM2DjWROE2RiZAAAM"},"pid":15800,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:33:02.583Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":15800,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:33:10.783Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":5624,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:33:10.827Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":5624,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:33:11.070Z","level":"INFO","message":"User connected","metadata":{"socketId":"AeDSiZe5jPHH7Tc-AAAB"},"pid":5624,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:33:11.080Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"AeDSiZe5jPHH7Tc-AAAB"},"pid":5624,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:33:14.043Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"AeDSiZe5jPHH7Tc-AAAB"},"pid":5624,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:33:19.150Z","level":"INFO","message":"User connected","metadata":{"socketId":"bf9Rt6iPLcFVX_10AAAI"},"pid":5624,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:33:19.158Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"bf9Rt6iPLcFVX_10AAAI"},"pid":5624,"hostname":"Bravo"}
+{"timestamp":"2025-12-01T18:33:28.213Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"bf9Rt6iPLcFVX_10AAAI"},"pid":5624,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:18:29.321Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:18:29.460Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:19:30.749Z","level":"INFO","message":"User connected","metadata":{"socketId":"Qbyy_zEsOtHxSWUAAAAC"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:19:30.950Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"Qbyy_zEsOtHxSWUAAAAC"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:19:31.622Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"Qbyy_zEsOtHxSWUAAAAC"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:19:38.702Z","level":"INFO","message":"User connected","metadata":{"socketId":"d3WV-l-fxRCrv3hKAAAF"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:19:38.855Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709b","role":"Company Admin","socketId":"d3WV-l-fxRCrv3hKAAAF"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:19:53.576Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709b","socketId":"d3WV-l-fxRCrv3hKAAAF"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:19:54.788Z","level":"INFO","message":"User connected","metadata":{"socketId":"xcmYw-zMA0C5XWjUAAAI"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:19:55.044Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709d","role":"Department Header","socketId":"xcmYw-zMA0C5XWjUAAAI"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:26:37.576Z","level":"INFO","message":"User connected","metadata":{"socketId":"sI276v4-Xd3MaS3tAAAM"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:26:37.622Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709d","role":"Department Header","socketId":"sI276v4-Xd3MaS3tAAAM"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:26:40.507Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709d","socketId":"xcmYw-zMA0C5XWjUAAAI"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:27:12.841Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709d","socketId":"sI276v4-Xd3MaS3tAAAM"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:38:58.149Z","level":"INFO","message":"User connected","metadata":{"socketId":"biYwrjoGeoBZ2sSGAAAR"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:38:58.248Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709d","role":"Department Header","socketId":"biYwrjoGeoBZ2sSGAAAR"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:38:59.108Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709d","socketId":"biYwrjoGeoBZ2sSGAAAR"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:39:01.184Z","level":"INFO","message":"User connected","metadata":{"socketId":"y57EhZVa4C23KQl_AAAV"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:39:01.265Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"6922ed5a683a815ca4df709d","role":"Department Header","socketId":"y57EhZVa4C23KQl_AAAV"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:39:34.292Z","level":"INFO","message":"User disconnected","metadata":{"userId":"6922ed5a683a815ca4df709d","socketId":"y57EhZVa4C23KQl_AAAV"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:39:34.641Z","level":"INFO","message":"User connected","metadata":{"socketId":"NVyKY33dh2x2rXqeAAAY"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:39:34.849Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692e5f20774cba40dc300bd1","role":"Company Admin","socketId":"NVyKY33dh2x2rXqeAAAY"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:39:35.329Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692e5f20774cba40dc300bd1","socketId":"NVyKY33dh2x2rXqeAAAY"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:39:35.709Z","level":"INFO","message":"User connected","metadata":{"socketId":"jVOZSjIpTkc1diFKAAAb"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:39:35.722Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692e5f20774cba40dc300bd1","role":"Company Admin","socketId":"jVOZSjIpTkc1diFKAAAb"},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:48:34.252Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":17584,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:48:48.695Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":12632,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:48:48.785Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":12632,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:48:48.986Z","level":"INFO","message":"User connected","metadata":{"socketId":"RQyOO4g4dNSpJDEhAAAB"},"pid":12632,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T03:48:49.002Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692e5f20774cba40dc300bd1","role":"Company Admin","socketId":"RQyOO4g4dNSpJDEhAAAB"},"pid":12632,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:01:32.906Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":12632,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:01:50.020Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:01:50.095Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:01:52.291Z","level":"INFO","message":"User connected","metadata":{"socketId":"jK39Sj2SCc-NSSFDAAAB"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:01:52.301Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692e5f20774cba40dc300bd1","role":"Company Admin","socketId":"jK39Sj2SCc-NSSFDAAAB"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:02:06.640Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692e5f20774cba40dc300bd1","socketId":"jK39Sj2SCc-NSSFDAAAB"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:04:55.624Z","level":"INFO","message":"User connected","metadata":{"socketId":"mDSJ9lklD1qpydpdAAAG"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:04:56.934Z","level":"INFO","message":"User connected","metadata":{"socketId":"qRf1CFMNB7eb55IWAAAI"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:04:57.991Z","level":"INFO","message":"User connected","metadata":{"socketId":"GherRkvEu0KG6FtVAAAK"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:04:59.129Z","level":"INFO","message":"User connected","metadata":{"socketId":"47u88syoK8FL3s_SAAAM"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:00.219Z","level":"INFO","message":"User connected","metadata":{"socketId":"iKhXwIXuGRRwSoDgAAAO"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:01.327Z","level":"INFO","message":"User connected","metadata":{"socketId":"ybfbiN0nxFKBZvWYAAAQ"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:02.417Z","level":"INFO","message":"User connected","metadata":{"socketId":"LvzEZQYKinGAtFrGAAAS"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:03.536Z","level":"INFO","message":"User connected","metadata":{"socketId":"9v7uM_wkW1ajRy9xAAAU"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:04.637Z","level":"INFO","message":"User connected","metadata":{"socketId":"_d8b0UL-ru9NVr30AAAW"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:05.803Z","level":"INFO","message":"User connected","metadata":{"socketId":"zlDzxilbFmPmnlL5AAAY"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:06.943Z","level":"INFO","message":"User connected","metadata":{"socketId":"mqvcFa57Q-zBd4raAAAa"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:08.066Z","level":"INFO","message":"User connected","metadata":{"socketId":"gHwknfFfZfM6BbwhAAAc"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:11.919Z","level":"INFO","message":"User connected","metadata":{"socketId":"DW9pKBWYdiQckupFAAAh"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:13.011Z","level":"INFO","message":"User connected","metadata":{"socketId":"IyZ2WxlBfXfkmLo_AAAj"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:14.055Z","level":"INFO","message":"User connected","metadata":{"socketId":"NTuOrcF4we_z4H4LAAAl"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:15.127Z","level":"INFO","message":"User connected","metadata":{"socketId":"XvQBwP-AitllKbtoAAAn"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:16.256Z","level":"INFO","message":"User connected","metadata":{"socketId":"5Ar6XmEBl1ppvxi2AAAp"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:18.235Z","level":"INFO","message":"User connected","metadata":{"socketId":"c7Azm5D3g-1zGDrEAAAr"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:19.515Z","level":"INFO","message":"User connected","metadata":{"socketId":"eMD-GqiURpt2bWdEAAAt"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:20.626Z","level":"INFO","message":"User connected","metadata":{"socketId":"vhzmkRw2qznP52u-AAAv"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:21.690Z","level":"INFO","message":"User connected","metadata":{"socketId":"9I3DYOiwG4X-rShoAAAx"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:22.751Z","level":"INFO","message":"User connected","metadata":{"socketId":"MwZc4UfzudBpPl7fAAAz"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:23.934Z","level":"INFO","message":"User connected","metadata":{"socketId":"MSSYaGUwBtLpy3YlAAA1"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:25.186Z","level":"INFO","message":"User connected","metadata":{"socketId":"EMpKdpPobsOA7MBmAAA3"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:26.400Z","level":"INFO","message":"User connected","metadata":{"socketId":"FpnUH7tFxpAupXPpAAA5"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:27.486Z","level":"INFO","message":"User connected","metadata":{"socketId":"NXCBgSjL4stB7wscAAA8"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:27.498Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692e652fb7b865c1e6d2737a","role":"Company Admin","socketId":"NXCBgSjL4stB7wscAAA8"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:28.563Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692e652fb7b865c1e6d2737a","socketId":"NXCBgSjL4stB7wscAAA8"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:28.916Z","level":"INFO","message":"User connected","metadata":{"socketId":"T9BJ0zNo_Tyw2mHsAAA_"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:28.927Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692e652fb7b865c1e6d2737a","role":"Company Admin","socketId":"T9BJ0zNo_Tyw2mHsAAA_"},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T04:05:54.015Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":1808,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T12:50:38.860Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":3100,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T12:50:39.002Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":3100,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T12:55:47.291Z","level":"INFO","message":"User connected","metadata":{"socketId":"p7Rj07HtrlXXzDMfAAAG"},"pid":3100,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T12:55:47.304Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692e652fb7b865c1e6d2737a","role":"Company Admin","socketId":"p7Rj07HtrlXXzDMfAAAG"},"pid":3100,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T12:58:57.359Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":3100,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T12:59:23.180Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":23592,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T12:59:23.345Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":23592,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T12:59:26.220Z","level":"INFO","message":"User connected","metadata":{"socketId":"MtlLg2KWt-FeNn8QAAAB"},"pid":23592,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T12:59:26.231Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692e652fb7b865c1e6d2737a","role":"Company Admin","socketId":"MtlLg2KWt-FeNn8QAAAB"},"pid":23592,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T13:05:15.876Z","level":"INFO","message":"Analytics event processed","metadata":{"eventType":"user_deleted","eventId":"606ba987-e71c-416e-97bc-0b5567eddff4","timestamp":"2025-12-02T13:05:14.758Z"},"pid":23592,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T13:12:59.834Z","level":"INFO","message":"User connected","metadata":{"socketId":"o95KneZurHgfPWLCAAAE"},"pid":23592,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T13:12:59.841Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692ee57777c87a9067109687","role":"Company Admin","socketId":"o95KneZurHgfPWLCAAAE"},"pid":23592,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T13:13:00.352Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692ee57777c87a9067109687","socketId":"o95KneZurHgfPWLCAAAE"},"pid":23592,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T13:13:00.559Z","level":"INFO","message":"User connected","metadata":{"socketId":"hHTGgMaGVAy-HJllAAAH"},"pid":23592,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T13:13:00.569Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692ee57777c87a9067109687","role":"Company Admin","socketId":"hHTGgMaGVAy-HJllAAAH"},"pid":23592,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T13:37:27.277Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":23592,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T13:46:50.040Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":11616,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T13:46:50.123Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":11616,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T13:48:50.979Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":11616,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:21:19.741Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":13604,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:21:19.904Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":13604,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:22:02.005Z","level":"INFO","message":"User connected","metadata":{"socketId":"bBuXSABsbSCIHFxJAAAE"},"pid":13604,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:22:02.022Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692ee57777c87a9067109687","role":"Company Admin","socketId":"bBuXSABsbSCIHFxJAAAE"},"pid":13604,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:29:43.990Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":13604,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:29:57.348Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":11504,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:29:57.545Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":11504,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:29:57.826Z","level":"INFO","message":"User connected","metadata":{"socketId":"FVkKzUftrmxc8YlyAAAB"},"pid":11504,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:29:57.933Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692ee57777c87a9067109687","role":"Company Admin","socketId":"FVkKzUftrmxc8YlyAAAB"},"pid":11504,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:38:02.525Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692ee57777c87a9067109687","socketId":"FVkKzUftrmxc8YlyAAAB"},"pid":11504,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:38:08.665Z","level":"INFO","message":"User connected","metadata":{"socketId":"sBbKg_3xzp9dpy3LAAAF"},"pid":11504,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:38:08.858Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692ee57777c87a9067109687","role":"Company Admin","socketId":"sBbKg_3xzp9dpy3LAAAF"},"pid":11504,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:45:37.414Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692ee57777c87a9067109687","socketId":"sBbKg_3xzp9dpy3LAAAF"},"pid":11504,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:45:37.532Z","level":"INFO","message":"User connected","metadata":{"socketId":"40R6BONav3Qk2wYtAAAI"},"pid":11504,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:45:37.544Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f16645198d064b9cbd9c2","role":"System Admin","socketId":"40R6BONav3Qk2wYtAAAI"},"pid":11504,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:45:38.009Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f16645198d064b9cbd9c2","socketId":"40R6BONav3Qk2wYtAAAI"},"pid":11504,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:45:38.351Z","level":"INFO","message":"User connected","metadata":{"socketId":"7Mevj7G42UWF3UjVAAAL"},"pid":11504,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:45:38.359Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f16645198d064b9cbd9c2","role":"System Admin","socketId":"7Mevj7G42UWF3UjVAAAL"},"pid":11504,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:49:41.628Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":11504,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:49:52.491Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:49:52.590Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:49:57.204Z","level":"INFO","message":"User connected","metadata":{"socketId":"PE_dcUFzPWifFO1rAAAB"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:49:57.217Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f16645198d064b9cbd9c2","role":"System Admin","socketId":"PE_dcUFzPWifFO1rAAAB"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:50:04.232Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f16645198d064b9cbd9c2","socketId":"PE_dcUFzPWifFO1rAAAB"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:50:08.690Z","level":"INFO","message":"User connected","metadata":{"socketId":"lT9dfLRfxXk35fzSAAAI"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:50:08.725Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f16645198d064b9cbd9c2","role":"System Admin","socketId":"lT9dfLRfxXk35fzSAAAI"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:52:29.030Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f16645198d064b9cbd9c2","socketId":"lT9dfLRfxXk35fzSAAAI"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:52:34.511Z","level":"INFO","message":"User connected","metadata":{"socketId":"9rN9WYkn8NBzy2Y_AAAP"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:52:34.529Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f16645198d064b9cbd9c2","role":"System Admin","socketId":"9rN9WYkn8NBzy2Y_AAAP"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:53:01.287Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f16645198d064b9cbd9c2","socketId":"9rN9WYkn8NBzy2Y_AAAP"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:53:07.163Z","level":"INFO","message":"User connected","metadata":{"socketId":"u-tXrdUngfjOHK6PAAAW"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:53:07.269Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f16645198d064b9cbd9c2","role":"System Admin","socketId":"u-tXrdUngfjOHK6PAAAW"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:55:40.659Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f16645198d064b9cbd9c2","socketId":"u-tXrdUngfjOHK6PAAAW"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:55:47.716Z","level":"INFO","message":"User connected","metadata":{"socketId":"PD6lZV-XLfJ-F1qrAAAd"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:55:47.739Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f16645198d064b9cbd9c2","role":"System Admin","socketId":"PD6lZV-XLfJ-F1qrAAAd"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:57:16.370Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f16645198d064b9cbd9c2","socketId":"PD6lZV-XLfJ-F1qrAAAd"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:59:38.944Z","level":"INFO","message":"User connected","metadata":{"socketId":"XI6vNFkWGD_QiPcfAAAg"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:59:38.949Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"XI6vNFkWGD_QiPcfAAAg"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:59:39.462Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"XI6vNFkWGD_QiPcfAAAg"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:59:39.757Z","level":"INFO","message":"User connected","metadata":{"socketId":"gZ5e1bdg-lqwOVFKAAAj"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T16:59:39.766Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"gZ5e1bdg-lqwOVFKAAAj"},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T17:03:20.678Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":17300,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T17:07:13.018Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":19432,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T17:07:13.081Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":19432,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T17:07:27.858Z","level":"INFO","message":"User connected","metadata":{"socketId":"FDay8adNbkx8WuyNAAAF"},"pid":19432,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T17:07:27.871Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"FDay8adNbkx8WuyNAAAF"},"pid":19432,"hostname":"Bravo"}
+{"timestamp":"2025-12-02T17:12:15.027Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"FDay8adNbkx8WuyNAAAF"},"pid":19432,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T04:00:38.736Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":10412,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T04:00:38.852Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":10412,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T04:01:08.306Z","level":"INFO","message":"User connected","metadata":{"socketId":"3XfsJfXdFOec0ftHAAAE"},"pid":10412,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T04:01:08.319Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"3XfsJfXdFOec0ftHAAAE"},"pid":10412,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T04:01:27.792Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"3XfsJfXdFOec0ftHAAAE"},"pid":10412,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T04:01:27.868Z","level":"INFO","message":"User connected","metadata":{"socketId":"Auxt7LpZmm8WtZ3nAAAH"},"pid":10412,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T04:01:27.873Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"Auxt7LpZmm8WtZ3nAAAH"},"pid":10412,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T04:01:28.279Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"Auxt7LpZmm8WtZ3nAAAH"},"pid":10412,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T04:01:28.482Z","level":"INFO","message":"User connected","metadata":{"socketId":"J8UO4PcFgkyFrQKZAAAK"},"pid":10412,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T04:01:28.488Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"J8UO4PcFgkyFrQKZAAAK"},"pid":10412,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T04:36:49.102Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"J8UO4PcFgkyFrQKZAAAK"},"pid":10412,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T04:57:45.386Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":10412,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T05:00:35.404Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":10760,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T05:00:35.496Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":10760,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T05:51:34.739Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T05:51:34.824Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T05:58:09.999Z","level":"INFO","message":"User connected","metadata":{"socketId":"_PtqhrUxPW1TPLzsAAAE"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T05:58:10.010Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"_PtqhrUxPW1TPLzsAAAE"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T05:58:18.932Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"_PtqhrUxPW1TPLzsAAAE"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T05:58:19.021Z","level":"INFO","message":"User connected","metadata":{"socketId":"e_Pf-BBwpgEVmpSlAAAH"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T05:58:19.029Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"e_Pf-BBwpgEVmpSlAAAH"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T05:58:19.525Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"e_Pf-BBwpgEVmpSlAAAH"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T05:58:19.787Z","level":"INFO","message":"User connected","metadata":{"socketId":"ioeNT0Nwss1MiRzRAAAK"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T05:58:19.794Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"ioeNT0Nwss1MiRzRAAAK"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T05:59:04.396Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"ioeNT0Nwss1MiRzRAAAK"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T05:59:08.603Z","level":"INFO","message":"User connected","metadata":{"socketId":"NcM9U2SLwtoh4mndAAAR"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T05:59:08.610Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"NcM9U2SLwtoh4mndAAAR"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:07:52.828Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"NcM9U2SLwtoh4mndAAAR"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:08:08.157Z","level":"INFO","message":"User connected","metadata":{"socketId":"glOWS0_djJzA6p84AAAW"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:08:08.162Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"glOWS0_djJzA6p84AAAW"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:08:08.560Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"glOWS0_djJzA6p84AAAW"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:08:08.728Z","level":"INFO","message":"User connected","metadata":{"socketId":"cN6AfRrWaoQOm-XAAAAZ"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:08:08.736Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"cN6AfRrWaoQOm-XAAAAZ"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:08:32.405Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"cN6AfRrWaoQOm-XAAAAZ"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:29:58.849Z","level":"INFO","message":"User connected","metadata":{"socketId":"5uCmQJUmhEv4YT_9AAAb"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:29:58.853Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"5uCmQJUmhEv4YT_9AAAb"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:30:32.220Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"5uCmQJUmhEv4YT_9AAAb"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:30:35.449Z","level":"INFO","message":"User connected","metadata":{"socketId":"tt9arBfswcemX-P8AAAg"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:30:35.454Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"tt9arBfswcemX-P8AAAg"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:30:36.029Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"tt9arBfswcemX-P8AAAg"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:30:36.269Z","level":"INFO","message":"User connected","metadata":{"socketId":"YNnOEwUoO0AmxZovAAAj"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:30:36.327Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"YNnOEwUoO0AmxZovAAAj"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:33:01.574Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"YNnOEwUoO0AmxZovAAAj"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:33:03.504Z","level":"INFO","message":"User connected","metadata":{"socketId":"f4jKkLMJ6tlPXxGtAAAo"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:33:03.508Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"f4jKkLMJ6tlPXxGtAAAo"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:33:03.936Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"f4jKkLMJ6tlPXxGtAAAo"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:33:04.076Z","level":"INFO","message":"User connected","metadata":{"socketId":"AB5fkhisbURUHwA-AAAr"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:33:04.085Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"AB5fkhisbURUHwA-AAAr"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:34:22.354Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"AB5fkhisbURUHwA-AAAr"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:36:35.401Z","level":"INFO","message":"User connected","metadata":{"socketId":"8kbhhNKCaxT5K7t6AAAv"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:36:35.406Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"8kbhhNKCaxT5K7t6AAAv"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:36:36.067Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"8kbhhNKCaxT5K7t6AAAv"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:36:36.269Z","level":"INFO","message":"User connected","metadata":{"socketId":"FLx3ephCTDoIOzq5AAAy"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:36:36.273Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"FLx3ephCTDoIOzq5AAAy"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:46:51.759Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"FLx3ephCTDoIOzq5AAAy"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:46:52.923Z","level":"INFO","message":"User connected","metadata":{"socketId":"sksZeOBRQ0W-ocLJAAA2"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:46:52.926Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"sksZeOBRQ0W-ocLJAAA2"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:46:53.269Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"sksZeOBRQ0W-ocLJAAA2"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:46:53.404Z","level":"INFO","message":"User connected","metadata":{"socketId":"fLC6RX6ESIUc-vjwAAA5"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:46:53.428Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"fLC6RX6ESIUc-vjwAAA5"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:47:43.212Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"fLC6RX6ESIUc-vjwAAA5"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:47:43.245Z","level":"INFO","message":"User connected","metadata":{"socketId":"IRmkBJ7TINeQ_EfAAAA8"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:47:43.248Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"IRmkBJ7TINeQ_EfAAAA8"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:47:43.511Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"IRmkBJ7TINeQ_EfAAAA8"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:47:43.655Z","level":"INFO","message":"User connected","metadata":{"socketId":"Igs9-cROPCRu4SP7AAA_"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:47:43.660Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"Igs9-cROPCRu4SP7AAA_"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:49:00.613Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"Igs9-cROPCRu4SP7AAA_"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:49:01.982Z","level":"INFO","message":"User connected","metadata":{"socketId":"rHy37-2NkL0tiouKAABD"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:49:01.989Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"rHy37-2NkL0tiouKAABD"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:49:02.232Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"rHy37-2NkL0tiouKAABD"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:49:02.342Z","level":"INFO","message":"User connected","metadata":{"socketId":"X6GhqncvmCZupkFtAABG"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:49:02.346Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"X6GhqncvmCZupkFtAABG"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:49:06.196Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"X6GhqncvmCZupkFtAABG"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:49:06.338Z","level":"INFO","message":"User connected","metadata":{"socketId":"rZhlND4i-mdqCraWAABJ"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:49:06.341Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"rZhlND4i-mdqCraWAABJ"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:49:20.980Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"rZhlND4i-mdqCraWAABJ"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:49:22.113Z","level":"INFO","message":"User connected","metadata":{"socketId":"5X35mkAM8Lkp5HZCAABN"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:49:22.117Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"5X35mkAM8Lkp5HZCAABN"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:49:22.328Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"5X35mkAM8Lkp5HZCAABN"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:49:22.403Z","level":"INFO","message":"User connected","metadata":{"socketId":"v6jayw2FWdETap9lAABQ"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:49:22.409Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"v6jayw2FWdETap9lAABQ"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:53:40.274Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"v6jayw2FWdETap9lAABQ"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:53:42.555Z","level":"INFO","message":"User connected","metadata":{"socketId":"zLuv-OYEg7VxK-yyAABV"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:53:42.560Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"zLuv-OYEg7VxK-yyAABV"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:53:43.590Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"zLuv-OYEg7VxK-yyAABV"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:53:43.863Z","level":"INFO","message":"User connected","metadata":{"socketId":"KvpQtQjTMjlXqzLsAABY"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T06:53:43.867Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"KvpQtQjTMjlXqzLsAABY"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:03:09.464Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"KvpQtQjTMjlXqzLsAABY"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:03:45.652Z","level":"INFO","message":"User connected","metadata":{"socketId":"WDvscmirAkGbYltaAABd"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:03:45.658Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"WDvscmirAkGbYltaAABd"},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:04:36.379Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":2372,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:05:54.749Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:05:54.849Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:06:01.975Z","level":"INFO","message":"User connected","metadata":{"socketId":"QQXLJiJ46kdKs52UAAAD"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:06:01.986Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"QQXLJiJ46kdKs52UAAAD"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:06:02.494Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"QQXLJiJ46kdKs52UAAAD"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:06:02.847Z","level":"INFO","message":"User connected","metadata":{"socketId":"APQrnxIIaFU833H6AAAG"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:06:02.853Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"APQrnxIIaFU833H6AAAG"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:07:44.480Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"APQrnxIIaFU833H6AAAG"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:07:45.700Z","level":"INFO","message":"User connected","metadata":{"socketId":"GdBTYBMIyixVR8NlAAAL"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:07:45.706Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"GdBTYBMIyixVR8NlAAAL"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:07:46.226Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"GdBTYBMIyixVR8NlAAAL"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:07:46.609Z","level":"INFO","message":"User connected","metadata":{"socketId":"LtNLJLo1d1YH6IzSAAAO"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:07:46.617Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"LtNLJLo1d1YH6IzSAAAO"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:14:33.546Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"LtNLJLo1d1YH6IzSAAAO"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:14:35.080Z","level":"INFO","message":"User connected","metadata":{"socketId":"4VfSw-g3VuMCGNf5AAAT"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:14:35.088Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"4VfSw-g3VuMCGNf5AAAT"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:14:35.616Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"4VfSw-g3VuMCGNf5AAAT"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:14:35.919Z","level":"INFO","message":"User connected","metadata":{"socketId":"stPqNedxJCr9cQLmAAAW"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:14:35.925Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"stPqNedxJCr9cQLmAAAW"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:20:38.916Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"stPqNedxJCr9cQLmAAAW"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:20:42.366Z","level":"INFO","message":"User connected","metadata":{"socketId":"g_k7ejMtVtoqrDG0AAAb"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:20:42.371Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"g_k7ejMtVtoqrDG0AAAb"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:20:43.075Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"g_k7ejMtVtoqrDG0AAAb"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:20:43.391Z","level":"INFO","message":"User connected","metadata":{"socketId":"dzVcJhM1H3jGncrZAAAe"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:20:43.396Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"dzVcJhM1H3jGncrZAAAe"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:26:01.902Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"dzVcJhM1H3jGncrZAAAe"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:26:07.299Z","level":"INFO","message":"User connected","metadata":{"socketId":"t0BmHqYLNCw_hXiZAAAl"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:26:07.303Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"t0BmHqYLNCw_hXiZAAAl"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:30:57.687Z","level":"INFO","message":"User connected","metadata":{"socketId":"Qw2XgotpulcZVTs9AAAo"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:30:57.690Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692fe64ea505fa8c97485c4f","role":"Department Manager","socketId":"Qw2XgotpulcZVTs9AAAo"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:31:57.368Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692fe64ea505fa8c97485c4f","socketId":"Qw2XgotpulcZVTs9AAAo"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:32:14.144Z","level":"INFO","message":"User connected","metadata":{"socketId":"t3iEpXQNNlyDJl1oAAAt"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:32:14.148Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692fe64ea505fa8c97485c4f","role":"Department Manager","socketId":"t3iEpXQNNlyDJl1oAAAt"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:34:16.911Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692fe64ea505fa8c97485c4f","socketId":"t3iEpXQNNlyDJl1oAAAt"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:36:01.233Z","level":"INFO","message":"User connected","metadata":{"socketId":"DoeRd_y8-4LbvDq-AAAy"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:36:01.237Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692fe64ea505fa8c97485c4f","role":"Department Manager","socketId":"DoeRd_y8-4LbvDq-AAAy"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:37:48.364Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692fe64ea505fa8c97485c4f","socketId":"DoeRd_y8-4LbvDq-AAAy"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:37:51.586Z","level":"INFO","message":"User connected","metadata":{"socketId":"1_7__AfmhLeZfcNlAAA3"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:37:51.615Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692fe64ea505fa8c97485c4f","role":"Department Manager","socketId":"1_7__AfmhLeZfcNlAAA3"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:37:57.146Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692fe64ea505fa8c97485c4f","socketId":"1_7__AfmhLeZfcNlAAA3"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:37:57.230Z","level":"INFO","message":"User connected","metadata":{"socketId":"4YG8oduU2bYjChzIAAA6"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:37:57.236Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"4YG8oduU2bYjChzIAAA6"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:37:57.590Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"4YG8oduU2bYjChzIAAA6"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:37:57.891Z","level":"INFO","message":"User connected","metadata":{"socketId":"fkKYGzH4-j8zWyltAAA9"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:37:57.900Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"fkKYGzH4-j8zWyltAAA9"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:38:06.034Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"fkKYGzH4-j8zWyltAAA9"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:41:24.897Z","level":"INFO","message":"User connected","metadata":{"socketId":"ZBwVRgIglWcJCKFXAABA"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:41:24.901Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692fe855a505fa8c97485dac","role":"Company Admin","socketId":"ZBwVRgIglWcJCKFXAABA"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:41:25.184Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692fe855a505fa8c97485dac","socketId":"ZBwVRgIglWcJCKFXAABA"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:41:25.426Z","level":"INFO","message":"User connected","metadata":{"socketId":"4SNlnykEr0sIb60hAABD"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:41:25.432Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692fe855a505fa8c97485dac","role":"Company Admin","socketId":"4SNlnykEr0sIb60hAABD"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:46:58.428Z","level":"INFO","message":"User connected","metadata":{"socketId":"SO7eJUjahoomQ7lEAABI"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:46:58.432Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692fe855a505fa8c97485dac","role":"Company Admin","socketId":"SO7eJUjahoomQ7lEAABI"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:47:17.148Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692fe855a505fa8c97485dac","socketId":"SO7eJUjahoomQ7lEAABI"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:47:17.193Z","level":"INFO","message":"User connected","metadata":{"socketId":"pvXUK4RhrQxTy2zVAABL"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:47:17.196Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692fea6aa505fa8c9748603c","role":"Department Manager","socketId":"pvXUK4RhrQxTy2zVAABL"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:54:21.890Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692fea6aa505fa8c9748603c","socketId":"pvXUK4RhrQxTy2zVAABL"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T07:54:29.496Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692fe855a505fa8c97485dac","socketId":"4SNlnykEr0sIb60hAABD"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:01:06.851Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"t0BmHqYLNCw_hXiZAAAl"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:01:08.045Z","level":"INFO","message":"User connected","metadata":{"socketId":"MDtei8Z5Re2nFn-3AABQ"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:01:08.049Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"MDtei8Z5Re2nFn-3AABQ"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:01:08.783Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"MDtei8Z5Re2nFn-3AABQ"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:01:09.081Z","level":"INFO","message":"User connected","metadata":{"socketId":"XkbhOopL-CQrV9mjAABT"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:01:09.092Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"XkbhOopL-CQrV9mjAABT"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:01:18.343Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"XkbhOopL-CQrV9mjAABT"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:01:19.221Z","level":"INFO","message":"User connected","metadata":{"socketId":"3B5ZHLhr1XbvdmVZAABX"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:01:19.225Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"3B5ZHLhr1XbvdmVZAABX"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:01:19.428Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"3B5ZHLhr1XbvdmVZAABX"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:01:19.520Z","level":"INFO","message":"User connected","metadata":{"socketId":"5QxeeS7kVGsgDM3sAABa"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:01:19.523Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"5QxeeS7kVGsgDM3sAABa"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:02:30.222Z","level":"INFO","message":"User connected","metadata":{"socketId":"iPjxzb5ZM5eRrPVSAABd"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:02:30.225Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692fe64ea505fa8c97485c4f","role":"Department Manager","socketId":"iPjxzb5ZM5eRrPVSAABd"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:02:32.628Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"5QxeeS7kVGsgDM3sAABa"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:02:33.616Z","level":"INFO","message":"User connected","metadata":{"socketId":"lziFS_z0r1syPPiXAABh"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:02:33.620Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"lziFS_z0r1syPPiXAABh"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:02:34.003Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"lziFS_z0r1syPPiXAABh"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:02:34.178Z","level":"INFO","message":"User connected","metadata":{"socketId":"j5PFYO639DcmKjx2AABk"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:02:34.182Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"j5PFYO639DcmKjx2AABk"},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:03:34.677Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":18156,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:06:11.754Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":17232,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:06:11.804Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":17232,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:06:42.572Z","level":"INFO","message":"User connected","metadata":{"socketId":"6DisNh8Ant0W2jDeAAAD"},"pid":17232,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:06:42.579Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692fe64ea505fa8c97485c4f","role":"Department Manager","socketId":"6DisNh8Ant0W2jDeAAAD"},"pid":17232,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:06:48.622Z","level":"INFO","message":"User connected","metadata":{"socketId":"V8WYTSgGUI9-7h9NAAAI"},"pid":17232,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:06:48.629Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"V8WYTSgGUI9-7h9NAAAI"},"pid":17232,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:06:49.435Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"V8WYTSgGUI9-7h9NAAAI"},"pid":17232,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:06:50.050Z","level":"INFO","message":"User connected","metadata":{"socketId":"jRx3mpHNrHppRwEXAAAL"},"pid":17232,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:06:50.056Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"jRx3mpHNrHppRwEXAAAL"},"pid":17232,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:20:01.501Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":17232,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:20:09.402Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":21364,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:20:09.457Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":21364,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:20:09.520Z","level":"INFO","message":"User connected","metadata":{"socketId":"UWy6NDVX9bpXxt_MAAAB"},"pid":21364,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:20:09.557Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692fe64ea505fa8c97485c4f","role":"Department Manager","socketId":"UWy6NDVX9bpXxt_MAAAB"},"pid":21364,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:20:09.607Z","level":"INFO","message":"User connected","metadata":{"socketId":"Nz8NV3tmO2NbO64DAAAD"},"pid":21364,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:20:09.618Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"Nz8NV3tmO2NbO64DAAAD"},"pid":21364,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:20:14.499Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"Nz8NV3tmO2NbO64DAAAD"},"pid":21364,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:20:15.693Z","level":"INFO","message":"User connected","metadata":{"socketId":"TxeQx4a2MgrwNdxWAAAI"},"pid":21364,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:20:15.697Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"TxeQx4a2MgrwNdxWAAAI"},"pid":21364,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:20:15.936Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"TxeQx4a2MgrwNdxWAAAI"},"pid":21364,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:20:16.139Z","level":"INFO","message":"User connected","metadata":{"socketId":"R9NSlno6tfwm-KZUAAAL"},"pid":21364,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:20:16.154Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"R9NSlno6tfwm-KZUAAAL"},"pid":21364,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:25:48.253Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":21364,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:27:56.530Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":4112,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:27:56.584Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":4112,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:28:13.174Z","level":"INFO","message":"User connected","metadata":{"socketId":"35xl11W7vvElFbCWAAAE"},"pid":4112,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:28:13.186Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"35xl11W7vvElFbCWAAAE"},"pid":4112,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:28:13.615Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"35xl11W7vvElFbCWAAAE"},"pid":4112,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:28:13.912Z","level":"INFO","message":"User connected","metadata":{"socketId":"oYm3j2T1jbn4WZeMAAAH"},"pid":4112,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:28:13.920Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"oYm3j2T1jbn4WZeMAAAH"},"pid":4112,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:30:56.511Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":4112,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:32:10.371Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:32:10.478Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:32:26.120Z","level":"INFO","message":"User connected","metadata":{"socketId":"l5qAQvzGHUtWjm_vAAAE"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:32:26.132Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"l5qAQvzGHUtWjm_vAAAE"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:32:28.743Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"l5qAQvzGHUtWjm_vAAAE"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:32:29.231Z","level":"INFO","message":"User connected","metadata":{"socketId":"5uJm5ONVitdAUWLBAAAH"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:32:29.238Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"5uJm5ONVitdAUWLBAAAH"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:39:06.800Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"5uJm5ONVitdAUWLBAAAH"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:39:08.723Z","level":"INFO","message":"User connected","metadata":{"socketId":"ka8EVyC_fpQpjcL_AAAM"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:39:08.730Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"ka8EVyC_fpQpjcL_AAAM"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:39:09.072Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"ka8EVyC_fpQpjcL_AAAM"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:39:09.207Z","level":"INFO","message":"User connected","metadata":{"socketId":"aoU28moRHrE-h7BkAAAP"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:39:09.215Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"aoU28moRHrE-h7BkAAAP"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:42:17.709Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"aoU28moRHrE-h7BkAAAP"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:42:19.559Z","level":"INFO","message":"User connected","metadata":{"socketId":"rq48G_XA3Vpgb5XRAAAU"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:42:19.565Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"rq48G_XA3Vpgb5XRAAAU"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:42:19.836Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"rq48G_XA3Vpgb5XRAAAU"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:42:19.963Z","level":"INFO","message":"User connected","metadata":{"socketId":"BBTTYOzqQSbJI1vrAAAX"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:42:19.970Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"BBTTYOzqQSbJI1vrAAAX"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:45:33.256Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"BBTTYOzqQSbJI1vrAAAX"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:45:40.634Z","level":"INFO","message":"User connected","metadata":{"socketId":"f4-3r0HgQ2aDpJ6oAAAe"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:45:40.640Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"f4-3r0HgQ2aDpJ6oAAAe"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:46:41.271Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"f4-3r0HgQ2aDpJ6oAAAe"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:46:43.487Z","level":"INFO","message":"User connected","metadata":{"socketId":"2qby37PpUYb6Ti9cAAAj"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:46:43.491Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"2qby37PpUYb6Ti9cAAAj"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:46:44.506Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"2qby37PpUYb6Ti9cAAAj"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:46:44.749Z","level":"INFO","message":"User connected","metadata":{"socketId":"daklfUgvbBGGgCooAAAm"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:46:44.752Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"daklfUgvbBGGgCooAAAm"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:46:55.416Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"daklfUgvbBGGgCooAAAm"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:46:56.497Z","level":"INFO","message":"User connected","metadata":{"socketId":"Hf1Fno1QcyxGvm27AAAq"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:46:56.502Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"Hf1Fno1QcyxGvm27AAAq"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:46:56.764Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"Hf1Fno1QcyxGvm27AAAq"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:46:57.075Z","level":"INFO","message":"User connected","metadata":{"socketId":"ax16jhB_Aj3EnXyiAAAt"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:46:57.080Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"ax16jhB_Aj3EnXyiAAAt"},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:50:42.038Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":100,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:51:03.324Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":22584,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:51:03.436Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":22584,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:51:34.210Z","level":"INFO","message":"User connected","metadata":{"socketId":"Hu7jNVwBoKkmyL1iAAAB"},"pid":22584,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T08:51:34.222Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"Hu7jNVwBoKkmyL1iAAAB"},"pid":22584,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:02:38.590Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":22584,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:05:45.368Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":19800,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:05:45.483Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":19800,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:06:28.411Z","level":"INFO","message":"User connected","metadata":{"socketId":"N-sLz59sAJvzdxpuAAAG"},"pid":19800,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:06:28.424Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"N-sLz59sAJvzdxpuAAAG"},"pid":19800,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:31:55.693Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":19800,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:32:04.347Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:32:04.396Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:32:04.582Z","level":"INFO","message":"User connected","metadata":{"socketId":"kMlp8PUp7lydRaRWAAAB"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:32:04.588Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"kMlp8PUp7lydRaRWAAAB"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:32:09.248Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"kMlp8PUp7lydRaRWAAAB"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:32:11.128Z","level":"INFO","message":"User connected","metadata":{"socketId":"9z-BK-vgz2FLnmIVAAAG"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:32:11.133Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"9z-BK-vgz2FLnmIVAAAG"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:32:11.625Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f1ab290adce349220ffb9","socketId":"9z-BK-vgz2FLnmIVAAAG"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:32:12.098Z","level":"INFO","message":"User connected","metadata":{"socketId":"YXtkmPLwwfnE7DF_AAAJ"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:32:12.107Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f1ab290adce349220ffb9","role":"Company Admin","socketId":"YXtkmPLwwfnE7DF_AAAJ"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:32:33.966Z","level":"INFO","message":"User connected","metadata":{"socketId":"4kPeg3mlTyeXxr9ZAAAO"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:32:33.970Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692fe64ea505fa8c97485c4f","role":"Department Manager","socketId":"4kPeg3mlTyeXxr9ZAAAO"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:32:42.565Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692fe64ea505fa8c97485c4f","socketId":"4kPeg3mlTyeXxr9ZAAAO"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:32:42.616Z","level":"INFO","message":"User connected","metadata":{"socketId":"Uh6QLeDz4H80F3AnAAAR"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:32:42.621Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"693002add4c22c766d371d25","role":"Employee","socketId":"Uh6QLeDz4H80F3AnAAAR"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:33:53.121Z","level":"INFO","message":"User disconnected","metadata":{"userId":"693002add4c22c766d371d25","socketId":"Uh6QLeDz4H80F3AnAAAR"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:33:53.171Z","level":"INFO","message":"User connected","metadata":{"socketId":"2O9BYLKsZmD9rcUeAAAU"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:33:53.177Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f16645198d064b9cbd9c2","role":"System Admin","socketId":"2O9BYLKsZmD9rcUeAAAU"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:33:53.436Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f16645198d064b9cbd9c2","socketId":"2O9BYLKsZmD9rcUeAAAU"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:33:53.535Z","level":"INFO","message":"User connected","metadata":{"socketId":"Yb66C9XaV4YldunpAAAX"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:33:53.541Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"692f16645198d064b9cbd9c2","role":"System Admin","socketId":"Yb66C9XaV4YldunpAAAX"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:33:57.299Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692f16645198d064b9cbd9c2","socketId":"Yb66C9XaV4YldunpAAAX"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:34:03.753Z","level":"INFO","message":"User connected","metadata":{"socketId":"4F0Pe7aDsarBHUNtAAAa"},"pid":17484,"hostname":"Bravo"}
+{"timestamp":"2025-12-03T09:34:03.757Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"693001f5d4c22c766d371c57","role":"Department Header","socketId":"4F0Pe7aDsarBHUNtAAAa"},"pid":17484,"hostname":"Bravo"}
+>>>>>>> origin/ThuanDH30

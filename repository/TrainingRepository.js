@@ -153,8 +153,13 @@ class TrainingRepository {
     }
 
     // ========== Training Session Operations ==========
-    async getAllSessions(filters = {}) {
+    async getAllSessions(filters = {}, tenantId = null) {
         const query = {};
+
+        // ⭐ Tenant filter cho session
+        if (tenantId) {
+            query.tenant_id = tenantId;
+        }
         
         if (filters.courseId) {
             query.course_id = filters.courseId;
@@ -170,11 +175,11 @@ class TrainingRepository {
             .sort({ start_time: 1 });
     }
 
-    async getAllTrainingSessions(filters = {}) {
-        return await this.getAllSessions(filters);
+    async getAllTrainingSessions(filters = {}, tenantId = null) {
+        return await this.getAllSessions(filters, tenantId);
     }
 
-    async getAvailableTrainingSessionsForEmployee(userId, filters = {}) {
+    async getAvailableTrainingSessionsForEmployee(userId, tenantId = null, filters = {}) {
         try {
             // Get user's department
             const User = require('../models/user');
@@ -187,10 +192,17 @@ class TrainingRepository {
 
             // Get training assignments for user's department
             const TrainingAssignment = require('../models/trainingAssignment');
-            const assignments = await TrainingAssignment.find({ 
+            const assignmentQuery = { 
                 department_id: departmentId,
                 status: 'active'
-            }).populate('course_id');
+            };
+
+            // ⭐ Tenant filter cho assignment
+            if (tenantId) {
+                assignmentQuery.tenant_id = tenantId;
+            }
+
+            const assignments = await TrainingAssignment.find(assignmentQuery).populate('course_id');
 
             // Get course IDs that are assigned to user's department
             const assignedCourseIds = assignments
@@ -206,6 +218,11 @@ class TrainingRepository {
                 course_id: { $in: assignedCourseIds },
                 status_code: 'SCHEDULED' // Only show scheduled sessions
             };
+
+            // ⭐ Tenant filter cho session
+            if (tenantId) {
+                query.tenant_id = tenantId;
+            }
 
             // Apply additional filters
             if (filters.courseId) {
@@ -228,37 +245,50 @@ class TrainingRepository {
         }
     }
 
-    async getSessionById(sessionId) {
+    async getSessionById(sessionId, tenantId = null) {
         if (!mongoose.Types.ObjectId.isValid(sessionId)) {
             return null;
         }
-        return await TrainingSession.findById(sessionId)
+        const filter = { _id: sessionId };
+        if (tenantId) {
+            filter.tenant_id = tenantId;
+        }
+
+        return await TrainingSession.findOne(filter)
             .populate('course_id', 'course_name');
     }
 
-    async getTrainingSessionById(sessionId) {
-        return await this.getSessionById(sessionId);
+    async getTrainingSessionById(sessionId, tenantId = null) {
+        return await this.getSessionById(sessionId, tenantId);
     }
 
-    async createSession(sessionData) {
+    async createSession(sessionData, tenantId = null) {
         console.log('Repository creating session with data:', sessionData);
-        const session = new TrainingSession(sessionData);
+        const session = new TrainingSession({
+            ...sessionData,
+            // ⭐ Gắn tenant_id theo scope nếu có
+            ...(tenantId ? { tenant_id: tenantId } : {})
+        });
         console.log('Session object created:', session);
         const savedSession = await session.save();
         console.log('Session saved successfully:', savedSession);
         return savedSession;
     }
 
-    async createTrainingSession(sessionData) {
-        return await this.createSession(sessionData);
+    async createTrainingSession(sessionData, tenantId = null) {
+        return await this.createSession(sessionData, tenantId);
     }
 
-    async updateSession(sessionId, sessionData) {
+    async updateSession(sessionId, sessionData, tenantId = null) {
         if (!mongoose.Types.ObjectId.isValid(sessionId)) {
             throw new Error('Training session not found');
         }
-        const session = await TrainingSession.findByIdAndUpdate(
-            sessionId, 
+        const filter = { _id: sessionId };
+        if (tenantId) {
+            filter.tenant_id = tenantId;
+        }
+        const session = await TrainingSession.findOneAndUpdate(
+            filter, 
             sessionData, 
             { new: true, runValidators: true }
         ).populate('course_id', 'course_name');
@@ -268,23 +298,27 @@ class TrainingRepository {
         return session;
     }
 
-    async updateTrainingSession(sessionId, sessionData) {
-        return await this.updateSession(sessionId, sessionData);
+    async updateTrainingSession(sessionId, sessionData, tenantId = null) {
+        return await this.updateSession(sessionId, sessionData, tenantId);
     }
 
-    async deleteSession(sessionId) {
+    async deleteSession(sessionId, tenantId = null) {
         if (!mongoose.Types.ObjectId.isValid(sessionId)) {
             throw new Error('Training session not found');
         }
-        const session = await TrainingSession.findByIdAndDelete(sessionId);
+        const filter = { _id: sessionId };
+        if (tenantId) {
+            filter.tenant_id = tenantId;
+        }
+        const session = await TrainingSession.findOneAndDelete(filter);
         if (!session) {
             throw new Error('Training session not found');
         }
         return session;
     }
 
-    async deleteTrainingSession(sessionId) {
-        return await this.deleteSession(sessionId);
+    async deleteTrainingSession(sessionId, tenantId = null) {
+        return await this.deleteSession(sessionId, tenantId);
     }
 
     // ========== Training Enrollment Operations ==========

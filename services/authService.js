@@ -172,6 +172,7 @@ class AuthService {
         email: user.email,
         full_name: user.full_name,
         phone: user.phone,
+        tenant_id: user.tenant_id,
         role: roleData ? {
           _id: roleData._id,
           role_name: roleData.role_name,
@@ -198,7 +199,8 @@ class AuthService {
         role_code: userResponse.role?.role_code,
         role_level: userResponse.role?.role_level,
         department: userResponse.department,
-        department_id: userResponse.department_id
+        department_id: userResponse.department_id,
+        tenant_id: userResponse.tenant_id
       });
       
       return createResponse(200, 'Đăng nhập thành công', {
