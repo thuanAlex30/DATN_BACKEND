@@ -226,9 +226,9 @@ router.post('/issuances/to-employee',
   ppeController.issueToEmployee
 );
 
-// Employee xác nhận nhận PPE từ Manager
+// Employee xác nhận nhận PPE từ Manager hoặc Manager xác nhận nhận PPE từ Header Department
 router.post('/issuances/:id/confirm-received', 
-  authMiddleware.authorizeScope({ minRoleLevel: 10, maxRoleLevel: 20, tenantScope: 'tenant', departmentScope: 'own' }),
+  authMiddleware.authorizeScope({ minRoleLevel: 10, maxRoleLevel: 100, tenantScope: 'tenant', departmentScope: 'own' }),
   ppeController.confirmReceivedPPE
 );
 

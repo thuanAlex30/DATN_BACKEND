@@ -23,23 +23,29 @@ class ProjectTaskService {
 
   async createTask(taskData, userId) {
     try {
-      // Validate required fields
-      const requiredFields = ['project_id', 'task_name', 'task_code'];
+      // Validate required fields (task_code is optional, will be auto-generated if not provided)
+      const requiredFields = ['project_id', 'task_name'];
       for (const field of requiredFields) {
         if (!taskData[field]) {
           return createResponse(400, `Trường ${field} là bắt buộc`);
         }
       }
 
-      // Validate task
-      const validation = await projectTaskRepository.validateTask(taskData);
+      // Clone taskData to avoid modifying the original object
+      const taskDataToValidate = { ...taskData };
+
+      // Validate task (this will auto-generate task_code if not provided)
+      const validation = await projectTaskRepository.validateTask(taskDataToValidate);
 
       if (!validation.valid) {
         return createResponse(400, validation.errors.join(', '));
       }
 
+      // Use validated taskData which has auto-generated task_code if needed
+      const finalTaskData = validation.taskData || taskDataToValidate;
+      
       const task = await projectTaskRepository.createTask({
-        ...taskData,
+        ...finalTaskData,
         created_by: userId
       });
 
@@ -108,9 +114,9 @@ class ProjectTaskService {
     }
   }
 
-  async getTasksByUser(userId) {
+  async getTasksByUser(userId, filters = {}) {
     try {
-      const tasks = await projectTaskRepository.getTasksByUser(userId);
+      const tasks = await projectTaskRepository.getTasksByUser(userId, filters);
       return createResponse(200, 'Lấy danh sách công việc của người dùng thành công',
         transformDocumentsId(tasks, POPULATED_FIELDS.PROJECT_TASK));
     } catch (error) {
@@ -264,10 +270,40 @@ class ProjectTaskService {
   async getTaskProgressLogs(taskId) {
     try {
       const progressLogs = await projectTaskRepository.getTaskProgressLogs(taskId);
-      return createResponse(200, 'Lấy nhật ký tiến độ công việc thành công', progressLogs);
+      return createResponse(200, 'Lấy nhật ký tiến độ công việc thành công',
+        transformDocumentsId(progressLogs, POPULATED_FIELDS.TASK_PROGRESS_LOG));
     } catch (error) {
       console.error('Error getting task progress logs:', error);
       return createResponse(500, 'Lỗi khi lấy nhật ký tiến độ công việc', null, error.message);
+    }
+  }
+
+  async updateTaskProgress(taskId, progress, userId) {
+    try {
+      const progressValue = Number(progress);
+      // Tự động cập nhật trạng thái dựa trên tiến độ
+      let status = 'IN_PROGRESS';
+      if (progressValue >= 100) {
+        status = 'COMPLETED';
+      } else if (progressValue > 0) {
+        status = 'IN_PROGRESS';
+      }
+
+      const task = await projectTaskRepository.updateTask(taskId, {
+        progress_percentage: progressValue,
+        status: status,
+        updated_by: userId
+      });
+
+      if (!task) {
+        return createResponse(404, 'Không tìm thấy công việc');
+      }
+
+      return createResponse(200, 'Cập nhật tiến độ công việc thành công',
+        transformDocumentId(task, POPULATED_FIELDS.PROJECT_TASK));
+    } catch (error) {
+      console.error('Error updating task progress:', error);
+      return createResponse(500, 'Lỗi khi cập nhật tiến độ công việc', null, error.message);
     }
   }
 
@@ -336,14 +372,33 @@ class ProjectTaskService {
   }
 
   // ========== ADDITIONAL PROGRESS LOG METHODS ==========
-  async addProgressLog(taskId, progress, note, userId) {
+  async addProgressLog(taskId, progressData, userId) {
     try {
-      const progressData = {
-        progress: progress,
-        note: note,
-        log_date: new Date()
+      // Đảm bảo progressData có đầy đủ các trường cần thiết
+      const progressValue = Number(progressData.progress_percentage || progressData.progress || 0);
+      const logData = {
+        progress_percentage: progressValue,
+        work_description: progressData.work_description || progressData.note || '',
+        hours_worked: progressData.hours_worked || 0,
+        log_date: progressData.log_date ? new Date(progressData.log_date) : new Date()
       };
-      const progressLog = await projectTaskRepository.createProgressLog(taskId, progressData, userId);
+      
+      const progressLog = await projectTaskRepository.createProgressLog(taskId, logData, userId);
+      
+      // Tự động cập nhật trạng thái task dựa trên tiến độ
+      let status = 'IN_PROGRESS';
+      if (progressValue >= 100) {
+        status = 'COMPLETED';
+      } else if (progressValue > 0) {
+        status = 'IN_PROGRESS';
+      }
+      
+      // Cập nhật trạng thái task
+      await projectTaskRepository.updateTask(taskId, {
+        progress_percentage: progressValue,
+        status: status
+      });
+      
       return createResponse(201, 'Thêm nhật ký tiến độ thành công', progressLog);
     } catch (error) {
       console.error('Error adding progress log:', error);

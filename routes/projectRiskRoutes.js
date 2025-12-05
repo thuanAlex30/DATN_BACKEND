@@ -28,6 +28,15 @@ router.delete('/risks/:id', projectRiskController.deleteRisk);
 // Update risk status
 router.put('/risks/:id/status', projectRiskController.updateRiskStatus);
 
+// Update risk progress
+router.put('/risks/:id/progress', projectRiskController.updateRiskProgress);
+
+// Get risk progress logs
+router.get('/risks/:id/progress-logs', projectRiskController.getRiskProgressLogs);
+
+// Add risk progress log
+router.post('/risks/:id/progress-logs', projectRiskController.addRiskProgressLog);
+
 // Get risk statistics
 router.get('/project/:projectId/stats', projectRiskController.getRiskStats);
 

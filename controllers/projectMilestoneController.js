@@ -6,6 +6,21 @@ const ProjectMilestoneEvents = require('../events/projectMilestoneEvents');
 
 class ProjectMilestoneController {
   // ========== PROJECT MILESTONE MANAGEMENT ==========
+  static getAllMilestones = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const filters = {
+      project_id: req.query.project_id,
+      status: req.query.status,
+      responsible_user_id: req.query.responsible_user_id
+    };
+    const result = await projectMilestoneService.getAllMilestones(filters);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+    }
+  });
+
   static getProjectMilestones = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { projectId } = req.params;
     const result = await projectMilestoneService.getProjectMilestones(projectId);
@@ -366,6 +381,45 @@ class ProjectMilestoneController {
     const userId = req.user._id || req.user.id;
     
     const result = await projectMilestoneService.reviewDeliverable(id, review_status, review_note, userId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+    }
+  });
+
+  static updateMilestoneProgress = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { progress } = req.body;
+    const userId = req.user._id || req.user.id;
+    
+    const result = await projectMilestoneService.updateMilestoneProgress(id, progress, userId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+    }
+  });
+
+  static getMilestoneProgressLogs = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const result = await projectMilestoneService.getMilestoneProgressLogs(id);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+    }
+  });
+
+  static addMilestoneProgressLog = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const progressData = req.body;
+    const userId = req.user._id || req.user.id;
+    
+    const result = await projectMilestoneService.addMilestoneProgressLog(id, progressData, userId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

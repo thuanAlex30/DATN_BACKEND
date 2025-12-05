@@ -165,6 +165,89 @@ class WebSocketService {
   }
 
   // ========================================
+  // PROJECT NOTIFICATIONS (generic)
+  // ========================================
+
+  /**
+   * Emit event when a new project is created
+   * @param {Object} project - Project data
+   * @param {Object} creator - User who created the project
+   */
+  emitProjectCreated(project, creator) {
+    if (!this.io || !project) return;
+
+    const payload = {
+      type: 'project_created',
+      title: 'Dự án mới được tạo',
+      message: `Dự án "${project.project_name || project.name}" đã được tạo`,
+      project,
+      createdBy: creator ? {
+        id: creator._id || creator.id,
+        full_name: creator.full_name || creator.username || creator.email
+      } : null,
+      timestamp: new Date()
+    };
+
+    // Gửi cho tất cả người dùng (có thể tinh chỉnh theo role sau)
+    this.emitToAll('project_notification', payload);
+  }
+
+  /**
+   * Emit event when a user is assigned to a project
+   * @param {Object} assignment - Assignment data
+   * @param {Object} assignee - User được giao
+   * @param {Object} assigner - User giao việc
+   */
+  emitProjectAssigned(assignment, assignee, assigner) {
+    if (!this.io || !assignment || !assignee) return;
+
+    const payload = {
+      type: 'project_assigned',
+      title: 'Phân công dự án',
+      message: `${assignee.full_name || assignee.username} được phân công vào một dự án`,
+      assignment,
+      assignee: {
+        id: assignee._id || assignee.id,
+        full_name: assignee.full_name || assignee.username || assignee.email
+      },
+      assigner: assigner ? {
+        id: assigner._id || assigner.id,
+        full_name: assigner.full_name || assigner.username || assigner.email
+      } : null,
+      timestamp: new Date()
+    };
+
+    // Thông báo trực tiếp cho người được giao và cho manager/admin
+    this.emitToUser(assignee._id || assignee.id, 'project_notification', payload);
+    this.emitToRole('manager', 'project_notification', payload);
+    this.emitToRole('admin', 'project_notification', payload);
+  }
+
+  /**
+   * Emit event when project progress is updated
+   * @param {Object} project - Project data
+   * @param {Object} updater - User cập nhật
+   */
+  emitProjectProgressUpdated(project, updater) {
+    if (!this.io || !project) return;
+
+    const payload = {
+      type: 'project_progress_updated',
+      title: 'Cập nhật tiến độ dự án',
+      message: `Tiến độ dự án "${project.project_name || project.name}" đã được cập nhật`,
+      projectId: project.id || project._id,
+      progress: project.progress,
+      updatedBy: updater ? {
+        id: updater._id || updater.id,
+        full_name: updater.full_name || updater.username || updater.email
+      } : null,
+      timestamp: new Date()
+    };
+
+    this.emitToAll('project_notification', payload);
+  }
+
+  // ========================================
   // PPE SPECIFIC NOTIFICATIONS
   // ========================================
 

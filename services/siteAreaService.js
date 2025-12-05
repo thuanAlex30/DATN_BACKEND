@@ -118,9 +118,12 @@ class SiteAreaService {
         }
       }
 
-      // Generate unique area code per project
+      // Generate globally unique area code.
+      // Trước đây chỉ dùng KVA001, KVA002... theo từng project nên dễ bị trùng giữa các project khác nhau
+      // trong khi field area_code đang unique toàn cục.
       const projectAreaCount = await SiteArea.countDocuments({ project_id: areaData.project_id });
-      const areaCode = `KVA${String(projectAreaCount + 1).padStart(3, '0')}`;
+      const projectSuffix = String(areaData.project_id).slice(-4); // lấy 4 ký tự cuối của project_id
+      const areaCode = `KVA${projectSuffix}_${String(projectAreaCount + 1).padStart(3, '0')}`;
 
       const area = new SiteArea({
         ...areaData,

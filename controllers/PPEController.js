@@ -144,13 +144,25 @@ class PPEController {
     const tenantId = req.user.tenant_id;
     const result = await ppeService.createItem(itemData, tenantId);
     
-    // Emit Kafka event for PPE item created
+    // Emit Kafka event for PPE item created (non-blocking with timeout)
     if (result.success && result.data) {
-      try {
-        await PPEEvents.emitPPEItemCreated(result.data, req.user || { _id: 'system', role: 'admin', full_name: 'System' });
-      } catch (eventError) {
-        console.error('Failed to emit PPE item created event:', eventError);
-      }
+      // Don't await - fire and forget to avoid blocking the request
+      setImmediate(async () => {
+        try {
+          // Add timeout to prevent hanging
+          await Promise.race([
+            PPEEvents.emitPPEItemCreated(result.data, req.user || { _id: 'system', role: 'admin', full_name: 'System' }),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Event emission timeout')), 3000)
+            )
+          ]).catch(error => {
+            console.warn('⚠️ Event emission failed (non-critical):', error.message);
+          });
+        } catch (error) {
+          console.error('❌ Error emitting PPE item created event:', error);
+          // Don't fail the request if event emission fails
+        }
+      });
     }
     
     if (result.success) {
@@ -166,17 +178,29 @@ class PPEController {
     const tenantId = req.user.tenant_id;
     const result = await ppeService.updateItem(id, itemData, tenantId);
     
-    // Emit Kafka event for PPE item updated
+    // Emit Kafka event for PPE item updated (non-blocking with timeout)
     if (result.success && result.data) {
-      try {
-        const changes = {};
-        Object.keys(itemData).forEach(key => {
-          changes[key] = itemData[key];
-        });
-        await PPEEvents.emitPPEItemUpdated(result.data, req.user || { _id: 'system', role: 'admin', full_name: 'System' }, changes);
-      } catch (eventError) {
-        console.error('Failed to emit PPE item updated event:', eventError);
-      }
+      // Don't await - fire and forget to avoid blocking the request
+      setImmediate(async () => {
+        try {
+          const changes = {};
+          Object.keys(itemData).forEach(key => {
+            changes[key] = itemData[key];
+          });
+          // Add timeout to prevent hanging
+          await Promise.race([
+            PPEEvents.emitPPEItemUpdated(result.data, req.user || { _id: 'system', role: 'admin', full_name: 'System' }, changes),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Event emission timeout')), 3000)
+            )
+          ]).catch(error => {
+            console.warn('⚠️ Event emission failed (non-critical):', error.message);
+          });
+        } catch (error) {
+          console.error('❌ Error emitting PPE item updated event:', error);
+          // Don't fail the request if event emission fails
+        }
+      });
     }
     
     if (result.success) {

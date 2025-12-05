@@ -223,7 +223,8 @@ class IncidentController {
   // 10. Tìm kiếm incidents
   static searchIncidents = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { q } = req.query;
-    const result = await incidentService.searchIncidents(q);
+    const tenantId = req.user.tenant_id;
+    const result = await incidentService.searchIncidents(q, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -247,7 +248,8 @@ class IncidentController {
   // 12. Lấy incidents theo project
   static getIncidentsByProject = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { projectId } = req.params;
-    const result = await incidentService.getIncidentsByProject(projectId);
+    const tenantId = req.user.tenant_id;
+    const result = await incidentService.getIncidentsByProject(projectId, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

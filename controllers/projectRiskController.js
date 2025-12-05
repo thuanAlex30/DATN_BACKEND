@@ -269,6 +269,45 @@ class ProjectRiskController {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
     }
   });
+
+  static updateRiskProgress = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { progress } = req.body;
+    const userId = req.user._id || req.user.id;
+    
+    const result = await projectRiskService.updateRiskProgress(id, progress, userId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+    }
+  });
+
+  static getRiskProgressLogs = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const result = await projectRiskService.getRiskProgressLogs(id);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+    }
+  });
+
+  static addRiskProgressLog = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const progressData = req.body;
+    const userId = req.user._id || req.user.id;
+    
+    const result = await projectRiskService.addRiskProgressLog(id, progressData, userId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+    }
+  });
 }
 
 module.exports = ProjectRiskController;

@@ -10,6 +10,9 @@ router.use(authMiddleware.authenticate);
 
 // ========== PROJECT MILESTONE ROUTES ==========
 
+// Get all milestones (for admin/manager overview)
+router.get('/milestones', projectMilestoneController.getAllMilestones);
+
 // Get all milestones for a project
 router.get('/project/:projectId/milestones', projectMilestoneController.getProjectMilestones);
 
@@ -23,6 +26,9 @@ router.get('/milestones/:id', projectMilestoneController.getMilestoneById);
 
 // Create new milestone
 router.post('/milestones', projectMilestoneController.createMilestone);
+
+// Update milestone status (must be before /milestones/:id to avoid route conflict)
+router.put('/milestones/:id/status', projectMilestoneController.updateMilestoneStatus);
 
 // Update milestone
 router.put('/milestones/:id', projectMilestoneController.updateMilestone);
@@ -50,5 +56,14 @@ router.put('/deliverables/:id/review', projectMilestoneController.reviewDelivera
 
 // Get milestone statistics
 router.get('/milestones/:id/stats', projectMilestoneController.getMilestoneStats);
+
+// Update milestone progress
+router.put('/milestones/:id/progress', projectMilestoneController.updateMilestoneProgress);
+
+// Get milestone progress logs
+router.get('/milestones/:id/progress-logs', projectMilestoneController.getMilestoneProgressLogs);
+
+// Add milestone progress log
+router.post('/milestones/:id/progress-logs', projectMilestoneController.addMilestoneProgressLog);
 
 module.exports = router;

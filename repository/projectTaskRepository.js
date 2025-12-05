@@ -119,10 +119,22 @@ class ProjectTaskRepository {
     }
   }
 
-  // Get tasks assigned to a specific user
-  async getTasksByUser(userId) {
+  // Get tasks assigned to a specific user (either responsible or assigned_to)
+  async getTasksByUser(userId, filters = {}) {
     try {
-      const tasks = await ProjectTask.find({ responsible_user_id: userId })
+      const query = {
+        $or: [
+          { responsible_user_id: userId },
+          { assigned_to: userId }
+        ]
+      };
+
+      // Optional filter by project
+      if (filters.project_id) {
+        query.project_id = filters.project_id;
+      }
+
+      const tasks = await ProjectTask.find(query)
         .populate('project_id', 'project_name project_code')
         .populate('area_id', 'area_name area_code')
         .populate('location_id', 'location_name location_code')
@@ -360,7 +372,8 @@ class ProjectTaskRepository {
 
       return {
         valid: errors.length === 0,
-        errors
+        errors,
+        taskData: errors.length === 0 ? taskData : null // Return modified taskData if valid
       };
     } catch (error) {
       console.error('Error validating task:', error);
@@ -553,8 +566,7 @@ class ProjectTaskRepository {
       const progressLogs = await TaskProgressLog.find({ task_id: taskId })
         .populate('task_id', 'task_name task_code')
         .populate('user_id', 'full_name email')
-        .populate('created_by', 'full_name email')
-        .sort({ log_date: -1 });
+        .sort({ report_date: -1 });
 
       return progressLogs;
     } catch (error) {
@@ -565,11 +577,18 @@ class ProjectTaskRepository {
 
   async createProgressLog(taskId, progressData, userId) {
     try {
+      // Map log_date to report_date if provided, otherwise use current date
+      const logData = { ...progressData };
+      if (logData.log_date) {
+        logData.report_date = new Date(logData.log_date);
+        delete logData.log_date;
+      }
+      
       const progressLog = new TaskProgressLog({
         task_id: taskId,
-        ...progressData,
+        ...logData,
         user_id: userId,
-        log_date: new Date()
+        report_date: logData.report_date || new Date()
       });
 
       await progressLog.save();

@@ -15,6 +15,11 @@ const IncidentSchema = new mongoose.Schema({
     required: true,
     default: getDefaultTenantObjectId
   },
+  project_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Project',
+    required: false
+  },
   title: { type: String, required: true },
   description: String,
   images: [String],

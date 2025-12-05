@@ -56,8 +56,14 @@ const projectRiskSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['IDENTIFIED', 'ANALYZED', 'MITIGATED', 'MONITORED', 'CLOSED'],
+    enum: ['IDENTIFIED', 'PENDING', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'],
     default: 'IDENTIFIED'
+  },
+  progress: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
   },
   identified_date: {
     type: Date,

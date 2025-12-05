@@ -239,19 +239,39 @@ class PPEService {
         return createResponse(400, 'Mã thiết bị, tên thiết bị và danh mục là bắt buộc');
       }
 
-      // Check if item code already exists
-      const existingItem = await ppeRepository.getAllItems({ 
-        search: itemData.item_code 
-      }, tenantId);
-      if (existingItem.length > 0) {
-        return createResponse(400, 'Mã thiết bị đã tồn tại');
+      // Normalize item_code to uppercase
+      const normalizedItemCode = itemData.item_code.toString().trim().toUpperCase();
+
+      // Check if item code already exists - use direct query for accuracy
+      const PPEItem = require('../models/ppeItem');
+      const query = { item_code: normalizedItemCode };
+      if (tenantId) {
+        query.tenant_id = tenantId;
+      }
+      
+      const existingItem = await PPEItem.findOne(query);
+      if (existingItem) {
+        return createResponse(400, `Mã thiết bị "${normalizedItemCode}" đã tồn tại. Vui lòng sử dụng mã khác.`);
       }
 
-      const item = await ppeRepository.createItem(itemData, tenantId);
+      // Use normalized item_code
+      const itemDataWithNormalizedCode = {
+        ...itemData,
+        item_code: normalizedItemCode
+      };
+
+      const item = await ppeRepository.createItem(itemDataWithNormalizedCode, tenantId);
       return createResponse(201, 'Tạo thiết bị PPE thành công',
         transformDocumentId(item, POPULATED_FIELDS.PPE_ITEM));
     } catch (error) {
       console.error('Error creating PPE item:', error);
+      
+      // Handle duplicate key error specifically
+      if (error.code === 11000 || error.name === 'MongoServerError') {
+        const duplicateField = error.keyPattern ? Object.keys(error.keyPattern)[0] : 'item_code';
+        return createResponse(400, `Mã thiết bị "${itemData.item_code}" đã tồn tại trong hệ thống. Vui lòng sử dụng mã khác.`, null, error.message);
+      }
+      
       return createResponse(500, 'Lỗi khi tạo thiết bị PPE', null, error.message);
     }
   }
@@ -418,7 +438,7 @@ class PPEService {
     }
   }
 
-  // Employee xác nhận nhận PPE từ Manager
+  // Employee xác nhận nhận PPE từ Manager hoặc Manager xác nhận nhận PPE từ Header Department
   async confirmReceivedPPE(id, confirmationData, tenantId = null) {
     try {
       console.log('🔍 confirmReceivedPPE - id:', id);
@@ -434,7 +454,7 @@ class PPEService {
         return createResponse(400, 'PPE này không cần xác nhận hoặc đã được xác nhận');
       }
 
-      // Kiểm tra quyền xác nhận - chỉ Employee nhận PPE mới có thể xác nhận
+      // Kiểm tra quyền xác nhận - chỉ người nhận PPE mới có thể xác nhận
       if (confirmationData.confirmed_by) {
         const confirmedByStr = typeof confirmationData.confirmed_by === 'string' ? confirmationData.confirmed_by : confirmationData.confirmed_by.toString();
         const issuanceUserIdStr = (issuance.user_id._id || issuance.user_id).toString();
@@ -443,9 +463,9 @@ class PPEService {
         }
       }
 
-      // Kiểm tra issuance_level
-      if (issuance.issuance_level !== 'manager_to_employee') {
-        return createResponse(400, 'Chỉ có thể xác nhận PPE được phát từ Manager');
+      // Kiểm tra issuance_level và cho phép cả admin_to_manager và manager_to_employee
+      if (issuance.issuance_level !== 'manager_to_employee' && issuance.issuance_level !== 'admin_to_manager') {
+        return createResponse(400, 'Chỉ có thể xác nhận PPE được phát từ Manager hoặc Header Department');
       }
 
       // Cập nhật trạng thái PPE
@@ -457,14 +477,23 @@ class PPEService {
 
       const updatedIssuance = await ppeRepository.updateIssuance(id, { ...updateData, tenant_id: tenantId });
       
-      // Lấy thông tin Employee và Manager để gửi WebSocket
-      const employee = await User.findById(issuance.user_id);
-      const manager = await User.findById(issuance.manager_id);
+      // Lấy thông tin người nhận và người phát để gửi WebSocket
+      const recipient = await User.findById(issuance.user_id);
+      let issuer = null;
+      
+      if (issuance.issuance_level === 'manager_to_employee') {
+        // Employee xác nhận nhận PPE từ Manager
+        issuer = await User.findById(issuance.manager_id);
+      } else if (issuance.issuance_level === 'admin_to_manager') {
+        // Manager xác nhận nhận PPE từ Header Department
+        issuer = await User.findById(issuance.issued_by);
+      }
 
       return createResponse(200, 'Xác nhận nhận PPE thành công', {
         issuance: transformDocumentId(updatedIssuance, POPULATED_FIELDS.PPE_ISSUANCE),
-        employee: employee,
-        manager: manager
+        employee: issuance.issuance_level === 'manager_to_employee' ? recipient : null,
+        manager: issuance.issuance_level === 'manager_to_employee' ? issuer : (issuance.issuance_level === 'admin_to_manager' ? recipient : null),
+        headerDepartment: issuance.issuance_level === 'admin_to_manager' ? issuer : null
       });
     } catch (error) {
       console.error('Error confirming received PPE:', error);
@@ -826,25 +855,37 @@ class PPEService {
           throw new Error('Tất cả các trường bắt buộc phải được điền');
         }
 
-        // If admin → manager, enforce recipient is department head (manager)
+        // If admin → manager, enforce recipient is manager or warehouse_staff
         if (issuanceData.issuance_level === 'admin_to_manager') {
           const recipientUser = await User.findById(issuanceData.user_id)
-            .populate('role_id', 'role_name')
+            .populate('role_id', 'role_name role_code')
             .populate('department_id');
           if (!recipientUser) {
-            throw new Error('Người nhận (Manager) không tồn tại');
+            throw new Error('Người nhận (Manager/Warehouse Staff) không tồn tại');
           }
-          const roleName = recipientUser.role_id && recipientUser.role_id.role_name ? recipientUser.role_id.role_name : null;
-          if (roleName !== 'manager') {
-            throw new Error('Chỉ được phát PPE cho người có vai trò Manager');
+          const roleName = recipientUser.role_id && recipientUser.role_id.role_name ? recipientUser.role_id.role_name.toLowerCase() : '';
+          const roleCode = recipientUser.role_id && recipientUser.role_id.role_code ? recipientUser.role_id.role_code.toLowerCase() : '';
+          
+          // Check if user has manager or warehouse_staff role
+          const isManager = roleName === 'manager' || roleCode === 'manager';
+          const isWarehouseStaff = roleName === 'warehouse_staff' || roleCode === 'warehouse_staff' || 
+                                   roleName === 'warehouse staff' || roleCode === 'warehouse_staff';
+          
+          if (!isManager && !isWarehouseStaff) {
+            throw new Error('Chỉ được phát PPE cho người có vai trò Manager hoặc Warehouse Staff');
           }
-          if (!recipientUser.department_id) {
-            throw new Error('Manager chưa được gán phòng ban');
+          
+          // For manager role, check if they are department head
+          if (isManager && !isWarehouseStaff) {
+            if (!recipientUser.department_id) {
+              throw new Error('Manager chưa được gán phòng ban');
+            }
+            const dept = await Department.findOne({ _id: recipientUser.department_id._id || recipientUser.department_id, manager_id: recipientUser._id });
+            if (!dept) {
+              throw new Error('Chỉ được phát PPE cho Trưởng phòng (department head)');
+            }
           }
-          const dept = await Department.findOne({ _id: recipientUser.department_id._id || recipientUser.department_id, manager_id: recipientUser._id });
-          if (!dept) {
-            throw new Error('Chỉ được phát PPE cho Trưởng phòng (department head)');
-          }
+          // For warehouse_staff, no department head check required
         }
 
         // Check if enough stock is available
@@ -1246,9 +1287,8 @@ class PPEService {
         console.log('Query:', JSON.stringify(query, null, 2));
       }
 
-      const allUsers = await User.find(query, '_id full_name email department_id position_id role_id')
+      const allUsers = await User.find(query, '_id full_name email department_id role_id')
         .populate('department_id', 'department_name')
-        .populate('position_id', 'position_name')
         .populate('role_id', 'role_name')
         .sort({ full_name: 1 });
         

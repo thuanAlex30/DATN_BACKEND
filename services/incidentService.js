@@ -443,9 +443,9 @@ class IncidentService {
   /**
    * Tìm kiếm incidents
    */
-  static async searchIncidents(searchTerm) {
+  static async searchIncidents(searchTerm, tenantId = null) {
     try {
-      const incidents = await incidentRepository.searchIncidents(searchTerm);
+      const incidents = await IncidentRepository.searchIncidents(searchTerm, tenantId);
       
       return {
         success: true,
@@ -487,9 +487,9 @@ class IncidentService {
   /**
    * Lấy incidents theo project
    */
-  static async getIncidentsByProject(projectId) {
+  static async getIncidentsByProject(projectId, tenantId = null) {
     try {
-      const incidents = await incidentRepository.getIncidentsByProject(projectId);
+      const incidents = await IncidentRepository.getIncidentsByProject(projectId, tenantId);
       
       return {
         success: true,

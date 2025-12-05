@@ -37,6 +37,12 @@ const projectMilestoneSchema = new mongoose.Schema({
     enum: ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'OVERDUE', 'CANCELLED'],
     default: 'PENDING'
   },
+  progress: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
   responsible_user_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
