@@ -180,3 +180,11 @@
 {"timestamp":"2025-10-20T08:57:34.292Z","level":"WARN","message":"User not connected","metadata":{"userId":"68f09e980e5cbe5680a1f81b","event":"ppe_notification"},"pid":11504,"hostname":"Bravo"}
 {"timestamp":"2025-10-20T09:08:24.729Z","level":"WARN","message":"User not connected","metadata":{"userId":"68f09e980e5cbe5680a1f81b","event":"ppe_notification"},"pid":11504,"hostname":"Bravo"}
 {"timestamp":"2025-10-20T09:08:24.731Z","level":"WARN","message":"User not connected","metadata":{"userId":"68f09ea40e5cbe5680a1f884","event":"ppe_notification"},"pid":11504,"hostname":"Bravo"}
+{"timestamp":"2025-12-05T15:13:48.740Z","level":"WARN","message":"User not connected","metadata":{"userId":"6932e36d00071fff4dd19c03","event":"ppe_notification"},"pid":23208,"hostname":"Bravo"}
+{"timestamp":"2025-12-05T15:13:48.742Z","level":"WARN","message":"User not connected","metadata":{"userId":"692fe64ea505fa8c97485c4f","event":"ppe_notification"},"pid":23208,"hostname":"Bravo"}
+{"timestamp":"2025-12-05T15:13:48.913Z","level":"WARN","message":"User not connected","metadata":{"userId":"693002add4c22c766d371d25","event":"ppe_notification"},"pid":23208,"hostname":"Bravo"}
+{"timestamp":"2025-12-05T15:13:48.914Z","level":"WARN","message":"User not connected","metadata":{"userId":"692fe64ea505fa8c97485c4f","event":"ppe_notification"},"pid":23208,"hostname":"Bravo"}
+{"timestamp":"2025-12-05T15:16:12.364Z","level":"WARN","message":"User not connected","metadata":{"userId":"692fe64ea505fa8c97485c4f","event":"ppe_notification"},"pid":23208,"hostname":"Bravo"}
+{"timestamp":"2025-12-05T15:16:12.366Z","level":"WARN","message":"User not connected","metadata":{"userId":"693002add4c22c766d371d25","event":"ppe_notification"},"pid":23208,"hostname":"Bravo"}
+{"timestamp":"2025-12-05T15:23:34.179Z","level":"WARN","message":"User not connected","metadata":{"userId":"692fe64ea505fa8c97485c4f","event":"ppe_notification"},"pid":23208,"hostname":"Bravo"}
+{"timestamp":"2025-12-05T15:23:34.182Z","level":"WARN","message":"User not connected","metadata":{"userId":"6932e36d00071fff4dd19c03","event":"ppe_notification"},"pid":23208,"hostname":"Bravo"}

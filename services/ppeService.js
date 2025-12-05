@@ -371,10 +371,10 @@ class PPEService {
 
         // Kiểm tra vai trò và cùng phòng ban
         const managerUser = await User.findById(issuanceData.issued_by)
-          .populate('role_id', 'role_name')
+          .populate('role_id', 'role_name role_code role_level')
           .populate('department_id');
         const employeeUser = await User.findById(issuanceData.user_id)
-          .populate('role_id', 'role_name')
+          .populate('role_id', 'role_name role_code')
           .populate('department_id');
 
         if (!managerUser) {
@@ -383,8 +383,18 @@ class PPEService {
         if (!employeeUser) {
           throw new Error('Nhân viên không tồn tại');
         }
-        const managerRole = managerUser.role_id && managerUser.role_id.role_name ? managerUser.role_id.role_name : null;
-        if (managerRole !== 'manager') {
+        
+        // Kiểm tra role - có thể là role_name hoặc role_code
+        const managerRoleName = managerUser.role_id && managerUser.role_id.role_name ? managerUser.role_id.role_name.toLowerCase() : '';
+        const managerRoleCode = managerUser.role_id && managerUser.role_id.role_code ? managerUser.role_id.role_code.toLowerCase() : '';
+        const managerRoleLevel = managerUser.role_id && managerUser.role_id.role_level ? managerUser.role_id.role_level : 0;
+        
+        // Kiểm tra nếu là manager (role_code = 'manager' hoặc role_name chứa 'manager' hoặc role_level >= 70)
+        const isManager = managerRoleCode === 'manager' || 
+                          managerRoleName.includes('manager') || 
+                          managerRoleLevel >= 70;
+        
+        if (!isManager) {
           throw new Error('Chỉ Manager mới được phát PPE cho nhân viên');
         }
         if (!managerUser.department_id) {

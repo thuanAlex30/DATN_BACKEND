@@ -444,11 +444,34 @@ class DepartmentController {
 
     console.log('getDepartmentEmployees called with:', { id, is_active, sort_by, sort_order, include_inactive });
 
+    const currentUser = req.user;
+    const isManager = currentUser?.role?.role_level >= 70;
+    
     // Check if department exists
     const department = await DepartmentRepository.findById(id);
     if (!department) {
       console.log('Department not found:', id);
       return ApiResponse.notFound(res, 'Department not found');
+    }
+
+    // For Manager, ensure they can only access their own department
+    if (isManager && currentUser.department_id) {
+      const currentDeptId = currentUser.department_id?.toString() || currentUser.department_id;
+      const targetDeptId = department._id?.toString() || department.id?.toString() || id;
+      
+      console.log('🔍 getDepartmentEmployees - Manager department check:', {
+        currentDeptId,
+        targetDeptId,
+        isManager
+      });
+      
+      if (currentDeptId !== targetDeptId) {
+        console.log('❌ getDepartmentEmployees - Department mismatch');
+        return ApiResponse.forbidden(
+          res,
+          'Bạn chỉ có thể xem nhân viên trong phòng ban của mình'
+        );
+      }
     }
 
     console.log('Department found:', department.department_name);
@@ -492,11 +515,6 @@ class DepartmentController {
       full_name: employee.full_name,
       email: employee.email,
       phone: employee.phone,
-      position: employee.position_id ? {
-        id: employee.position_id._id,
-        name: employee.position_id.position_name,
-        level: employee.position_id.level
-      } : null,
       role: employee.role_id ? {
         id: employee.role_id._id,
         name: employee.role_id.role_name

@@ -42,20 +42,74 @@ class UserController {
         currentUser.scope_rules?.tenant_scope === 'global';
 
       if (!isSystemAdmin) {
-        const targetUser = await UserRepository.findById(id);
-        if (!targetUser) {
-          return ApiResponse.notFound(res, 'Không tìm thấy người dùng');
-        }
+        // Check if user is reading themselves FIRST - before querying database
+        const currentUserId = currentUser.id?.toString() || currentUser._id?.toString();
+        const requestId = id.toString();
+        const isSelf = currentUserId === requestId || 
+                       currentUser._id?.toString() === requestId ||
+                       (currentUser._id && currentUser._id.toString() === id);
+        
+        console.log('🔍 getUserById - Self check (before DB query):', {
+          currentUserId,
+          currentUser_id: currentUser._id?.toString(),
+          requestId,
+          isSelf
+        });
+        
+        // If reading self, allow immediately and skip all checks
+        if (isSelf) {
+          console.log('✅ getUserById - Self access detected, allowing immediately');
+          // Continue to service to fetch user data - no authorization needed
+        } else {
+          // For non-self access, check tenant and department
+          const targetUser = await UserRepository.findById(id, ['department_id']);
+          if (!targetUser) {
+            return ApiResponse.notFound(res, 'Không tìm thấy người dùng');
+          }
 
-        if (
-          targetUser.tenant_id &&
-          currentUser.tenant_id &&
-          targetUser.tenant_id.toString() !== currentUser.tenant_id.toString()
-        ) {
-          return ApiResponse.forbidden(
-            res,
-            'Bạn không được phép truy cập người dùng thuộc tenant khác'
-          );
+          // Check tenant isolation
+          if (
+            targetUser.tenant_id &&
+            currentUser.tenant_id &&
+            targetUser.tenant_id.toString() !== currentUser.tenant_id.toString()
+          ) {
+            return ApiResponse.forbidden(
+              res,
+              'Bạn không được phép truy cập người dùng thuộc tenant khác'
+            );
+          }
+
+          // For Manager (role_level >= 70), allow reading users in same department
+          const isManager = currentUser.role?.role_level >= 70;
+          
+          if (isManager) {
+            // Manager can only read users in same department
+            const currentDeptId = currentUser.department_id?.toString() || 
+                                  currentUser.department?._id?.toString() ||
+                                  currentUser.department_id;
+            const targetDeptId = targetUser.department_id?._id?.toString() || 
+                                targetUser.department_id?.toString() || 
+                                (targetUser.department_id && typeof targetUser.department_id === 'object' ? targetUser.department_id._id?.toString() : targetUser.department_id);
+            
+            console.log('🔍 getUserById - Manager department check:', {
+              currentUserId,
+              targetUserId: targetUser._id?.toString(),
+              currentDeptId,
+              targetDeptId,
+              isManager
+            });
+            
+            if (!targetDeptId || !currentDeptId || targetDeptId !== currentDeptId) {
+              console.log('❌ getUserById - Department mismatch');
+              return ApiResponse.forbidden(
+                res,
+                'Bạn chỉ có thể xem thông tin người dùng trong cùng phòng ban'
+              );
+            }
+          } else {
+            // For non-manager roles, they need permission matrix check (already done in route)
+            console.log('✅ getUserById - Permission matrix check passed');
+          }
         }
       }
     }

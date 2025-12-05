@@ -438,7 +438,16 @@ class ProjectRiskService {
 
   async addRiskProgressLog(riskId, progressData, userId) {
     try {
+      console.log('addRiskProgressLog called:', { riskId, progressData, userId });
+      
       const progressValue = Number(progressData.progress_percentage || progressData.progress || 0);
+      console.log('addRiskProgressLog - progressValue:', progressValue);
+      
+      if (isNaN(progressValue)) {
+        console.error('addRiskProgressLog - Invalid progress value:', progressData);
+        return createResponse(400, 'Giá trị tiến độ không hợp lệ', null, 'Invalid progress value');
+      }
+      
       const logData = {
         progress_percentage: progressValue,
         work_description: progressData.work_description || progressData.note || '',
@@ -446,7 +455,9 @@ class ProjectRiskService {
         log_date: progressData.log_date ? new Date(progressData.log_date) : new Date()
       };
       
+      console.log('addRiskProgressLog - Creating progress log:', logData);
       const progressLog = await projectRiskRepository.createProgressLog(riskId, logData, userId);
+      console.log('addRiskProgressLog - Progress log created:', progressLog?._id);
       
       // Tự động cập nhật trạng thái risk dựa trên tiến độ
       let status = 'IN_PROGRESS';
@@ -459,32 +470,48 @@ class ProjectRiskService {
       // Cập nhật trạng thái và tiến độ risk và lấy lại dữ liệu đã cập nhật
       console.log('addRiskProgressLog - Updating risk:', { riskId, progressValue, status });
       
-      const updatedRisk = await ProjectRisk.findByIdAndUpdate(
+      const updateResult = await ProjectRisk.findByIdAndUpdate(
         riskId,
         { 
-          progress: progressValue,
-          status: status,
-          updated_at: new Date()
+          $set: {
+            progress: progressValue,
+            status: status,
+            updated_at: new Date()
+          }
         },
-        { new: true }
+        { new: true, runValidators: true }
       );
       
       // Log để debug
-      console.log('addRiskProgressLog - Updated risk (before populate):', {
+      console.log('addRiskProgressLog - Update result:', {
         riskId,
         progressValue,
         status,
-        updatedRiskProgress: updatedRisk?.progress,
-        updatedRiskStatus: updatedRisk?.status
+        updatedRiskProgress: updateResult?.progress,
+        updatedRiskStatus: updateResult?.status,
+        updateResultId: updateResult?._id
       });
       
+      if (!updateResult) {
+        console.error('addRiskProgressLog - Risk not found:', riskId);
+        return createResponse(404, 'Không tìm thấy rủi ro', null, 'Risk not found');
+      }
+      
       // Verify update bằng cách query lại
-      const verifiedRisk = await ProjectRisk.findById(riskId);
+      const verifiedRisk = await ProjectRisk.findById(riskId).lean();
       console.log('addRiskProgressLog - Verified risk (after update):', {
         riskId,
         verifiedProgress: verifiedRisk?.progress,
-        verifiedStatus: verifiedRisk?.status
+        verifiedStatus: verifiedRisk?.status,
+        verifiedId: verifiedRisk?._id
       });
+      
+      if (verifiedRisk?.progress !== progressValue) {
+        console.error('addRiskProgressLog - Progress mismatch!', {
+          expected: progressValue,
+          actual: verifiedRisk?.progress
+        });
+      }
       
       return createResponse(201, 'Thêm nhật ký tiến độ rủi ro thành công', progressLog);
     } catch (error) {

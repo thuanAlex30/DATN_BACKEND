@@ -94,13 +94,27 @@ router.get('/:id/summary',
 );
 
 // Get all employees in a department
+// Allow Manager (role_level >= 70) to read employees in their own department for PPE issuance
 router.get('/:id/employees',
   AuthMiddleware.authenticate,
-  AuthMiddleware.authorize(PERMISSIONS.DEPARTMENT_READ),
+  (req, res, next) => {
+    // Allow if user is Manager or higher (role_level >= 70) OR has permission
+    const userRole = req.user?.role;
+    const roleLevel = userRole?.role_level || req.user?.role_level;
+    const isManagerOrHigher = roleLevel >= 70;
+    
+    if (isManagerOrHigher) {
+      // Manager can read employees in their department - check will be done in controller
+      return next();
+    }
+    
+    // For other roles, check permission
+    return AuthMiddleware.authorize(PERMISSIONS.DEPARTMENT_READ)(req, res, next);
+  },
   ValidationMiddleware.validateParams(commonValidation.id),
   ValidationMiddleware.validateQuery(Joi.object({
     is_active: Joi.string().valid('true', 'false').optional().default('true'),
-    sort_by: Joi.string().valid('full_name', 'email', 'created_at', 'position_name').optional().default('full_name'),
+    sort_by: Joi.string().valid('full_name', 'email', 'created_at').optional().default('full_name'),
     sort_order: Joi.string().valid('asc', 'desc').optional().default('asc'),
     include_inactive: Joi.string().valid('true', 'false').optional().default('false')
   })),

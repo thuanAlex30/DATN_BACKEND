@@ -72,9 +72,52 @@ router.post('/import',
 );
 
 // Get user by ID
+// Allow Manager (role_level >= 70) to read users in same department for PPE issuance
 router.get('/:id', 
   ValidationMiddleware.validateParams(userValidation.id),
-  AuthMiddleware.authorizeScope({ modules: 'user', action: 'read', tenantScope: 'tenant' }),
+  (req, res, next) => {
+    // Check if user is reading themselves FIRST
+    const currentUserId = req.user?.id?.toString() || req.user?._id?.toString();
+    const requestId = req.params.id?.toString();
+    const isSelf = currentUserId === requestId || 
+                   req.user?._id?.toString() === requestId;
+    
+    // Allow self access for any role
+    if (isSelf) {
+      console.log('✅ GET /users/:id - Self access detected, allowing immediately');
+      return next();
+    }
+    
+    // Allow if user is Manager or higher (role_level >= 70) OR has permission
+    const userRole = req.user?.role;
+    const roleLevel = userRole?.role_level || req.user?.role_level;
+    const isManagerOrHigher = roleLevel >= 70;
+    
+    console.log('🔍 GET /users/:id - Route middleware check:', {
+      userId: req.user?.id,
+      requestId,
+      isSelf,
+      roleName: userRole?.role_name,
+      roleCode: userRole?.role_code,
+      roleLevel: roleLevel,
+      isManagerOrHigher,
+      path: req.path
+    });
+    
+    if (isManagerOrHigher) {
+      // Manager can read users - check will be done in controller for same department
+      console.log('✅ GET /users/:id - Manager access allowed, passing to controller');
+      return next();
+    }
+    
+    // For other roles, check permission matrix
+    console.log('🔍 GET /users/:id - Checking permission matrix');
+    return AuthMiddleware.authorizeScope({ 
+      modules: 'user', 
+      action: 'read', 
+      tenantScope: 'tenant'
+    })(req, res, next);
+  },
   UserController.getUserById
 );
 
