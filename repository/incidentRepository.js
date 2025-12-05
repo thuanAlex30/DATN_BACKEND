@@ -444,9 +444,19 @@ class IncidentRepository {
     return await this.findAll(filters, options);
   }
   
+  // Instance method for findById
+  async findById(id, tenantId = null) {
+    return await IncidentRepository.findById(id, tenantId);
+  }
+
   // Alias for findById
-  async getIncidentById(id) {
-    return await this.findById(id);
+  async getIncidentById(id, tenantId = null) {
+    return await this.findById(id, tenantId);
+  }
+
+  // Instance method for addHistory
+  async addHistory(id, historyData, tenantId = null) {
+    return await IncidentRepository.addHistory(id, historyData, tenantId);
   }
 
   // Alias for addHistory
@@ -457,6 +467,11 @@ class IncidentRepository {
   // Alias for deleteById
   async deleteIncident(id) {
     return await this.deleteById(id);
+  }
+
+  // Instance method for updateById
+  async updateById(id, updateData, tenantId = null) {
+    return await IncidentRepository.updateById(id, updateData, tenantId);
   }
 
   // Alias for updateById

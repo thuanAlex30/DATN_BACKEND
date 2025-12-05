@@ -38,7 +38,9 @@ class IncidentController {
   // 2. Lấy tất cả incidents
   static getIncidents = ErrorMiddleware.asyncHandler(async (req, res) => {
     const tenantId = req.user.tenant_id;
-    const result = await incidentService.getAllIncidents(tenantId);
+    const filters = req.query || {};
+    const user = req.user;
+    const result = await incidentService.getAllIncidents(tenantId, filters, user);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

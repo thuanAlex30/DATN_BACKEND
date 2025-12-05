@@ -56,7 +56,7 @@ class IncidentService {
       };
 
       // Tạo incident
-      const incident = await IncidentRepository.createIncident({
+      const incident = await incidentRepository.createIncident({
         ...newIncidentData,
         ...(tenantId ? { tenant_id: tenantId } : {})
       });
@@ -82,28 +82,27 @@ class IncidentService {
   /**
    * Lấy tất cả incidents
    */
-  static async getAllIncidents(tenantId = null) {
+  static async getAllIncidents(tenantId = null, filters = {}, user = null) {
     try {
-      const incidents = await IncidentRepository.getAllIncidents({
-        tenant_id: tenantId
-      });
-      
       // Build query filters - extract pagination options
       const { page, limit, sortBy, sortOrder, department_id, ...queryFilters } = filters;
 
       if (page || limit || Object.keys(queryFilters).length > 0) {
-        const result = await incidentRepository.findAll(queryFilters, {
-          page: page || 1,
-          limit: Math.min(limit || 20, 50),
-          sortBy: sortBy || 'createdAt',
-          sortOrder: sortOrder || 'desc',
-          status: filters.status,
-          severity: filters.severity,
-          assignedTo: filters.assignedTo,
-          createdBy: filters.createdBy,
-          dateFrom: filters.dateFrom,
-          dateTo: filters.dateTo
-        });
+        const result = await incidentRepository.findAll(
+          { ...queryFilters, tenant_id: tenantId },
+          {
+            page: page || 1,
+            limit: Math.min(limit || 20, 50),
+            sortBy: sortBy || 'createdAt',
+            sortOrder: sortOrder || 'desc',
+            status: filters.status,
+            severity: filters.severity,
+            assignedTo: filters.assignedTo,
+            createdBy: filters.createdBy,
+            dateFrom: filters.dateFrom,
+            dateTo: filters.dateTo
+          }
+        );
         
         // If department_header, filter results by department after query
         let incidents = result.incidents || [];
@@ -118,12 +117,15 @@ class IncidentService {
           statusCode: 200
         };
       } else {
-        const result = await incidentRepository.findAll(queryFilters, {
-          page: 1,
-          limit: 20,
-          sortBy: 'createdAt',
-          sortOrder: 'desc'
-        });
+        const result = await incidentRepository.findAll(
+          { tenant_id: tenantId },
+          {
+            page: 1,
+            limit: 20,
+            sortBy: 'createdAt',
+            sortOrder: 'desc'
+          }
+        );
         
         return {
           success: true,
@@ -148,7 +150,7 @@ class IncidentService {
    */
   static async getIncidentById(id, tenantId = null) {
     try {
-      const incident = await IncidentRepository.getIncidentById(id, tenantId);
+      const incident = await incidentRepository.getIncidentById(id, tenantId);
       
       return {
         success: true,
@@ -170,7 +172,7 @@ class IncidentService {
    */
   static async classifyIncident(id, severity, userId, tenantId = null) {
     try {
-      const incident = await IncidentRepository.getIncidentById(id, tenantId);
+      const incident = await incidentRepository.getIncidentById(id, tenantId);
       
       if (!incident) {
         return {
@@ -183,14 +185,14 @@ class IncidentService {
       const oldSeverity = incident.severity;
       
       // Update severity using repository
-      const updatedIncident = await incidentRepository.updateById(id, { severity });
+      const updatedIncident = await incidentRepository.updateById(id, { severity }, tenantId);
       
       // Thêm history entry
-      await IncidentRepository.addHistory(id, {
+      await incidentRepository.addHistory(id, {
         action: 'Phân loại',
         performedBy: userId,
         note: `Thay đổi mức độ từ "${oldSeverity}" thành "${severity}"`
-      });
+      }, tenantId);
 
       // Emit events
       await IncidentService.emitIncidentEvents('classified', updatedIncident, userId);
@@ -215,7 +217,7 @@ class IncidentService {
    */
   static async assignIncident(id, assignedTo, userId, tenantId = null) {
     try {
-      const incident = await IncidentRepository.getIncidentById(id, tenantId);
+      const incident = await incidentRepository.getIncidentById(id, tenantId);
       
       if (!incident) {
         return {
@@ -229,14 +231,14 @@ class IncidentService {
       const updatedIncident = await incidentRepository.updateById(id, {
         assignedTo,
         status: 'Đang xử lý'
-      });
+      }, tenantId);
       
       // Thêm history entry
-      await IncidentRepository.addHistory(id, {
+      await incidentRepository.addHistory(id, {
         action: 'Phân công',
         performedBy: userId,
         note: `Phân công xử lý cho user ID: ${assignedTo}`
-      });
+      }, tenantId);
 
       // Emit events
       await IncidentService.emitIncidentEvents('assigned', updatedIncident, userId);
@@ -261,7 +263,7 @@ class IncidentService {
    */
   static async investigateIncident(id, investigationData, userId, tenantId = null) {
     try {
-      const incident = await IncidentRepository.getIncidentById(id, tenantId);
+      const incident = await incidentRepository.getIncidentById(id, tenantId);
       
       if (!incident) {
         return {
@@ -274,20 +276,20 @@ class IncidentService {
       const { investigation, solution, findingsImages, rootCauseImages } = investigationData;
 
       // Thêm investigation entry
-      await IncidentRepository.addHistory(id, {
+      await incidentRepository.addHistory(id, {
         action: 'Điều tra',
         performedBy: userId,
         note: investigation,
         timestamp: new Date()
-      });
+      }, tenantId);
 
       // Thêm solution entry
-      await IncidentRepository.addHistory(id, {
+      await incidentRepository.addHistory(id, {
         action: 'Khắc phục',
         performedBy: userId,
         note: solution,
         timestamp: new Date()
-      });
+      }, tenantId);
 
       // Get updated incident with history
       const updatedIncident = await incidentRepository.getIncidentById(id);
@@ -315,7 +317,7 @@ class IncidentService {
    */
   static async updateIncidentProgress(id, progressData, userId, tenantId = null) {
     try {
-      const incident = await IncidentRepository.getIncidentById(id, tenantId);
+      const incident = await incidentRepository.getIncidentById(id, tenantId);
       
       if (!incident) {
         return {
@@ -337,12 +339,12 @@ class IncidentService {
       }
 
       // Thêm progress entry
-      await IncidentRepository.addHistory(id, {
+      await incidentRepository.addHistory(id, {
         action: 'Cập nhật tiến độ',
         performedBy: userId,
         note: note.trim(),
         timestamp: new Date()
-      });
+      }, tenantId);
 
       // Get updated incident with history
       const updatedIncident = await incidentRepository.getIncidentById(id);
@@ -370,7 +372,7 @@ class IncidentService {
    */
   static async closeIncident(id, closeData, userId, tenantId = null) {
     try {
-      const incident = await IncidentRepository.getIncidentById(id, tenantId);
+      const incident = await incidentRepository.getIncidentById(id, tenantId);
       
       if (!incident) {
         return {
@@ -385,15 +387,15 @@ class IncidentService {
       // Update status using repository
       const updatedIncident = await incidentRepository.updateById(id, {
         status: 'Đã đóng'
-      });
+      }, tenantId);
 
       // Thêm close entry
-      await IncidentRepository.addHistory(id, {
+      await incidentRepository.addHistory(id, {
         action: 'Đóng',
         performedBy: userId,
         note: note || 'Đóng incident',
         timestamp: new Date()
-      });
+      }, tenantId);
 
       // Get updated incident with history
       const finalIncident = await incidentRepository.getIncidentById(id);
