@@ -9,9 +9,11 @@ const connectDB = async () => {
       socketTimeoutMS: 45000, // 45 seconds
       connectTimeoutMS: 30000, // 30 seconds
       maxPoolSize: 10, // Maintain up to 10 socket connections
-      minPoolSize: 5, // Maintain a minimum of 5 socket connections
-      maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
+      minPoolSize: 2, // Maintain a minimum of 2 socket connections
+      // Removed maxIdleTimeMS to prevent closing connections during active sessions
       bufferCommands: false, // Disable mongoose buffering
+      retryWrites: true, // Enable retry writes for better reliability
+      retryReads: true, // Enable retry reads for better reliability
     });
 
     console.log(`MongoDB Connected: ${conn.connection.host}`);
