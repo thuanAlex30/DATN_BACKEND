@@ -364,7 +364,11 @@ class ProjectRiskService {
 
   async updateRiskProgress(riskId, progress, userId) {
     try {
+      console.log('updateRiskProgress called:', { riskId, progress, userId });
+      
       const progressValue = Number(progress);
+      console.log('updateRiskProgress - progressValue:', progressValue);
+      
       if (progressValue < 0 || progressValue > 100) {
         return createResponse(400, 'Tiến độ phải từ 0 đến 100');
       }
@@ -389,6 +393,7 @@ class ProjectRiskService {
        .populate('owner_id', 'full_name email');
 
       if (!risk) {
+        console.error('updateRiskProgress - Risk not found:', riskId);
         return createResponse(404, 'Không tìm thấy rủi ro');
       }
 
@@ -452,6 +457,8 @@ class ProjectRiskService {
       }
       
       // Cập nhật trạng thái và tiến độ risk và lấy lại dữ liệu đã cập nhật
+      console.log('addRiskProgressLog - Updating risk:', { riskId, progressValue, status });
+      
       const updatedRisk = await ProjectRisk.findByIdAndUpdate(
         riskId,
         { 
@@ -460,15 +467,23 @@ class ProjectRiskService {
           updated_at: new Date()
         },
         { new: true }
-      ).populate('project_id', 'project_name')
-       .populate('owner_id', 'full_name email');
+      );
       
       // Log để debug
-      console.log('Updated risk progress:', {
+      console.log('addRiskProgressLog - Updated risk (before populate):', {
         riskId,
         progressValue,
         status,
-        updatedRiskProgress: updatedRisk?.progress
+        updatedRiskProgress: updatedRisk?.progress,
+        updatedRiskStatus: updatedRisk?.status
+      });
+      
+      // Verify update bằng cách query lại
+      const verifiedRisk = await ProjectRisk.findById(riskId);
+      console.log('addRiskProgressLog - Verified risk (after update):', {
+        riskId,
+        verifiedProgress: verifiedRisk?.progress,
+        verifiedStatus: verifiedRisk?.status
       });
       
       return createResponse(201, 'Thêm nhật ký tiến độ rủi ro thành công', progressLog);
