@@ -1,5 +1,6 @@
 const ProjectMilestone = require('../models/projectMilestone');
 const MilestoneDeliverable = require('../models/milestoneDeliverable');
+const MilestoneProgressLog = require('../models/milestoneProgressLog');
 
 class ProjectMilestoneRepository {
   // ========== BASIC CRUD ==========
@@ -582,6 +583,46 @@ class ProjectMilestoneRepository {
       return deliverable;
     } catch (error) {
       console.error('Error reviewing deliverable:', error);
+      throw error;
+    }
+  }
+
+  // ========== MILESTONE PROGRESS LOGS ==========
+  async getMilestoneProgressLogs(milestoneId) {
+    try {
+      const progressLogs = await MilestoneProgressLog.find({ milestone_id: milestoneId })
+        .populate('milestone_id', 'milestone_name')
+        .populate('user_id', 'full_name email')
+        .sort({ report_date: -1 });
+
+      return progressLogs;
+    } catch (error) {
+      console.error('Error getting milestone progress logs:', error);
+      throw error;
+    }
+  }
+
+  async createProgressLog(milestoneId, progressData, userId) {
+    try {
+      // Map log_date to report_date if provided, otherwise use current date
+      const logData = { ...progressData };
+      if (logData.log_date) {
+        logData.report_date = new Date(logData.log_date);
+        delete logData.log_date;
+      }
+      
+      const progressLog = new MilestoneProgressLog({
+        milestone_id: milestoneId,
+        ...logData,
+        user_id: userId,
+        report_date: logData.report_date || new Date()
+      });
+
+      await progressLog.save();
+
+      return progressLog;
+    } catch (error) {
+      console.error('Error creating milestone progress log:', error);
       throw error;
     }
   }

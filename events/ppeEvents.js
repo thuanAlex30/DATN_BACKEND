@@ -11,52 +11,68 @@ class PPEEvents {
    */
   static async emitPPEItemCreated(ppeItem, creator) {
     try {
+      // Check if event type exists
+      if (!eventTypes.PPE_ITEM_CREATED) {
+        console.warn('⚠️ PPE_ITEM_CREATED event type not defined, skipping event emission');
+        return { success: false, error: 'Event type not defined', eventId: null };
+      }
+
       const eventData = {
-        ppeItemId: ppeItem._id,
-        item_name: ppeItem.item_name,
-        item_code: ppeItem.item_code,
-        category_id: ppeItem.category_id,
-        brand: ppeItem.brand,
-        model: ppeItem.model,
-        reorder_level: ppeItem.reorder_level,
-        quantity_available: ppeItem.quantity_available,
-        quantity_allocated: ppeItem.quantity_allocated,
-        manufacturing_date: ppeItem.manufacturing_date,
-        expiry_date: ppeItem.expiry_date,
-        batch_number: ppeItem.batch_number,
-        serial_number: ppeItem.serial_number,
-        condition_status: ppeItem.condition_status,
-        location: ppeItem.location,
-        supplier: ppeItem.supplier,
-        purchase_date: ppeItem.purchase_date,
-        purchase_price: ppeItem.purchase_price,
-        warranty_period: ppeItem.warranty_period,
-        compliance_standards: ppeItem.compliance_standards || [],
-        maintenance_schedule: ppeItem.maintenance_schedule || {},
-        last_inspection_date: ppeItem.last_inspection_date,
-        next_inspection_date: ppeItem.next_inspection_date,
-        status: ppeItem.status || 'active'
+        eventType: eventTypes.PPE_ITEM_CREATED,
+        data: {
+          ppeItemId: ppeItem._id || ppeItem.id,
+          item_name: ppeItem.item_name,
+          item_code: ppeItem.item_code,
+          category_id: ppeItem.category_id,
+          brand: ppeItem.brand,
+          model: ppeItem.model,
+          reorder_level: ppeItem.reorder_level,
+          quantity_available: ppeItem.quantity_available,
+          quantity_allocated: ppeItem.quantity_allocated,
+          manufacturing_date: ppeItem.manufacturing_date,
+          expiry_date: ppeItem.expiry_date,
+          batch_number: ppeItem.batch_number,
+          serial_number: ppeItem.serial_number,
+          condition_status: ppeItem.condition_status
+        },
+        metadata: {
+          userId: creator._id || creator.id,
+          userRole: creator.role,
+          userFullName: creator.full_name,
+          timestamp: new Date().toISOString(),
+          source: 'ppe-service'
+        }
       };
 
-      const metadata = {
-        userId: creator._id,
-        userRole: creator.role,
-        userFullName: creator.full_name,
-        timestamp: new Date().toISOString(),
-        source: 'ppe-service'
-      };
+      // Try to send event with timeout, but don't fail if Kafka is unavailable
+      try {
+        const { topics } = require('../config/kafkaConfig');
+        const result = await Promise.race([
+          kafkaProducer.sendEvent(topics.PPE_EVENTS || 'ppe-events', eventData, ppeItem._id || ppeItem.id),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Kafka timeout')), 3000)
+          )
+        ]);
 
-      const result = await kafkaProducer.sendPPEEvent(
-        eventTypes.PPE_ITEM_CREATED,
-        eventData,
-        metadata
-      );
-
-      console.log(`✅ PPE item created event emitted: ${result.eventId}`);
-      return result;
+        console.log(`✅ PPE item created event emitted: ${result.eventId || 'N/A'}`);
+        return result;
+      } catch (kafkaError) {
+        // Log but don't throw - allow request to succeed even if event fails
+        console.warn('⚠️ Failed to emit PPE item created event (non-critical):', kafkaError.message);
+        return {
+          success: false,
+          error: kafkaError.message,
+          eventId: null
+        };
+      }
     } catch (error) {
-      console.error('❌ Error emitting PPE item created event:', error);
-      throw error;
+      console.error('❌ Error preparing PPE item created event:', error);
+      // Don't throw - allow request to succeed
+      return {
+        success: false,
+        error: error.message,
+        eventId: null
+      };
     }
   }
 
@@ -69,54 +85,69 @@ class PPEEvents {
    */
   static async emitPPEItemUpdated(ppeItem, updater, changes) {
     try {
+      // Check if event type exists
+      if (!eventTypes.PPE_ITEM_UPDATED) {
+        console.warn('⚠️ PPE_ITEM_UPDATED event type not defined, skipping event emission');
+        return { success: false, error: 'Event type not defined', eventId: null };
+      }
+
       const eventData = {
-        ppeItemId: ppeItem._id,
-        item_name: ppeItem.item_name,
-        item_code: ppeItem.item_code,
-        category_id: ppeItem.category_id,
-        brand: ppeItem.brand,
-        model: ppeItem.model,
-        reorder_level: ppeItem.reorder_level,
-        quantity_available: ppeItem.quantity_available,
-        quantity_allocated: ppeItem.quantity_allocated,
-        manufacturing_date: ppeItem.manufacturing_date,
-        expiry_date: ppeItem.expiry_date,
-        batch_number: ppeItem.batch_number,
-        serial_number: ppeItem.serial_number,
-        condition_status: ppeItem.condition_status,
-        location: ppeItem.location,
-        supplier: ppeItem.supplier,
-        purchase_date: ppeItem.purchase_date,
-        purchase_price: ppeItem.purchase_price,
-        warranty_period: ppeItem.warranty_period,
-        compliance_standards: ppeItem.compliance_standards || [],
-        maintenance_schedule: ppeItem.maintenance_schedule || {},
-        last_inspection_date: ppeItem.last_inspection_date,
-        next_inspection_date: ppeItem.next_inspection_date,
-        status: ppeItem.status || 'active',
-        updatedAt: ppeItem.updated_at,
-        changes: changes
+        eventType: eventTypes.PPE_ITEM_UPDATED,
+        data: {
+          ppeItemId: ppeItem._id || ppeItem.id,
+          item_name: ppeItem.item_name,
+          item_code: ppeItem.item_code,
+          category_id: ppeItem.category_id,
+          brand: ppeItem.brand,
+          model: ppeItem.model,
+          reorder_level: ppeItem.reorder_level,
+          quantity_available: ppeItem.quantity_available,
+          quantity_allocated: ppeItem.quantity_allocated,
+          manufacturing_date: ppeItem.manufacturing_date,
+          expiry_date: ppeItem.expiry_date,
+          batch_number: ppeItem.batch_number,
+          serial_number: ppeItem.serial_number,
+          condition_status: ppeItem.condition_status,
+          changes: changes
+        },
+        metadata: {
+          userId: updater._id || updater.id,
+          userRole: updater.role,
+          userFullName: updater.full_name,
+          timestamp: new Date().toISOString(),
+          source: 'ppe-service'
+        }
       };
 
-      const metadata = {
-        userId: updater._id,
-        userRole: updater.role,
-        userFullName: updater.full_name,
-        timestamp: new Date().toISOString(),
-        source: 'ppe-service'
-      };
+      // Try to send event with timeout, but don't fail if Kafka is unavailable
+      try {
+        const { topics } = require('../config/kafkaConfig');
+        const result = await Promise.race([
+          kafkaProducer.sendEvent(topics.PPE_EVENTS || 'ppe-events', eventData, ppeItem._id || ppeItem.id),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Kafka timeout')), 3000)
+          )
+        ]);
 
-      const result = await kafkaProducer.sendPPEEvent(
-        eventTypes.PPE_ITEM_UPDATED,
-        eventData,
-        metadata
-      );
-
-      console.log(`✅ PPE item updated event emitted: ${result.eventId}`);
-      return result;
+        console.log(`✅ PPE item updated event emitted: ${result.eventId || 'N/A'}`);
+        return result;
+      } catch (kafkaError) {
+        // Log but don't throw - allow request to succeed even if event fails
+        console.warn('⚠️ Failed to emit PPE item updated event (non-critical):', kafkaError.message);
+        return {
+          success: false,
+          error: kafkaError.message,
+          eventId: null
+        };
+      }
     } catch (error) {
-      console.error('❌ Error emitting PPE item updated event:', error);
-      throw error;
+      console.error('❌ Error preparing PPE item updated event:', error);
+      // Don't throw - allow request to succeed
+      return {
+        success: false,
+        error: error.message,
+        eventId: null
+      };
     }
   }
 

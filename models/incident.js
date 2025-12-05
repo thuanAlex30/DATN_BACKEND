@@ -15,6 +15,11 @@ const IncidentSchema = new mongoose.Schema({
     required: true,
     default: getDefaultTenantObjectId
   },
+  project_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Project',
+    required: false
+  },
   title: { type: String, required: true },
   description: String,
   images: [String],
@@ -30,5 +35,6 @@ const IncidentSchema = new mongoose.Schema({
 });
 
 IncidentSchema.index({ tenant_id: 1 });
+IncidentSchema.index({ project_id: 1 });
 
 module.exports = mongoose.model('Incident', IncidentSchema);

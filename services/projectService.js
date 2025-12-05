@@ -428,21 +428,25 @@ class ProjectService {
 
   async getAvailableEmployees() {
     try {
-      // Get all users with role 'employee' and active status
-      const employees = await User.find({ 
-        is_active: true 
+      // Get all active users that can participate in projects
+      // YÊU CẦU: chỉ cho chọn role employee làm trưởng dự án
+      const employees = await User.find({
+        is_active: true
       })
-      .populate('role_id', 'role_name')
-      .populate('department_id', 'department_name')
-      .populate('position_id', 'position_name')
-      .select('username email full_name phone role_id department_id position_id');
+        .populate('role_id', 'role_name')
+        .populate('department_id', 'department_name')
+        .select('username email full_name phone role_id department_id');
 
-      // Filter only employees (role_name = 'employee')
-      const filteredEmployees = employees.filter(user => 
-        user.role_id && user.role_id.role_name === 'employee'
-      );
+      // Chỉ lấy user có role_name là 'employee' (không phân biệt hoa/thường)
+      const filteredEmployees = employees.filter(user => {
+        if (!user.role_id || !user.role_id.role_name) return false;
+        const normalizedRoleName = String(user.role_id.role_name).trim().toLowerCase();
+        return normalizedRoleName === 'employee';
+      });
 
-      return createResponse(200, 'Lấy danh sách nhân viên thành công',
+      return createResponse(
+        200,
+        'Lấy danh sách nhân viên thành công',
         filteredEmployees.map(employee => ({
           id: employee._id,
           username: employee.username,
@@ -450,9 +454,9 @@ class ProjectService {
           full_name: employee.full_name,
           phone: employee.phone,
           role: employee.role_id,
-          department: employee.department_id,
-          position: employee.position_id
-        })));
+          department: employee.department_id
+        }))
+      );
     } catch (error) {
       console.error('Error getting available employees:', error);
       return createResponse(500, 'Lỗi khi lấy danh sách nhân viên', null, error.message);

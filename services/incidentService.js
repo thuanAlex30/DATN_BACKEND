@@ -62,11 +62,17 @@ class IncidentService {
   /**
    * Lấy tất cả incidents
    */
-  static async getAllIncidents(tenantId = null) {
+  static async getAllIncidents(tenantId = null, projectId = null) {
     try {
-      const incidents = await IncidentRepository.getAllIncidents({
-        tenant_id: tenantId
-      });
+      const filters = {};
+      if (tenantId) {
+        filters.tenant_id = tenantId;
+      }
+      if (projectId) {
+        filters.project_id = projectId;
+      }
+      
+      const incidents = await IncidentRepository.getAllIncidents(filters);
       
       return {
         success: true,
@@ -355,9 +361,9 @@ class IncidentService {
   /**
    * Tìm kiếm incidents
    */
-  static async searchIncidents(searchTerm) {
+  static async searchIncidents(searchTerm, tenantId = null) {
     try {
-      const incidents = await IncidentRepository.searchIncidents(searchTerm);
+      const incidents = await IncidentRepository.searchIncidents(searchTerm, tenantId);
       
       return {
         success: true,
@@ -399,9 +405,9 @@ class IncidentService {
   /**
    * Lấy incidents theo project
    */
-  static async getIncidentsByProject(projectId) {
+  static async getIncidentsByProject(projectId, tenantId = null) {
     try {
-      const incidents = await IncidentRepository.getIncidentsByProject(projectId);
+      const incidents = await IncidentRepository.getIncidentsByProject(projectId, tenantId);
       
       return {
         success: true,

@@ -328,6 +328,79 @@ class IncidentRepository {
       throw new Error(`Lỗi tìm sự cố theo trạng thái: ${error.message}`);
     }
   }
+
+  // Lấy tất cả incidents (tương tự findAll nhưng trả về mảng đơn giản)
+  static async getAllIncidents(filters = {}) {
+    try {
+      const query = {};
+      
+      if (filters.tenant_id) {
+        query.tenant_id = filters.tenant_id;
+      }
+      
+      if (filters.project_id) {
+        query.project_id = filters.project_id;
+      }
+
+      const incidents = await Incident.find(query)
+        .populate('createdBy', 'full_name username email role_id')
+        .populate('assignedTo', 'full_name username email role_id')
+        .populate('histories.performedBy', 'full_name username email role_id')
+        .sort({ createdAt: -1 });
+
+      return incidents;
+    } catch (error) {
+      throw new Error(`Lỗi lấy danh sách sự cố: ${error.message}`);
+    }
+  }
+
+  // Lấy incidents theo project
+  static async getIncidentsByProject(projectId, tenantId = null) {
+    try {
+      const query = { project_id: projectId };
+      
+      if (tenantId) {
+        query.tenant_id = tenantId;
+      }
+
+      const incidents = await Incident.find(query)
+        .populate('createdBy', 'full_name username email role_id')
+        .populate('assignedTo', 'full_name username email role_id')
+        .populate('histories.performedBy', 'full_name username email role_id')
+        .sort({ createdAt: -1 });
+
+      return incidents;
+    } catch (error) {
+      throw new Error(`Lỗi lấy sự cố theo project: ${error.message}`);
+    }
+  }
+
+  // Tìm kiếm incidents
+  static async searchIncidents(searchTerm, tenantId = null) {
+    try {
+      const query = {
+        $or: [
+          { title: { $regex: searchTerm, $options: 'i' } },
+          { description: { $regex: searchTerm, $options: 'i' } },
+          { incidentId: { $regex: searchTerm, $options: 'i' } }
+        ]
+      };
+      
+      if (tenantId) {
+        query.tenant_id = tenantId;
+      }
+
+      const incidents = await Incident.find(query)
+        .populate('createdBy', 'full_name username email role_id')
+        .populate('assignedTo', 'full_name username email role_id')
+        .populate('histories.performedBy', 'full_name username email role_id')
+        .sort({ createdAt: -1 });
+
+      return incidents;
+    } catch (error) {
+      throw new Error(`Lỗi tìm kiếm sự cố: ${error.message}`);
+    }
+  }
 }
 
 module.exports = IncidentRepository;

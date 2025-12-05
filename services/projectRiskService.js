@@ -1,4 +1,7 @@
 const ProjectRisk = require('../models/projectRisk');
+const projectRiskRepository = require('../repository/projectRiskRepository');
+const { transformDocumentId, transformDocumentsId, POPULATED_FIELDS } = require('../utils/transformId');
+const { createResponse } = require('../utils/response');
 
 class ProjectRiskService {
   async getProjectRisks(projectId) {
@@ -9,18 +12,20 @@ class ProjectRiskService {
         .populate('owner_id', 'full_name email')
         .sort({ risk_score: -1, identified_date: -1 });
 
-      return {
-        success: true,
-        data: risks,
-        message: 'Lấy danh sách rủi ro dự án thành công'
-      };
+      // Transform và đảm bảo field progress được trả về
+      const transformedRisks = transformDocumentsId(risks, POPULATED_FIELDS.PROJECT_RISK);
+      
+      // Đảm bảo mỗi risk có field progress (default 0 nếu không có)
+      transformedRisks.forEach(risk => {
+        if (risk.progress === undefined || risk.progress === null) {
+          risk.progress = 0;
+        }
+      });
+
+      return createResponse(200, 'Lấy danh sách rủi ro dự án thành công', transformedRisks);
     } catch (error) {
       console.error('Error getting project risks:', error);
-      return {
-        success: false,
-        message: 'Lỗi khi lấy danh sách rủi ro dự án',
-        error: error.message
-      };
+      return createResponse(500, 'Lỗi khi lấy danh sách rủi ro dự án', null, error.message);
     }
   }
 
@@ -32,17 +37,17 @@ class ProjectRiskService {
         .populate('owner_id', 'full_name email');
 
       if (!risk) {
-        return {
-          success: false,
-          message: 'Không tìm thấy rủi ro'
-        };
+        return createResponse(404, 'Không tìm thấy rủi ro');
       }
 
-      return {
-        success: true,
-        data: risk,
-        message: 'Lấy thông tin rủi ro thành công'
-      };
+      const transformedRisk = transformDocumentId(risk, POPULATED_FIELDS.PROJECT_RISK);
+      
+      // Đảm bảo field progress được trả về (default 0 nếu không có)
+      if (transformedRisk.progress === undefined || transformedRisk.progress === null) {
+        transformedRisk.progress = 0;
+      }
+
+      return createResponse(200, 'Lấy thông tin rủi ro thành công', transformedRisk);
     } catch (error) {
       console.error('Error getting risk:', error);
       return {
@@ -147,35 +152,39 @@ class ProjectRiskService {
 
   async updateRiskStatus(id, status, userId) {
     try {
-      const risk = await ProjectRisk.findByIdAndUpdate(
-        id,
-        { 
-          status: status,
-          actual_resolution_date: status === 'CLOSED' ? new Date() : null,
-          updated_at: new Date()
-        },
-        { new: true }
-      );
-
-      if (!risk) {
-        return {
-          success: false,
-          message: 'Không tìm thấy rủi ro'
-        };
+      // Khi chuyển sang IN_PROGRESS, khởi tạo progress = 0 nếu chưa có
+      const updateData = { 
+        status: status,
+        actual_resolution_date: status === 'CLOSED' ? new Date() : null,
+        updated_at: new Date()
+      };
+      
+      if (status === 'IN_PROGRESS') {
+        updateData.progress = 0;
       }
 
-      return {
-        success: true,
-        data: risk,
-        message: 'Cập nhật trạng thái rủi ro thành công'
-      };
+      const risk = await ProjectRisk.findByIdAndUpdate(
+        id,
+        updateData,
+        { new: true }
+      ).populate('project_id', 'project_name')
+       .populate('owner_id', 'full_name email');
+
+      if (!risk) {
+        return createResponse(404, 'Không tìm thấy rủi ro');
+      }
+
+      const transformedRisk = transformDocumentId(risk, POPULATED_FIELDS.PROJECT_RISK);
+      
+      // Đảm bảo field progress được trả về (default 0 nếu không có)
+      if (transformedRisk.progress === undefined || transformedRisk.progress === null) {
+        transformedRisk.progress = 0;
+      }
+
+      return createResponse(200, 'Cập nhật trạng thái rủi ro thành công', transformedRisk);
     } catch (error) {
       console.error('Error updating risk status:', error);
-      return {
-        success: false,
-        message: 'Lỗi khi cập nhật trạng thái rủi ro',
-        error: error.message
-      };
+      return createResponse(500, 'Lỗi khi cập nhật trạng thái rủi ro', null, error.message);
     }
   }
 
@@ -271,18 +280,36 @@ class ProjectRiskService {
         .populate('owner_id', 'full_name email')
         .sort({ risk_score: -1, identified_date: -1 });
 
-      return {
-        success: true,
-        data: risks,
-        message: 'Lấy danh sách rủi ro được giao thành công'
-      };
+      // Log để debug
+      console.log('getAssignedRisks - Raw risks:', risks.map(r => ({
+        id: r._id,
+        risk_name: r.risk_name,
+        progress: r.progress,
+        status: r.status
+      })));
+
+      // Transform và đảm bảo field progress được trả về
+      const transformedRisks = transformDocumentsId(risks, POPULATED_FIELDS.PROJECT_RISK);
+      
+      // Đảm bảo mỗi risk có field progress (default 0 nếu không có)
+      transformedRisks.forEach(risk => {
+        if (risk.progress === undefined || risk.progress === null) {
+          risk.progress = 0;
+        }
+      });
+
+      // Log để debug
+      console.log('getAssignedRisks - Transformed risks:', transformedRisks.map(r => ({
+        id: r.id,
+        risk_name: r.risk_name,
+        progress: r.progress,
+        status: r.status
+      })));
+
+      return createResponse(200, 'Lấy danh sách rủi ro được giao thành công', transformedRisks);
     } catch (error) {
       console.error('Error getting assigned risks:', error);
-      return {
-        success: false,
-        message: 'Lỗi khi lấy danh sách rủi ro được giao',
-        error: error.message
-      };
+      return createResponse(500, 'Lỗi khi lấy danh sách rủi ro được giao', null, error.message);
     }
   }
 
@@ -332,6 +359,122 @@ class ProjectRiskService {
         message: 'Lỗi khi lấy danh sách rủi ro',
         error: error.message
       };
+    }
+  }
+
+  async updateRiskProgress(riskId, progress, userId) {
+    try {
+      const progressValue = Number(progress);
+      if (progressValue < 0 || progressValue > 100) {
+        return createResponse(400, 'Tiến độ phải từ 0 đến 100');
+      }
+
+      // Tự động cập nhật trạng thái dựa trên tiến độ
+      let status = 'IN_PROGRESS';
+      if (progressValue >= 100) {
+        status = 'RESOLVED'; // Hoặc 'CLOSED' tùy vào logic nghiệp vụ
+      } else if (progressValue > 0) {
+        status = 'IN_PROGRESS';
+      }
+
+      const risk = await ProjectRisk.findByIdAndUpdate(
+        riskId,
+        { 
+          progress: progressValue,
+          status: status,
+          updated_at: new Date()
+        },
+        { new: true }
+      ).populate('project_id', 'project_name')
+       .populate('owner_id', 'full_name email');
+
+      if (!risk) {
+        return createResponse(404, 'Không tìm thấy rủi ro');
+      }
+
+      // Log để debug
+      console.log('updateRiskProgress - Risk after update:', {
+        riskId,
+        progressValue,
+        riskProgress: risk.progress,
+        riskStatus: risk.status
+      });
+
+      const transformedRisk = transformDocumentId(risk, POPULATED_FIELDS.PROJECT_RISK);
+      
+      // Đảm bảo field progress được trả về
+      if (transformedRisk.progress === undefined || transformedRisk.progress === null) {
+        transformedRisk.progress = progressValue;
+      }
+
+      // Log để debug
+      console.log('updateRiskProgress - Transformed risk:', {
+        riskId,
+        transformedProgress: transformedRisk.progress
+      });
+
+      return createResponse(200, 'Cập nhật tiến độ rủi ro thành công', transformedRisk);
+    } catch (error) {
+      console.error('Error updating risk progress:', error);
+      return createResponse(500, 'Lỗi khi cập nhật tiến độ rủi ro', null, error.message);
+    }
+  }
+
+  async getRiskProgressLogs(riskId) {
+    try {
+      const progressLogs = await projectRiskRepository.getRiskProgressLogs(riskId);
+      return createResponse(200, 'Lấy nhật ký tiến độ rủi ro thành công',
+        transformDocumentsId(progressLogs, POPULATED_FIELDS.RISK_PROGRESS_LOG || ['risk_id', 'user_id']));
+    } catch (error) {
+      console.error('Error getting risk progress logs:', error);
+      return createResponse(500, 'Lỗi khi lấy nhật ký tiến độ rủi ro', null, error.message);
+    }
+  }
+
+  async addRiskProgressLog(riskId, progressData, userId) {
+    try {
+      const progressValue = Number(progressData.progress_percentage || progressData.progress || 0);
+      const logData = {
+        progress_percentage: progressValue,
+        work_description: progressData.work_description || progressData.note || '',
+        hours_worked: progressData.hours_worked || 0,
+        log_date: progressData.log_date ? new Date(progressData.log_date) : new Date()
+      };
+      
+      const progressLog = await projectRiskRepository.createProgressLog(riskId, logData, userId);
+      
+      // Tự động cập nhật trạng thái risk dựa trên tiến độ
+      let status = 'IN_PROGRESS';
+      if (progressValue >= 100) {
+        status = 'RESOLVED';
+      } else if (progressValue > 0) {
+        status = 'IN_PROGRESS';
+      }
+      
+      // Cập nhật trạng thái và tiến độ risk và lấy lại dữ liệu đã cập nhật
+      const updatedRisk = await ProjectRisk.findByIdAndUpdate(
+        riskId,
+        { 
+          progress: progressValue,
+          status: status,
+          updated_at: new Date()
+        },
+        { new: true }
+      ).populate('project_id', 'project_name')
+       .populate('owner_id', 'full_name email');
+      
+      // Log để debug
+      console.log('Updated risk progress:', {
+        riskId,
+        progressValue,
+        status,
+        updatedRiskProgress: updatedRisk?.progress
+      });
+      
+      return createResponse(201, 'Thêm nhật ký tiến độ rủi ro thành công', progressLog);
+    } catch (error) {
+      console.error('Error adding risk progress log:', error);
+      return createResponse(500, 'Lỗi khi thêm nhật ký tiến độ rủi ro', null, error.message);
     }
   }
 }

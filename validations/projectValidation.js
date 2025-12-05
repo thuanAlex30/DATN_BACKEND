@@ -200,6 +200,17 @@ const projectValidation = {
 
   // Site validation
   createSite: Joi.object({
+    project_id: Joi.string().custom((value, helpers) => {
+      if (!ObjectId.isValid(value)) {
+        return helpers.error('any.invalid');
+      }
+      return value;
+    }).required()
+      .messages({
+        'any.invalid': 'ID dự án của địa điểm không hợp lệ',
+        'any.required': 'ID dự án của địa điểm là bắt buộc'
+      }),
+
     site_name: Joi.string().trim().min(1).max(255).required()
       .messages({
         'string.empty': 'Tên địa điểm không được để trống',

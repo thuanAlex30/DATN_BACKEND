@@ -7,8 +7,16 @@ class ProjectMilestoneService {
   async getProjectMilestones(projectId) {
     try {
       const milestones = await projectMilestoneRepository.getProjectMilestones(projectId);
-      return createResponse(200, 'Lấy danh sách cột mốc dự án thành công',
-        transformDocumentsId(milestones, POPULATED_FIELDS.PROJECT_MILESTONE));
+      const transformedMilestones = transformDocumentsId(milestones, POPULATED_FIELDS.PROJECT_MILESTONE);
+      
+      // Đảm bảo mỗi milestone có field progress (default 0 nếu không có)
+      transformedMilestones.forEach(milestone => {
+        if (milestone.progress === undefined || milestone.progress === null) {
+          milestone.progress = 0;
+        }
+      });
+      
+      return createResponse(200, 'Lấy danh sách cột mốc dự án thành công', transformedMilestones);
     } catch (error) {
       console.error('Error getting project milestones:', error);
       return createResponse(500, 'Lỗi khi lấy danh sách cột mốc dự án', null, error.message);
@@ -18,8 +26,16 @@ class ProjectMilestoneService {
   async getMilestonesByUser(userId, filters = {}) {
     try {
       const milestones = await projectMilestoneRepository.getMilestonesByUser(userId, filters);
-      return createResponse(200, 'Lấy danh sách cột mốc của người dùng thành công',
-        transformDocumentsId(milestones, POPULATED_FIELDS.PROJECT_MILESTONE));
+      const transformedMilestones = transformDocumentsId(milestones, POPULATED_FIELDS.PROJECT_MILESTONE);
+      
+      // Đảm bảo mỗi milestone có field progress (default 0 nếu không có)
+      transformedMilestones.forEach(milestone => {
+        if (milestone.progress === undefined || milestone.progress === null) {
+          milestone.progress = 0;
+        }
+      });
+      
+      return createResponse(200, 'Lấy danh sách cột mốc của người dùng thành công', transformedMilestones);
     } catch (error) {
       console.error('Error getting milestones by user:', error);
       return createResponse(500, 'Lỗi khi lấy danh sách cột mốc của người dùng', null, error.message);
@@ -34,8 +50,14 @@ class ProjectMilestoneService {
         return createResponse(404, 'Không tìm thấy cột mốc dự án');
       }
 
-      return createResponse(200, 'Lấy thông tin cột mốc dự án thành công',
-        transformDocumentId(milestone, POPULATED_FIELDS.PROJECT_MILESTONE));
+      const transformedMilestone = transformDocumentId(milestone, POPULATED_FIELDS.PROJECT_MILESTONE);
+      
+      // Đảm bảo field progress được trả về (default 0 nếu không có)
+      if (transformedMilestone.progress === undefined || transformedMilestone.progress === null) {
+        transformedMilestone.progress = 0;
+      }
+
+      return createResponse(200, 'Lấy thông tin cột mốc dự án thành công', transformedMilestone);
     } catch (error) {
       console.error('Error getting milestone:', error);
       return createResponse(500, 'Lỗi khi lấy thông tin cột mốc dự án', null, error.message);
@@ -91,6 +113,38 @@ class ProjectMilestoneService {
     }
   }
 
+  async updateMilestoneStatus(id, status, userId) {
+    try {
+      // Khi chuyển sang IN_PROGRESS, khởi tạo progress = 0 nếu chưa có
+      const updateData = {
+        status: status,
+        updated_by: userId
+      };
+      
+      if (status === 'IN_PROGRESS') {
+        updateData.progress = 0;
+      }
+
+      const milestone = await projectMilestoneRepository.updateMilestone(id, updateData, userId);
+
+      if (!milestone) {
+        return createResponse(404, 'Không tìm thấy cột mốc dự án');
+      }
+
+      const transformedMilestone = transformDocumentId(milestone, POPULATED_FIELDS.PROJECT_MILESTONE);
+      
+      // Đảm bảo field progress được trả về (default 0 nếu không có)
+      if (transformedMilestone.progress === undefined || transformedMilestone.progress === null) {
+        transformedMilestone.progress = 0;
+      }
+
+      return createResponse(200, 'Cập nhật trạng thái cột mốc thành công', transformedMilestone);
+    } catch (error) {
+      console.error('Error updating milestone status:', error);
+      return createResponse(500, 'Lỗi khi cập nhật trạng thái cột mốc', null, error.message);
+    }
+  }
+
   async deleteMilestone(id, userId) {
     try {
       const milestone = await projectMilestoneRepository.deleteMilestone(id);
@@ -110,8 +164,16 @@ class ProjectMilestoneService {
   async getAllMilestones(filters = {}) {
     try {
       const milestones = await projectMilestoneRepository.getAllMilestones(filters);
-      return createResponse(200, 'Lấy danh sách cột mốc thành công',
-        transformDocumentsId(milestones, POPULATED_FIELDS.PROJECT_MILESTONE));
+      const transformedMilestones = transformDocumentsId(milestones, POPULATED_FIELDS.PROJECT_MILESTONE);
+      
+      // Đảm bảo mỗi milestone có field progress (default 0 nếu không có)
+      transformedMilestones.forEach(milestone => {
+        if (milestone.progress === undefined || milestone.progress === null) {
+          milestone.progress = 0;
+        }
+      });
+      
+      return createResponse(200, 'Lấy danh sách cột mốc thành công', transformedMilestones);
     } catch (error) {
       console.error('Error getting milestones:', error);
       return createResponse(500, 'Lỗi khi lấy danh sách cột mốc', null, error.message);
@@ -337,6 +399,88 @@ class ProjectMilestoneService {
     } catch (error) {
       console.error('Error generating milestone report:', error);
       return createResponse(500, 'Lỗi khi tạo báo cáo cột mốc', null, error.message);
+    }
+  }
+
+  async updateMilestoneProgress(milestoneId, progress, userId) {
+    try {
+      const progressValue = Number(progress);
+      if (progressValue < 0 || progressValue > 100) {
+        return createResponse(400, 'Tiến độ phải từ 0 đến 100');
+      }
+
+      // Tự động cập nhật trạng thái dựa trên tiến độ
+      let status = 'IN_PROGRESS';
+      if (progressValue >= 100) {
+        status = 'COMPLETED';
+      } else if (progressValue > 0) {
+        status = 'IN_PROGRESS';
+      }
+
+      const milestone = await projectMilestoneRepository.updateMilestone(milestoneId, {
+        progress: progressValue,
+        status: status
+      }, userId);
+
+      if (!milestone) {
+        return createResponse(404, 'Không tìm thấy cột mốc');
+      }
+
+      const transformedMilestone = transformDocumentId(milestone, POPULATED_FIELDS.PROJECT_MILESTONE);
+      
+      // Đảm bảo field progress được trả về
+      if (transformedMilestone.progress === undefined || transformedMilestone.progress === null) {
+        transformedMilestone.progress = progressValue;
+      }
+
+      return createResponse(200, 'Cập nhật tiến độ cột mốc thành công', transformedMilestone);
+    } catch (error) {
+      console.error('Error updating milestone progress:', error);
+      return createResponse(500, 'Lỗi khi cập nhật tiến độ cột mốc', null, error.message);
+    }
+  }
+
+  async getMilestoneProgressLogs(milestoneId) {
+    try {
+      const progressLogs = await projectMilestoneRepository.getMilestoneProgressLogs(milestoneId);
+      return createResponse(200, 'Lấy nhật ký tiến độ cột mốc thành công',
+        transformDocumentsId(progressLogs, POPULATED_FIELDS.MILESTONE_PROGRESS_LOG || ['milestone_id', 'user_id']));
+    } catch (error) {
+      console.error('Error getting milestone progress logs:', error);
+      return createResponse(500, 'Lỗi khi lấy nhật ký tiến độ cột mốc', null, error.message);
+    }
+  }
+
+  async addMilestoneProgressLog(milestoneId, progressData, userId) {
+    try {
+      const progressValue = Number(progressData.progress_percentage || progressData.progress || 0);
+      const logData = {
+        progress_percentage: progressValue,
+        work_description: progressData.work_description || progressData.note || '',
+        hours_worked: progressData.hours_worked || 0,
+        log_date: progressData.log_date ? new Date(progressData.log_date) : new Date()
+      };
+      
+      const progressLog = await projectMilestoneRepository.createProgressLog(milestoneId, logData, userId);
+      
+      // Tự động cập nhật trạng thái milestone dựa trên tiến độ
+      let status = 'IN_PROGRESS';
+      if (progressValue >= 100) {
+        status = 'COMPLETED';
+      } else if (progressValue > 0) {
+        status = 'IN_PROGRESS';
+      }
+      
+      // Cập nhật trạng thái và tiến độ milestone
+      await projectMilestoneRepository.updateMilestone(milestoneId, {
+        progress: progressValue,
+        status: status
+      }, userId);
+      
+      return createResponse(201, 'Thêm nhật ký tiến độ cột mốc thành công', progressLog);
+    } catch (error) {
+      console.error('Error adding milestone progress log:', error);
+      return createResponse(500, 'Lỗi khi thêm nhật ký tiến độ cột mốc', null, error.message);
     }
   }
 }

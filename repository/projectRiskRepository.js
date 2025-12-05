@@ -1,4 +1,5 @@
 const ProjectRisk = require('../models/projectRisk');
+const RiskProgressLog = require('../models/riskProgressLog');
 
 class ProjectRiskRepository {
   // ========== BASIC CRUD ==========
@@ -524,6 +525,46 @@ class ProjectRiskRepository {
       return report;
     } catch (error) {
       console.error('Error generating risk report:', error);
+      throw error;
+    }
+  }
+
+  // ========== RISK PROGRESS LOGS ==========
+  async getRiskProgressLogs(riskId) {
+    try {
+      const progressLogs = await RiskProgressLog.find({ risk_id: riskId })
+        .populate('risk_id', 'risk_name')
+        .populate('user_id', 'full_name email')
+        .sort({ report_date: -1 });
+
+      return progressLogs;
+    } catch (error) {
+      console.error('Error getting risk progress logs:', error);
+      throw error;
+    }
+  }
+
+  async createProgressLog(riskId, progressData, userId) {
+    try {
+      // Map log_date to report_date if provided, otherwise use current date
+      const logData = { ...progressData };
+      if (logData.log_date) {
+        logData.report_date = new Date(logData.log_date);
+        delete logData.log_date;
+      }
+      
+      const progressLog = new RiskProgressLog({
+        risk_id: riskId,
+        ...logData,
+        user_id: userId,
+        report_date: logData.report_date || new Date()
+      });
+
+      await progressLog.save();
+
+      return progressLog;
+    } catch (error) {
+      console.error('Error creating risk progress log:', error);
       throw error;
     }
   }

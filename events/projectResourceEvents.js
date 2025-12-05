@@ -11,43 +11,71 @@ class ProjectResourceEvents {
    */
   static async emitProjectResourceCreated(resource, metadata) {
     try {
+      // Check if event type exists
+      if (!eventTypes.PROJECT_RESOURCE_CREATED) {
+        console.warn('⚠️ PROJECT_RESOURCE_CREATED event type not defined, skipping event emission');
+        return { success: false, error: 'Event type not defined', eventId: null };
+      }
+
+      // Use correct field names from ProjectResource model
       const eventData = {
-        resourceId: resource._id,
-        projectId: resource.project_id,
-        name: resource.name,
-        description: resource.description,
-        type: resource.type,
-        category: resource.category,
-        status: resource.status,
-        assignedTo: resource.assigned_to,
-        assignedToName: resource.assigned_to_name,
-        assignedToEmail: resource.assigned_to_email,
-        assignedToRole: resource.assigned_to_role,
-        createdAt: new Date().toISOString(),
-        createdBy: resource.created_by,
-        startDate: resource.start_date,
-        endDate: resource.end_date,
-        allocation: resource.allocation,
-        utilization: resource.utilization,
-        capacity: resource.capacity,
-        availability: resource.availability,
-        skills: resource.skills || [],
-        certifications: resource.certifications || [],
-        attachments: resource.attachments || [],
-        metadata: resource.metadata || {}
+        eventType: eventTypes.PROJECT_RESOURCE_CREATED,
+        data: {
+          resourceId: resource._id || resource.id,
+          projectId: resource.project_id,
+          resourceName: resource.resource_name,
+          resourceType: resource.resource_type,
+          description: resource.description || '',
+          plannedQuantity: resource.planned_quantity,
+          actualQuantity: resource.actual_quantity || 0,
+          unitMeasure: resource.unit_measure,
+          supplierId: resource.supplier_id,
+          supplierName: resource.supplier_name,
+          requiredDate: resource.required_date,
+          deliveredDate: resource.delivered_date,
+          status: resource.status || 'PLANNED',
+          location: resource.location,
+          notes: resource.notes
+        },
+        metadata: {
+          userId: metadata.userId,
+          userRole: metadata.userRole,
+          userFullName: metadata.userFullName,
+          ipAddress: metadata.ipAddress,
+          userAgent: metadata.userAgent,
+          ...metadata
+        }
       };
 
-      const result = await kafkaProducer.sendProjectEvent(
-        eventTypes.PROJECT_RESOURCE_CREATED,
-        eventData,
-        metadata
-      );
+      // Try to send event with timeout, but don't fail if Kafka is unavailable
+      try {
+        const { topics } = require('../config/kafkaConfig');
+        const result = await Promise.race([
+          kafkaProducer.sendEvent(topics.PROJECT_EVENTS || 'project-events', eventData, resource._id || resource.id),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Kafka timeout')), 3000)
+          )
+        ]);
 
-      console.log(`✅ Project resource created event emitted: ${result.eventId}`);
-      return result;
+        console.log(`✅ Project resource created event emitted: ${result.eventId || 'N/A'}`);
+        return result;
+      } catch (kafkaError) {
+        // Log but don't throw - allow request to succeed even if event fails
+        console.warn('⚠️ Failed to emit project resource created event (non-critical):', kafkaError.message);
+        return {
+          success: false,
+          error: kafkaError.message,
+          eventId: null
+        };
+      }
     } catch (error) {
-      console.error('❌ Error emitting project resource created event:', error);
-      throw error;
+      console.error('❌ Error preparing project resource created event:', error);
+      // Don't throw - allow request to succeed
+      return {
+        success: false,
+        error: error.message,
+        eventId: null
+      };
     }
   }
 

@@ -175,7 +175,7 @@ function transformDocumentsId(docs, populatedFields = []) {
 const POPULATED_FIELDS = {
   PROJECT: ['leader_id', 'site_id', 'created_by'],
   PROJECT_PHASE: ['project_id', 'responsible_user_id'],
-  PROJECT_TASK: ['phase_id', 'area_id', 'location_id'],
+  PROJECT_TASK: ['project_id', 'phase_id', 'area_id', 'location_id', 'responsible_user_id', 'assigned_to', 'parent_task_id'],
   PROJECT_MILESTONE: ['project_id', 'responsible_user_id', 'created_by', 'updated_by'],
   PROJECT_ASSIGNMENT: ['project_id', 'user_id'],
   TASK_ASSIGNMENT: ['task_id', 'user_id'],
@@ -185,11 +185,14 @@ const POPULATED_FIELDS = {
   PROJECT_RISK: ['project_id', 'phase_id', 'owner_id'],
   PROJECT_STATUS_REPORT: ['project_id', 'reported_by'],
   MILESTONE_DELIVERABLE: ['milestone_id', 'reviewer_id'],
+  TASK_PROGRESS_LOG: ['task_id', 'user_id', 'created_by'],
+  RISK_PROGRESS_LOG: ['risk_id', 'user_id'],
+  MILESTONE_PROGRESS_LOG: ['milestone_id', 'user_id'],
   PPE_CATEGORY: [],
   PPE_ITEM: ['category_id'],
   PPE_ISSUANCE: ['user_id', 'item_id'],
   PPE_ASSIGNMENT: ['user_id', 'item_id'],
-  USER: ['department_id', 'position_id', 'role_id']
+  USER: ['department_id', 'role_id']
 };
 
 module.exports = {

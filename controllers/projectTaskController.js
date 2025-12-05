@@ -514,10 +514,10 @@ class ProjectTaskController {
 
   static addProgressLog = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { progress, note } = req.body;
+    const progressData = req.body; // Nhận toàn bộ dữ liệu từ body
     const userId = req.user._id || req.user.id;
     
-    const result = await projectTaskService.addProgressLog(id, progress, note, userId);
+    const result = await projectTaskService.addProgressLog(id, progressData, userId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

@@ -32,21 +32,32 @@ class ProjectResourceController {
     
     const result = await projectResourceService.createResource(resourceData, userId);
     
-    // Emit project resource created event
+    // Emit project resource created event (non-blocking with timeout)
     if (result.success && result.data) {
-      try {
-        const metadata = {
-          userId: req.user?._id || req.user?.id,
-          userRole: req.user?.role,
-          userFullName: req.user?.full_name,
-          ipAddress: req.ip,
-          userAgent: req.get('User-Agent')
-        };
-        await ProjectResourceEvents.emitProjectResourceCreated(result.data, metadata);
-      } catch (error) {
-        console.error('❌ Error emitting project resource created event:', error);
-        // Don't fail the request if event emission fails
-      }
+      // Don't await - fire and forget to avoid blocking the request
+      setImmediate(async () => {
+        try {
+          const metadata = {
+            userId: req.user?._id || req.user?.id,
+            userRole: req.user?.role,
+            userFullName: req.user?.full_name,
+            ipAddress: req.ip,
+            userAgent: req.get('User-Agent')
+          };
+          // Add timeout to prevent hanging
+          await Promise.race([
+            ProjectResourceEvents.emitProjectResourceCreated(result.data, metadata),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Event emission timeout')), 3000)
+            )
+          ]).catch(error => {
+            console.warn('⚠️ Event emission failed (non-critical):', error.message);
+          });
+        } catch (error) {
+          console.error('❌ Error emitting project resource created event:', error);
+          // Don't fail the request if event emission fails
+        }
+      });
     }
     
     if (result.success) {
