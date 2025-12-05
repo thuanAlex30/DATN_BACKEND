@@ -121,6 +121,9 @@ orderSchema.methods.markAsPaid = function(transactionData) {
   this.paymentTransactionId = transactionData.transactionId;
   this.paymentBankCode = transactionData.bankCode;
   this.paymentDate = new Date();
+  // ⭐ QUAN TRỌNG: Xóa expiresAt để tránh bị TTL index tự động xóa
+  // Orders đã thanh toán cần được giữ lại để hiển thị trong "Khách hàng tham gia"
+  this.expiresAt = null;
   return this.save();
 };
 

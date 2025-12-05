@@ -84,10 +84,15 @@ const incidentValidation = {
         'any.invalid': 'ID project không hợp lệ'
       }),
     
-    images: Joi.array().items(Joi.string().uri()).max(10).optional()
+    images: Joi.array().items(
+      Joi.alternatives().try(
+        Joi.string().uri(),
+        Joi.string().pattern(/^data:image\//) // Cho phép base64 data URI
+      )
+    ).max(10).optional()
       .messages({
         'array.max': 'Không được upload quá 10 ảnh',
-        'string.uri': 'URL ảnh không hợp lệ'
+        'alternatives.match': 'Ảnh phải là URL hợp lệ hoặc base64 data URI'
       })
   }),
 

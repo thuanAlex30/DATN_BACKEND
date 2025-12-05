@@ -14,6 +14,12 @@ class IncidentController {
     const incidentData = req.body;
     const userId = req.user._id;
     
+    // Thêm tenant_id từ user nếu chưa có
+    if (!incidentData.tenant_id && req.user.tenant_id) {
+      // Xử lý cả trường hợp tenant_id là object (sau populate) hoặc string
+      incidentData.tenant_id = req.user.tenant_id._id || req.user.tenant_id;
+    }
+    
     const result = await incidentService.createIncident(incidentData, userId);
     
     if (result.success) {
@@ -36,23 +42,23 @@ class IncidentController {
 
   // 2. Lấy tất cả incidents
   static getIncidents = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const userId = req.user?._id;
-    const filters = {
-      ...req.query,
-      // Apply tenant filter if available
-      ...(req.scopeFilter || {})
-    };
-    
-    // Note: Incident model doesn't have department_id field
-    // For department_header, we'll filter by user's department through createdBy/assignedTo
-    // This will be handled in the service/repository if needed
-    
-    const result = await incidentService.getAllIncidents(userId, filters, req.user);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode, result.pagination);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    try {
+      const userId = req.user?._id;
+      const filters = {
+        ...req.query
+      };
+      
+      const result = await incidentService.getAllIncidents(userId, filters, req.user);
+      
+      if (result.success) {
+        return ApiResponse.success(res, result.data, result.message, result.statusCode, result.pagination);
+      } else {
+        return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+      }
+    } catch (error) {
+      console.error('❌ Error in getIncidents controller:', error);
+      console.error('❌ Error stack:', error.stack);
+      return ApiResponse.error(res, error.message || 'Lỗi khi lấy danh sách incidents', 500);
     }
   });
 
@@ -191,13 +197,23 @@ class IncidentController {
   // 9. Lấy thống kê incidents
   static getIncidentStats = ErrorMiddleware.asyncHandler(async (req, res) => {
     try {
+      console.log('📊 getIncidentStats controller called');
+      console.log('📊 Request path:', req.path);
+      console.log('📊 Request originalUrl:', req.originalUrl);
+      
       const filters = {
-        ...req.query,
-        // Apply tenant filter if available
-        ...(req.scopeFilter || {})
+        ...req.query
       };
       
+      console.log('📊 getIncidentStats filters:', filters);
+      
       const result = await incidentService.getIncidentStats(filters);
+      
+      console.log('📊 getIncidentStats result:', {
+        success: result.success,
+        statusCode: result.statusCode,
+        hasData: !!result.data
+      });
       
       if (result.success) {
         return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -205,7 +221,8 @@ class IncidentController {
         return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
       }
     } catch (error) {
-      console.error('Error in getIncidentStats controller:', error);
+      console.error('❌ Error in getIncidentStats controller:', error);
+      console.error('❌ Error stack:', error.stack);
       return ApiResponse.error(res, error.message || 'Lỗi khi lấy thống kê incidents', 500);
     }
   });
@@ -336,14 +353,9 @@ class IncidentController {
       return ApiResponse.error(res, 'Bạn phải thuộc một department để escalate sự cố', 403);
     }
     
-    // Check tenant scope
-    if (req.user.tenant_id && incident.tenant_id.toString() !== req.user.tenant_id.toString()) {
-      return ApiResponse.error(res, 'Không có quyền truy cập sự cố này', 403);
-    }
-    
     // Create escalation record
     const escalation = new IncidentEscalation({
-      tenant_id: req.user.tenant_id || incident.tenant_id,
+      tenant_id: incident.tenant_id || req.user.tenant_id,
       department_id: req.user.department_id,
       incident_id: incident._id,
       escalation_level,
@@ -412,11 +424,6 @@ class IncidentController {
     const incident = await Incident.findById(id);
     if (!incident) {
       return ApiResponse.error(res, 'Không tìm thấy sự cố', 404);
-    }
-    
-    // Check tenant scope
-    if (req.user.tenant_id && incident.tenant_id.toString() !== req.user.tenant_id.toString()) {
-      return ApiResponse.error(res, 'Không có quyền truy cập sự cố này', 403);
     }
     
     const escalations = await IncidentEscalation.find({ incident_id: id })

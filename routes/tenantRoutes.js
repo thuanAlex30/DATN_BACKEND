@@ -17,6 +17,16 @@ router.get('/',
   TenantController.getAllTenants
 );
 
+// Get participating customers (tenants with paid orders)
+// MUST be before /:id routes to avoid route conflict
+router.get('/customers/participating',
+  AuthMiddleware.authorizeScope({
+    minRoleLevel: 100,
+    tenantScope: 'global'
+  }),
+  TenantController.getParticipatingCustomers
+);
+
 router.get('/:id',
   AuthMiddleware.authorizeScope({
     minRoleLevel: 100,

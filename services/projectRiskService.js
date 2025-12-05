@@ -1,4 +1,5 @@
 const ProjectRisk = require('../models/projectRisk');
+const ProjectRiskRepository = require('../repository/projectRiskRepository');
 
 class ProjectRiskService {
   async getProjectRisks(projectId) {
@@ -282,6 +283,27 @@ class ProjectRiskService {
         success: false,
         message: 'Lỗi khi lấy danh sách rủi ro được giao',
         error: error.message
+      };
+    }
+  }
+
+  async getAllRisks(filters = {}) {
+    try {
+      const risks = await ProjectRiskRepository.getAllRisks(filters);
+      
+      return {
+        success: true,
+        data: risks,
+        message: 'Lấy danh sách tất cả rủi ro thành công',
+        statusCode: 200
+      };
+    } catch (error) {
+      console.error('Error getting all risks:', error);
+      return {
+        success: false,
+        message: 'Lỗi khi lấy danh sách rủi ro',
+        error: error.message,
+        statusCode: 500
       };
     }
   }

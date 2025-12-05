@@ -27,6 +27,17 @@ class ProjectRiskRepository {
       if (filters.owner_id) {
         query.owner_id = filters.owner_id;
       }
+      if (filters.is_active !== undefined) {
+        query.is_active = filters.is_active === 'true' || filters.is_active === true;
+      }
+      
+      // Handle search filter - search in risk_name, description
+      if (filters.search) {
+        query.$or = [
+          { risk_name: { $regex: filters.search, $options: 'i' } },
+          { description: { $regex: filters.search, $options: 'i' } }
+        ];
+      }
 
       const risks = await ProjectRisk.find(query)
         .populate('project_id', 'project_name project_code')

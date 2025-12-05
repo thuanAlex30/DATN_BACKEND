@@ -175,6 +175,8 @@ router.use('/task-workflows', taskWorkflowRoutes);
 // Admin and Tenant Management Routes
 router.use('/admin', adminRoutes);
 router.use('/tenants', tenantRoutes);
+console.log('✅ Tenant routes mounted at /tenants');
+console.log('   - GET /tenants/customers/participating');
 router.use('/company-admin', companyAdminRoutes);
 
 // Hikvision Integration Routes
@@ -235,7 +237,11 @@ router.use('*', (req, res) => {
         'GET /api/project-risks',
         'GET /api/project-change-requests',
         'GET /api/project-status-reports',
-        'GET /api/quality-checkpoints'
+        'GET /api/quality-checkpoints',
+        'GET /api/tenants',
+        'GET /api/tenants/customers/participating',
+        'GET /api/tenants/:id',
+        'GET /api/tenants/:id/stats'
       ]
     },
     timestamp: new Date().toISOString()

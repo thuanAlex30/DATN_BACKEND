@@ -239,6 +239,86 @@ class TenantController {
     const stats = await TenantRepository.getTenantStats(id);
     return ApiResponse.success(res, stats, 'Tenant statistics retrieved successfully');
   });
+
+  // Get participating customers (tenants with paid orders)
+  static getParticipatingCustomers = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const Order = require('../models/order');
+    const options = {
+      page: parseInt(req.query.page) || 1,
+      limit: parseInt(req.query.limit) || 10,
+      search: req.query.search || '',
+      sort_by: req.query.sort_by || 'paymentDate',
+      sort_order: req.query.sort_order || 'desc'
+    };
+
+    try {
+      // Find all paid orders that have tenantId (account has been created)
+      const orderFilter = {
+        status: 'paid',
+        tenantId: { $ne: null } // Only orders that have been processed and tenant created
+      };
+
+      if (options.search) {
+        orderFilter.$or = [
+          { 'companyInfo.name': { $regex: options.search, $options: 'i' } },
+          { 'contactPerson.name': { $regex: options.search, $options: 'i' } },
+          { 'companyInfo.email': { $regex: options.search, $options: 'i' } },
+          { 'contactPerson.email': { $regex: options.search, $options: 'i' } }
+        ];
+      }
+
+      const sortOrder = options.sort_order === 'asc' ? 1 : -1;
+      const sortObj = { [options.sort_by]: sortOrder };
+
+      const skip = (options.page - 1) * options.limit;
+
+      // Get paid orders with tenant info
+      const [orders, total] = await Promise.all([
+        Order.find(orderFilter)
+          .populate('tenantId', 'name tenant_code status subscription')
+          .sort(sortObj)
+          .skip(skip)
+          .limit(options.limit),
+        Order.countDocuments(orderFilter)
+      ]);
+
+      // Map to customer format - filter out orders without tenant
+      const customers = orders
+        .filter(order => order.tenantId) // Only include orders with valid tenant
+        .map(order => {
+          const tenant = order.tenantId;
+          return {
+            _id: tenant._id.toString(),
+            companyName: order.companyInfo?.name || tenant?.name || 'N/A',
+            contactPerson: order.contactPerson?.name || 'N/A',
+            contactEmail: order.contactPerson?.email || order.companyInfo?.email || 'N/A',
+            contactPhone: order.contactPerson?.phone || order.companyInfo?.phone || 'N/A',
+            planType: order.planType,
+            amount: order.amount,
+            paymentDate: order.paymentDate || order.createdAt,
+            tenantCode: tenant?.tenant_code || 'N/A',
+            tenantStatus: tenant?.status || 'N/A',
+            subscriptionPlan: tenant?.subscription?.plan || order.planType,
+            subscriptionExpiresAt: tenant?.subscription?.expires_at || null,
+            orderId: order.orderId
+          };
+        });
+
+      return ApiResponse.success(res, {
+        customers,
+        pagination: {
+          page: options.page,
+          limit: options.limit,
+          total,
+          totalPages: Math.ceil(total / options.limit),
+          hasNextPage: options.page < Math.ceil(total / options.limit),
+          hasPrevPage: options.page > 1
+        }
+      }, 'Participating customers retrieved successfully');
+    } catch (error) {
+      return ApiResponse.error(res, error.message, 500);
+    }
+  });
 }
 
 module.exports = TenantController;

@@ -30,5 +30,10 @@ const IncidentSchema = new mongoose.Schema({
 });
 
 IncidentSchema.index({ tenant_id: 1 });
+IncidentSchema.index({ status: 1 });
+IncidentSchema.index({ severity: 1 });
+IncidentSchema.index({ createdAt: -1 });
+IncidentSchema.index({ assignedTo: 1 });
+IncidentSchema.index({ createdBy: 1 });
 
 module.exports = mongoose.model('Incident', IncidentSchema);

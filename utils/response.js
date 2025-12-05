@@ -10,13 +10,20 @@ function createResponse(statusCode, message, data = null) {
 }
 
 class ApiResponse {
-  static success(res, data = null, message = 'Success', statusCode = 200) {
-    return res.status(statusCode).json({
+  static success(res, data = null, message = 'Success', statusCode = 200, pagination = null) {
+    const response = {
       success: true,
       message,
       data,
       timestamp: new Date().toISOString()
-    });
+    };
+    
+    // Add pagination if provided
+    if (pagination) {
+      response.pagination = pagination;
+    }
+    
+    return res.status(statusCode).json(response);
   }
 
   static error(res, message = 'Internal Server Error', statusCode = 500, errors = null) {

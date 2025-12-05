@@ -12,43 +12,98 @@ class AdminController {
   // System Admin Dashboard - Overall statistics
   static getSystemDashboard = ErrorMiddleware.asyncHandler(async (req, res) => {
     try {
-      // Get all tenants statistics
-      const tenantsStats = await TenantRepository.getAllTenantsStats();
+      const tenantsStats = await TenantRepository.getAllTenantsStats().catch(err => {
+        console.error('Error getting tenants stats:', err);
+        return { totals: { tenants: 0, active_tenants: 0, suspended_tenants: 0, inactive_tenants: 0, total_users: 0, total_active_users: 0, total_departments: 0, total_projects: 0, total_tasks: 0 } };
+      });
 
-      // Get recent system logs for activities
-      const recentLogs = await SystemLog.find({})
-        .sort({ created_at: -1 })
-        .limit(10)
-        .select('action module details ip_address created_at user_id tenant_id')
+      const [taskStats, permissionAlerts] = await Promise.all([
+        ProjectTask.aggregate([
+          {
+            $group: {
+              _id: '$status',
+              count: { $sum: 1 }
+            }
+          }
+        ]).catch(() => []),
+        SystemLog.find({
+          severity: { $in: ['error', 'warning'] },
+          $or: [
+            { action: { $regex: /permission|authorization|access denied/i } },
+            { module: 'auth' }
+          ]
+        })
+        .sort({ timestamp: -1 })
+        .limit(100)
+        .select('action module details severity timestamp user_id')
         .populate('user_id', 'username full_name')
-        .populate('tenant_id', 'name tenant_name')
-        .lean();
+        .lean()
+        .catch(err => {
+          console.error('Error getting permission alerts:', err);
+          return [];
+        })
+      ]);
 
-      // Get role count
-      const Role = require('../models/role');
-      const totalRoles = await Role.countDocuments({});
+      const taskStatusMap = {};
+      taskStats.forEach(stat => {
+        taskStatusMap[stat._id] = stat.count;
+      });
 
-      // Format recent activities
-      const recentActivities = recentLogs.map(log => ({
-        id: log._id?.toString(),
-        tenant_name: log.tenant_id?.name || log.tenant_id?.tenant_name,
-        user_name: log.user_id?.username || log.user_id?.full_name,
-        action: log.action,
-        module: log.module,
-        details: log.details,
-        ip_address: log.ip_address,
-        created_at: log.created_at
-      }));
+      const errors = permissionAlerts.filter(a => a.severity === 'error').slice(0, 50);
+      const warnings = permissionAlerts.filter(a => a.severity === 'warning').slice(0, 50);
 
-      // Format dashboard data for frontend
       const dashboard = {
-        totalTenants: tenantsStats.totals.tenants,
-        activeTenants: tenantsStats.totals.active_tenants,
-        totalUsers: tenantsStats.totals.total_users,
-        activeUsers: tenantsStats.totals.total_active_users,
-        totalRoles: totalRoles,
-        systemLogs: await SystemLog.countDocuments({}),
-        recentActivities: recentActivities
+        tenants: {
+          tenants: tenantsStats.totals.tenants,
+          active_tenants: tenantsStats.totals.active_tenants,
+          suspended_tenants: tenantsStats.totals.suspended_tenants,
+          inactive_tenants: tenantsStats.totals.inactive_tenants,
+          total_users: tenantsStats.totals.total_users,
+          total_active_users: tenantsStats.totals.total_active_users,
+          total_departments: tenantsStats.totals.total_departments,
+          total_projects: tenantsStats.totals.total_projects,
+          total_tasks: tenantsStats.totals.total_tasks
+        },
+        tasks: {
+          total: taskStatusMap.total || Object.values(taskStatusMap).reduce((a, b) => a + b, 0),
+          pending: taskStatusMap.pending || taskStatusMap.PENDING || 0,
+          in_progress: taskStatusMap.in_progress || taskStatusMap.IN_PROGRESS || 0,
+          completed: taskStatusMap.completed || taskStatusMap.COMPLETED || 0,
+          on_hold: taskStatusMap.on_hold || taskStatusMap.ON_HOLD || 0,
+          cancelled: taskStatusMap.cancelled || taskStatusMap.CANCELLED || 0,
+          overdue: 0
+        },
+        permission_alerts: {
+          errors: errors.map(e => ({
+            _id: e._id?.toString(),
+            message: e.action || e.details?.message || 'Permission error',
+            created_at: e.timestamp || e.createdAt,
+            user_id: e.user_id ? {
+              username: e.user_id.username,
+              full_name: e.user_id.full_name
+            } : undefined
+          })),
+          warnings: warnings.map(w => ({
+            _id: w._id?.toString(),
+            message: w.action || w.details?.message || 'Permission warning',
+            created_at: w.timestamp || w.createdAt,
+            user_id: w.user_id ? {
+              username: w.user_id.username,
+              full_name: w.user_id.full_name
+            } : undefined
+          })),
+          total_errors: errors.length,
+          total_warnings: warnings.length
+        },
+        summary: {
+          total_tenants: tenantsStats.totals.tenants,
+          active_tenants: tenantsStats.totals.active_tenants,
+          total_users: tenantsStats.totals.total_users,
+          total_active_users: tenantsStats.totals.total_active_users,
+          total_projects: tenantsStats.totals.total_projects,
+          total_tasks: tenantsStats.totals.total_tasks,
+          permission_issues: errors.length + warnings.length
+        }
       };
 
       return ApiResponse.success(res, dashboard, 'System dashboard data retrieved successfully');
@@ -97,30 +152,30 @@ class AdminController {
     } = req.query;
 
     const filter = {
-      message: { $regex: /permission|authorization|access denied/i }
+      $or: [
+        { action: { $regex: /permission|authorization|access denied/i } },
+        { module: 'auth' }
+      ]
     };
 
     if (type === 'error') {
-      filter.log_type = 'error';
+      filter.severity = 'error';
     } else if (type === 'warning') {
-      filter.log_type = 'warning';
-    }
-
-    if (tenant_id) {
-      filter.tenant_id = tenant_id;
+      filter.severity = 'warning';
+    } else {
+      filter.severity = { $in: ['error', 'warning'] };
     }
 
     const alerts = await SystemLog.find(filter)
-      .sort({ created_at: -1 })
+      .sort({ timestamp: -1 })
       .limit(parseInt(limit))
       .populate('user_id', 'username full_name email')
-      .populate('tenant_id', 'tenant_code name')
       .lean();
 
     const stats = {
       total: alerts.length,
-      errors: alerts.filter(a => a.log_type === 'error').length,
-      warnings: alerts.filter(a => a.log_type === 'warning').length
+      errors: alerts.filter(a => a.severity === 'error').length,
+      warnings: alerts.filter(a => a.severity === 'warning').length
     };
 
     return ApiResponse.success(res, {
