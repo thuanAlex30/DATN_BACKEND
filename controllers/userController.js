@@ -63,20 +63,20 @@ class UserController {
         } else {
           // For non-self access, check tenant and department
           const targetUser = await UserRepository.findById(id, ['department_id']);
-          if (!targetUser) {
-            return ApiResponse.notFound(res, 'Không tìm thấy người dùng');
-          }
+        if (!targetUser) {
+          return ApiResponse.notFound(res, 'Không tìm thấy người dùng');
+        }
 
           // Check tenant isolation
-          if (
-            targetUser.tenant_id &&
-            currentUser.tenant_id &&
-            targetUser.tenant_id.toString() !== currentUser.tenant_id.toString()
-          ) {
-            return ApiResponse.forbidden(
-              res,
-              'Bạn không được phép truy cập người dùng thuộc tenant khác'
-            );
+        if (
+          targetUser.tenant_id &&
+          currentUser.tenant_id &&
+          targetUser.tenant_id.toString() !== currentUser.tenant_id.toString()
+        ) {
+          return ApiResponse.forbidden(
+            res,
+            'Bạn không được phép truy cập người dùng thuộc tenant khác'
+          );
           }
 
           // For Manager (role_level >= 70), allow reading users in same department

@@ -1,10 +1,10 @@
-// Load .env with fallback values
+// Load .env
 require('dotenv').config();
 
-// Set environment variables if not provided
+// Require JWT secret explicitly (security hardening)
 if (!process.env.JWT_SECRET) {
-  process.env.JWT_SECRET = 'your_super_secret_jwt_key_here_2024_safety_management_system';
-  console.log('⚠️  JWT_SECRET not found in .env, using default value');
+  console.error('❌ JWT_SECRET is missing. Please set it in .env');
+  process.exit(1);
 }
 
 // Set Kafka environment variables
@@ -13,6 +13,7 @@ if (!process.env.KAFKAJS_NO_PARTITIONER_WARNING) {
 }
 
 const express = require('express');
+const path = require('path');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
@@ -27,6 +28,7 @@ const initializeTrainingData = require('./database/initializeTrainingData');
 const websocketService = require('./services/websocketService');
 const kafkaMonitor = require('./services/kafkaMonitor');
 const expiryCheckJob = require('./jobs/expiryCheckJob');
+const ppeOverdueJob = require('./jobs/ppeOverdueJob');
 
 const app = express();
 const server = createServer(app);
@@ -84,7 +86,10 @@ console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
 console.log('🌍 MONGODB_URI:', process.env.MONGODB_URI ? '[loaded]' : '[missing]');
 
 // Security
-app.use(helmet());
+app.use(helmet({
+  // Allow images/files to be loaded cross-origin (frontend on 5173)
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
 
 // CORS - 更宽松的配置用于开发环境
 const corsOptions = {
@@ -99,7 +104,7 @@ const corsOptions = {
     }
   },
   credentials: true,
-methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type', 
     'Authorization', 
@@ -114,7 +119,11 @@ methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   preflightContinue: false
 };
 
+// Apply CORS before static and routes
 app.use(cors(corsOptions));
+
+// Serve static files for uploads (images, backups, etc.)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // 明确处理预检请求
 app.options('*', (req, res) => {
@@ -260,9 +269,11 @@ app.use(ErrorMiddleware.handle);
     // Initialize WebSocket server
     websocketService.initialize(io);
     
-    // Start PPE expiry check job
+    // Start PPE expiry & overdue check jobs
     expiryCheckJob.start();
+    ppeOverdueJob.start();
     console.log('✅ PPE expiry check job started');
+    console.log('✅ PPE overdue check job started');
     
     // Initialize Kafka services
     try {

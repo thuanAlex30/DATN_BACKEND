@@ -1,13 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 const ppeController = require('../controllers/PPEController');
 const authMiddleware = require('../middlewares/AuthMiddleware');
 const validationMiddleware = require('../middlewares/ValidationMiddleware');
 const addIssuedByMiddleware = require('../middlewares/AddIssuedByMiddleware');
 const Joi = require('joi');
 
-// Configure multer for file upload
+// Configure multer for Excel import
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -23,8 +25,145 @@ const upload = multer({
   }
 });
 
+// Configure multer for image upload (PPE categories/items)
+const imageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const targetDir = file.fieldname === 'image'
+      ? path.join('uploads', 'ppe')
+      : 'uploads';
+    fs.mkdirSync(targetDir, { recursive: true });
+    cb(null, targetDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+  }
+});
+
+const imageUpload = multer({
+  storage: imageStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype && file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Chỉ hỗ trợ upload file ảnh'), false);
+    }
+  }
+});
+
 // Apply authentication middleware to all routes
 router.use(authMiddleware.authenticate);
+
+// Common ObjectId validator
+const objectId = Joi.string()
+  .pattern(/^[0-9a-fA-F]{24}$/)
+  .messages({
+    'string.pattern.base': 'ID không hợp lệ'
+  });
+
+// PPE Category validation schema
+const categoryValidation = {
+  create: Joi.object({
+    category_name: Joi.string().min(2).max(100).required()
+      .messages({
+        'string.base': 'Tên danh mục phải là chuỗi',
+        'string.min': 'Tên danh mục phải có ít nhất 2 ký tự',
+        'string.max': 'Tên danh mục không được quá 100 ký tự',
+        'any.required': 'Tên danh mục là bắt buộc'
+      }),
+    description: Joi.string().allow('', null).max(500)
+      .optional()
+      .messages({
+        'string.max': 'Mô tả không được quá 500 ký tự'
+      }),
+    lifespan_months: Joi.number().integer().min(1).max(120)
+      .optional()
+      .messages({
+        'number.base': 'Thời hạn sử dụng phải là số',
+        'number.integer': 'Thời hạn sử dụng phải là số nguyên',
+        'number.min': 'Thời hạn sử dụng tối thiểu là 1 tháng',
+        'number.max': 'Thời hạn sử dụng tối đa là 120 tháng'
+      }),
+    image_url: Joi.string().optional()
+  }),
+  update: Joi.object({
+    category_name: Joi.string().min(2).max(100).optional(),
+    description: Joi.string().allow('', null).max(500).optional(),
+    lifespan_months: Joi.number().integer().min(1).max(120).optional(),
+    image_url: Joi.string().optional()
+  })
+};
+
+// PPE Item validation schema
+const itemValidation = {
+  create: Joi.object({
+    item_code: Joi.string().pattern(/^[A-Z0-9-_]+$/).min(3).max(50).required()
+      .messages({
+        'string.pattern.base': 'Mã thiết bị chỉ gồm chữ hoa, số, gạch ngang, gạch dưới',
+        'string.min': 'Mã thiết bị phải có ít nhất 3 ký tự',
+        'string.max': 'Mã thiết bị không được quá 50 ký tự',
+        'any.required': 'Mã thiết bị là bắt buộc'
+      }),
+    item_name: Joi.string().min(2).max(200).required()
+      .messages({
+        'string.min': 'Tên thiết bị phải có ít nhất 2 ký tự',
+        'string.max': 'Tên thiết bị không được quá 200 ký tự',
+        'any.required': 'Tên thiết bị là bắt buộc'
+      }),
+    category_id: objectId.required().messages({
+      'any.required': 'Danh mục là bắt buộc'
+    }),
+    brand: Joi.string().allow('', null).max(100).optional(),
+    model: Joi.string().allow('', null).max(100).optional(),
+    reorder_level: Joi.number().integer().min(0).optional(),
+    quantity_available: Joi.number().integer().min(0).optional(),
+    quantity_allocated: Joi.number().integer().min(0).optional(),
+    image_url: Joi.string().optional()
+  }),
+  update: Joi.object({
+    item_code: Joi.string().pattern(/^[A-Z0-9-_]+$/).min(3).max(50).optional(),
+    item_name: Joi.string().min(2).max(200).optional(),
+    category_id: objectId.optional(),
+    brand: Joi.string().allow('', null).max(100).optional(),
+    model: Joi.string().allow('', null).max(100).optional(),
+    reorder_level: Joi.number().integer().min(0).optional(),
+    quantity_available: Joi.number().integer().min(0).optional(),
+    quantity_allocated: Joi.number().integer().min(0).optional(),
+    image_url: Joi.string().optional()
+  }),
+  quantity: Joi.object({
+    quantity_available: Joi.number().integer().min(0).required()
+      .messages({
+        'any.required': 'Số lượng có sẵn là bắt buộc',
+        'number.min': 'Số lượng có sẵn phải >= 0'
+      }),
+    quantity_allocated: Joi.number().integer().min(0).optional()
+  })
+};
+
+// PPE Inventory validation schema
+const inventoryValidation = {
+  create: Joi.object({
+    item_id: objectId.required().messages({ 'any.required': 'Thiết bị là bắt buộc' }),
+    site_id: objectId.required().messages({ 'any.required': 'Địa điểm là bắt buộc' }),
+    quantity_available: Joi.number().integer().min(0).required()
+      .messages({
+        'number.min': 'Số lượng có sẵn phải >= 0',
+        'any.required': 'Số lượng có sẵn là bắt buộc'
+      }),
+    quantity_allocated: Joi.number().integer().min(0).optional()
+  }),
+  update: Joi.object({
+    item_id: objectId.optional(),
+    site_id: objectId.optional(),
+    quantity_available: Joi.number().integer().min(0).optional(),
+    quantity_allocated: Joi.number().integer().min(0).optional()
+  })
+};
 
 // PPE Issuance validation schema
 const issuanceValidation = {
@@ -78,6 +217,7 @@ const issuanceValidation = {
         'string.pattern.base': 'ID người phát không hợp lệ'
       }),
     notes: Joi.string()
+      .allow('', null) // allow empty string/null from UI
       .max(500)
       .optional()
       .messages({
@@ -120,6 +260,7 @@ const issuanceValidation = {
         'number.min': 'Số lượng phải lớn hơn 0'
       }),
     notes: Joi.string()
+      .allow('', null)
       .max(500)
       .optional()
       .messages({
@@ -161,7 +302,9 @@ const issuanceValidation = {
 router.get('/categories', ppeController.getAllCategories);
 router.get('/categories/:id', ppeController.getCategoryById);
 router.post('/categories', 
+  imageUpload.single('image'),
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
+  validationMiddleware.validateBody(categoryValidation.create),
   ppeController.createCategory
 );
 router.post('/categories/import',
@@ -175,11 +318,15 @@ router.post('/categories/import',
   ppeController.importCategories
 );
 router.put('/categories/:id', 
+  imageUpload.single('image'),
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
+  validationMiddleware.validateParams(Joi.object({ id: objectId.required() })),
+  validationMiddleware.validateBody(categoryValidation.update),
   ppeController.updateCategory
 );
 router.delete('/categories/:id', 
   authMiddleware.authorizeScope({ minRoleLevel: 80, tenantScope: 'tenant' }),
+  validationMiddleware.validateParams(Joi.object({ id: objectId.required() })),
   ppeController.deleteCategory
 );
 
@@ -192,21 +339,29 @@ router.post('/items/import',
 );
 router.get('/items/:id', ppeController.getItemById);
 router.post('/items', 
+  imageUpload.single('image'),
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
+  validationMiddleware.validateBody(itemValidation.create),
   ppeController.createItem
 );
 router.put('/items/:id', 
+  imageUpload.single('image'),
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
+  validationMiddleware.validateParams(Joi.object({ id: objectId.required() })),
+  validationMiddleware.validateBody(itemValidation.update),
   ppeController.updateItem
 );
 router.delete('/items/:id', 
   authMiddleware.authorizeScope({ minRoleLevel: 80, tenantScope: 'tenant' }),
+  validationMiddleware.validateParams(Joi.object({ id: objectId.required() })),
   ppeController.deleteItem
 );
 
 // PPE Items Quantity Management Routes
 router.put('/items/:id/quantity', 
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
+  validationMiddleware.validateParams(Joi.object({ id: objectId.required() })),
+  validationMiddleware.validateBody(itemValidation.quantity),
   ppeController.updateItemQuantity
 );
 
@@ -337,55 +492,73 @@ router.get('/items/:id/stats', ppeController.getItemStats);
 
 // PPE Inventory Routes
 router.get('/inventory', ppeController.getAllInventory);
-router.get('/inventory/:id', ppeController.getInventoryById);
+router.get('/inventory/:id', 
+  validationMiddleware.validateParams(Joi.object({ id: objectId.required() })),
+  ppeController.getInventoryById
+);
 router.post('/inventory', 
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
+  validationMiddleware.validateBody(inventoryValidation.create),
   ppeController.createInventory
 );
 router.put('/inventory/:id', 
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
+  validationMiddleware.validateParams(Joi.object({ id: objectId.required() })),
+  validationMiddleware.validateBody(inventoryValidation.update),
   ppeController.updateInventory
 );
 router.delete('/inventory/:id', 
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
+  validationMiddleware.validateParams(Joi.object({ id: objectId.required() })),
   ppeController.deleteInventory
 );
 router.get('/inventory/stats', ppeController.getInventoryStats);
 
 // PPE Assignments Routes
 router.get('/assignments', ppeController.getAllAssignments);
-router.get('/assignments/:id', ppeController.getAssignmentById);
+router.get('/assignments/:id', 
+  validationMiddleware.validateParams(Joi.object({ id: objectId.required() })),
+  ppeController.getAssignmentById
+);
 router.post('/assignments', 
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant' }),
   ppeController.createAssignment
 );
 router.put('/assignments/:id', 
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant' }),
+  validationMiddleware.validateParams(Joi.object({ id: objectId.required() })),
   ppeController.updateAssignment
 );
 router.delete('/assignments/:id', 
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant' }),
+  validationMiddleware.validateParams(Joi.object({ id: objectId.required() })),
   ppeController.deleteAssignment
 );
 router.get('/assignments/user/:userId', ppeController.getUserAssignments);
 router.post('/assignments/:id/return', 
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant' }),
+  validationMiddleware.validateParams(Joi.object({ id: objectId.required() })),
   ppeController.returnAssignment
 );
 
 // PPE Maintenance Routes
 router.get('/maintenance', ppeController.getAllMaintenance);
-router.get('/maintenance/:id', ppeController.getMaintenanceById);
+router.get('/maintenance/:id', 
+  validationMiddleware.validateParams(Joi.object({ id: objectId.required() })),
+  ppeController.getMaintenanceById
+);
 router.post('/maintenance', 
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant' }),
   ppeController.createMaintenance
 );
 router.put('/maintenance/:id', 
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant' }),
+  validationMiddleware.validateParams(Joi.object({ id: objectId.required() })),
   ppeController.updateMaintenance
 );
 router.delete('/maintenance/:id', 
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant' }),
+  validationMiddleware.validateParams(Joi.object({ id: objectId.required() })),
   ppeController.deleteMaintenance
 );
 router.get('/maintenance/stats', ppeController.getMaintenanceStats);

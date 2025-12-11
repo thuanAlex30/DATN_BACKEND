@@ -4,6 +4,7 @@ const UserService = require('./userService');
 const mongoose = require('mongoose');
 const User = require('../models/user');
 const PPEIssuance = require('../models/ppeIssuance');
+const PPEItem = require('../models/ppeItem');
 const Department = require('../models/department');
 const ExcelJS = require('exceljs');
 const { transformDocumentId, transformDocumentsId, POPULATED_FIELDS } = require('../utils/transformId');
@@ -255,9 +256,11 @@ class PPEService {
       }
 
       // Use normalized item_code
+      // Ensure quantity_allocated has default value if not provided
       const itemDataWithNormalizedCode = {
         ...itemData,
-        item_code: normalizedItemCode
+        item_code: normalizedItemCode,
+        quantity_allocated: itemData.quantity_allocated ?? 0
       };
 
       const item = await ppeRepository.createItem(itemDataWithNormalizedCode, tenantId);
@@ -292,6 +295,18 @@ class PPEService {
 
   async deleteItem(id, tenantId = null) {
     try {
+      // Hard guard: prevent delete if item has any active/historical issuances
+      const activeIssuances = await PPEIssuance.countDocuments({
+        item_id: id,
+        // any issuance record counts, even returned, to keep audit trail
+      });
+      if (activeIssuances > 0) {
+        return createResponse(
+          400,
+          'Không thể xóa thiết bị PPE vì đã có phát sinh phát/nhận. Vui lòng thu hồi/hủy và dùng ngưng hoạt động thay vì xóa.'
+        );
+      }
+
       const deleted = await ppeRepository.deleteItem(id, tenantId);
       if (!deleted) {
         return createResponse(404, 'Không tìm thấy thiết bị PPE để xóa');
@@ -376,6 +391,25 @@ class PPEService {
         const employeeUser = await User.findById(issuanceData.user_id)
           .populate('role_id', 'role_name role_code')
           .populate('department_id');
+        // Check item active
+        const itemDoc = await PPEItem.findById(issuanceData.item_id).select('status');
+        if (!itemDoc) {
+          throw new Error('Không tìm thấy thiết bị PPE');
+        }
+        if (itemDoc.status !== 'active') {
+          throw new Error('Thiết bị PPE đã bị ngưng sử dụng, không thể phát');
+        }
+
+        // Guard: require Manager đã xác nhận nhận PPE từ Header Department cho item này
+        const pendingAdminToManager = await PPEIssuance.findOne({
+          user_id: issuanceData.issued_by,
+          item_id: issuanceData.item_id,
+          issuance_level: 'admin_to_manager',
+          status: 'pending_confirmation'
+        }).lean();
+        if (pendingAdminToManager) {
+          throw new Error('Bạn cần xác nhận nhận PPE từ Header Department trước khi phát cho Employee');
+        }
 
         if (!managerUser) {
           throw new Error('Manager không tồn tại');
@@ -432,6 +466,27 @@ class PPEService {
           manager_id: issuanceData.issued_by
         };
         issuance = await ppeRepository.createIssuance(issuancePayload, tenantId);
+
+        // Decrease remaining_quantity on Manager's admin_to_manager issuances for this item
+        let deductQty = issuanceData.quantity;
+        while (deductQty > 0) {
+          const sourceIssuance = await PPEIssuance.findOne({
+            user_id: issuanceData.issued_by,
+            item_id: issuanceData.item_id,
+            issuance_level: 'admin_to_manager',
+            status: { $in: ['issued', 'pending_confirmation'] },
+            remaining_quantity: { $gt: 0 }
+          }).sort({ issued_date: -1 }); // latest first
+
+          if (!sourceIssuance) break;
+
+          const useQty = Math.min(sourceIssuance.remaining_quantity ?? sourceIssuance.quantity, deductQty);
+          sourceIssuance.remaining_quantity = (sourceIssuance.remaining_quantity ?? sourceIssuance.quantity) - useQty;
+          await sourceIssuance.save({ session });
+
+          // If fully consumed and status still issued, keep as is; remaining_quantity reflects the rest
+          deductQty -= useQty;
+        }
       });
       
       return createResponse(201, 'Manager phát PPE cho Employee thành công', {
@@ -726,7 +781,20 @@ class PPEService {
       const ppeSummary = {};
       
       for (const issuance of receivedIssuances) {
-        const itemId = issuance.item_id._id || issuance.item_id;
+        // ✅ Kiểm tra null/undefined trước khi truy cập _id
+        if (!issuance.item_id) {
+          console.warn('[getManagerPPE] Skipping issuance with null item_id:', issuance._id || issuance.id);
+          continue;
+        }
+        
+        const itemId = (typeof issuance.item_id === 'object' && issuance.item_id._id) 
+          ? issuance.item_id._id.toString() 
+          : issuance.item_id?.toString() || issuance.item_id;
+        
+        if (!itemId) {
+          console.warn('[getManagerPPE] Skipping issuance with invalid item_id:', issuance._id || issuance.id);
+          continue;
+        }
         
         if (!ppeSummary[itemId]) {
           ppeSummary[itemId] = {
@@ -898,14 +966,24 @@ class PPEService {
           // For warehouse_staff, no department head check required
         }
 
-        // Check if enough stock is available
-        const item = await ppeRepository.getItemById(issuanceData.item_id);
+        // Check stock and item status atomically
+        const qty = issuanceData.quantity;
+        const item = await PPEItem.findOneAndUpdate(
+          {
+            _id: issuanceData.item_id,
+            status: 'active',
+            quantity_available: { $gte: qty }
+          },
+          {
+            $inc: {
+              quantity_available: -qty,
+              quantity_allocated: qty
+            }
+          },
+          { new: true, session }
+        );
         if (!item) {
-          throw new Error('Không tìm thấy thiết bị PPE');
-        }
-        
-        if (item.quantity_available < issuanceData.quantity) {
-          throw new Error(`Không đủ tồn kho để phát. Hiện có: ${item.quantity_available}, cần phát: ${issuanceData.quantity}`);
+          throw new Error('Không đủ tồn kho hoặc thiết bị không khả dụng (inactive)');
         }
 
         // Get issuer and recipient info for WebSocket
@@ -917,14 +995,8 @@ class PPEService {
           issuanceData.remaining_quantity = issuanceData.quantity;
         }
 
-        // Create issuance
+        // Create issuance (stock was already updated atomically above)
         issuance = await ppeRepository.createIssuance(issuanceData);
-
-        // Update item quantity - allocate the quantity
-        await ppeRepository.updateItemQuantity(issuanceData.item_id, {
-          quantity_available: item.quantity_available - issuanceData.quantity,
-          quantity_allocated: item.quantity_allocated + issuanceData.quantity
-        });
       });
       
       return createResponse(201, 'Phát PPE thành công', {
@@ -1566,6 +1638,17 @@ class PPEService {
 
   async deleteInventory(id) {
     try {
+      // Guard: prevent delete if inventory item has any issuances referencing it
+      const activeIssuances = await PPEIssuance.countDocuments({
+        item_id: id,
+      });
+      if (activeIssuances > 0) {
+        return createResponse(
+          400,
+          'Không thể xóa tồn kho vì thiết bị đã/đang được phát. Vui lòng thu hồi/hủy thay vì xóa.'
+        );
+      }
+
       const deleted = await ppeRepository.deleteItem(id);
       if (!deleted) {
         return createResponse(404, 'Không tìm thấy thiết bị trong tồn kho');

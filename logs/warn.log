@@ -188,3 +188,7 @@
 {"timestamp":"2025-12-05T15:16:12.366Z","level":"WARN","message":"User not connected","metadata":{"userId":"693002add4c22c766d371d25","event":"ppe_notification"},"pid":23208,"hostname":"Bravo"}
 {"timestamp":"2025-12-05T15:23:34.179Z","level":"WARN","message":"User not connected","metadata":{"userId":"692fe64ea505fa8c97485c4f","event":"ppe_notification"},"pid":23208,"hostname":"Bravo"}
 {"timestamp":"2025-12-05T15:23:34.182Z","level":"WARN","message":"User not connected","metadata":{"userId":"6932e36d00071fff4dd19c03","event":"ppe_notification"},"pid":23208,"hostname":"Bravo"}
+{"timestamp":"2025-12-11T03:18:57.881Z","level":"WARN","message":"User not connected","metadata":{"userId":"693002add4c22c766d371d25","event":"ppe_notification"},"pid":17372,"hostname":"Bravo"}
+{"timestamp":"2025-12-11T03:18:57.883Z","level":"WARN","message":"User not connected","metadata":{"userId":"692fe64ea505fa8c97485c4f","event":"ppe_notification"},"pid":17372,"hostname":"Bravo"}
+{"timestamp":"2025-12-11T03:21:17.257Z","level":"WARN","message":"User not connected","metadata":{"userId":"692fe64ea505fa8c97485c4f","event":"ppe_notification"},"pid":17372,"hostname":"Bravo"}
+{"timestamp":"2025-12-11T03:21:17.259Z","level":"WARN","message":"User not connected","metadata":{"userId":"693002add4c22c766d371d25","event":"ppe_notification"},"pid":17372,"hostname":"Bravo"}

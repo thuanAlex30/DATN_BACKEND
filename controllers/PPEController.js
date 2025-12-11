@@ -32,6 +32,9 @@ class PPEController {
 
   static createCategory = ErrorMiddleware.asyncHandler(async (req, res) => {
     const categoryData = req.body;
+    if (req.file) {
+      categoryData.image_url = `/${req.file.path.replace(/\\/g, '/')}`;
+    }
     const tenantId = req.user.tenant_id;
     const result = await ppeService.createCategory(categoryData, tenantId);
     
@@ -62,6 +65,9 @@ class PPEController {
   static updateCategory = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
     const categoryData = req.body;
+    if (req.file) {
+      categoryData.image_url = `/${req.file.path.replace(/\\/g, '/')}`;
+    }
     const tenantId = req.user.tenant_id;
     const result = await ppeService.updateCategory(id, categoryData, tenantId);
     
@@ -141,6 +147,9 @@ class PPEController {
 
   static createItem = ErrorMiddleware.asyncHandler(async (req, res) => {
     const itemData = req.body;
+    if (req.file) {
+      itemData.image_url = `/${req.file.path.replace(/\\/g, '/')}`;
+    }
     const tenantId = req.user.tenant_id;
     const result = await ppeService.createItem(itemData, tenantId);
     
@@ -175,6 +184,9 @@ class PPEController {
   static updateItem = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
     const itemData = req.body;
+    if (req.file) {
+      itemData.image_url = `/${req.file.path.replace(/\\/g, '/')}`;
+    }
     const tenantId = req.user.tenant_id;
     const result = await ppeService.updateItem(id, itemData, tenantId);
     
