@@ -1,5 +1,6 @@
 const hikvisionService = require('../services/hikvisionService');
 const { createResponse } = require('../utils/response');
+const UserRepository = require('../repository/UserRepository');
 
 /**
  * Get Access Control Events
@@ -24,6 +25,16 @@ exports.getAccessControlEvents = async (req, res) => {
       getAll = false // If true, fetch all events with pagination
     } = req.query;
 
+    console.log('📥 Request query params:', {
+      getAll,
+      getAllType: typeof getAll,
+      getAllValue: getAll,
+      startTime,
+      endTime,
+      major,
+      minor
+    });
+
     // Limit maxResults to 100 (like Python code) to avoid "Invalid Content" errors
     const parsedMaxResults = maxResults !== undefined ? parseInt(maxResults) : 100;
     const limitedMaxResults = parsedMaxResults > 100 ? 100 : parsedMaxResults;
@@ -33,7 +44,9 @@ exports.getAccessControlEvents = async (req, res) => {
       ...(searchResultPosition !== undefined && { searchResultPosition: parseInt(searchResultPosition) }),
       maxResults: limitedMaxResults, // Always limit to 100 max
       ...(major !== undefined && { major: parseInt(major) }),
-      ...(minor !== undefined && { minor: parseInt(minor) }),
+      // Chỉ truyền minor nếu có giá trị cụ thể (không phải 0 hoặc undefined)
+      // minor: 0 có thể không trả về dữ liệu, nên không truyền để lấy tất cả
+      ...(minor !== undefined && minor !== null && minor !== '0' && minor !== 0 && { minor: parseInt(minor) }),
       ...(startTime && { startTime }),
       ...(endTime && { endTime })
     };
@@ -41,9 +54,14 @@ exports.getAccessControlEvents = async (req, res) => {
     console.log('🔍 Search params:', searchParams);
 
     let result;
-    if (getAll === 'true' || getAll === true) {
+    const shouldGetAll = getAll === 'true' || getAll === true || getAll === '1' || getAll === 1;
+    console.log('🔄 Should get all events?', shouldGetAll);
+    
+    if (shouldGetAll) {
+      console.log('📡 Calling getAllAccessControlEvents (with pagination)');
       result = await hikvisionService.getAllAccessControlEvents(searchParams);
     } else {
+      console.log('📡 Calling getAccessControlEvents (single request)');
       result = await hikvisionService.getAccessControlEvents(searchParams);
     }
 
@@ -66,8 +84,71 @@ exports.getAccessControlEvents = async (req, res) => {
       );
     }
 
+    // Enrich events with user information
+    let enrichedData = result.data;
+    try {
+      // Extract employeeNoString from events
+      const events = result.data?.events || result.data?.AcsEvent?.InfoList || [];
+      if (events.length > 0) {
+        const employeeNos = events
+          .map(e => e.employeeNoString)
+          .filter(no => no && no !== '' && no !== 'undefined');
+        
+        if (employeeNos.length > 0) {
+          console.log('🔍 Enriching events with user info for employeeNos:', employeeNos);
+          const users = await UserRepository.findByUserIds(employeeNos);
+          
+          // Create a map for quick lookup
+          const userMap = new Map();
+          users.forEach(user => {
+            if (user.user_id) {
+              userMap.set(String(user.user_id), {
+                id: user._id,
+                user_id: user.user_id,
+                username: user.username,
+                full_name: user.full_name,
+                email: user.email
+              });
+            }
+          });
+
+          console.log('👥 Found users:', userMap.size, 'out of', employeeNos.length);
+
+          // Enrich events with user info
+          const enrichedEvents = events.map(event => {
+            if (event.employeeNoString && userMap.has(event.employeeNoString)) {
+              return {
+                ...event,
+                user: userMap.get(event.employeeNoString)
+              };
+            }
+            return event;
+          });
+
+          // Update data structure
+          if (result.data?.events) {
+            enrichedData = {
+              ...result.data,
+              events: enrichedEvents
+            };
+          } else if (result.data?.AcsEvent?.InfoList) {
+            enrichedData = {
+              ...result.data,
+              AcsEvent: {
+                ...result.data.AcsEvent,
+                InfoList: enrichedEvents
+              }
+            };
+          }
+        }
+      }
+    } catch (enrichError) {
+      console.error('⚠️ Error enriching events with user info:', enrichError);
+      // Continue with original data if enrichment fails
+    }
+
     return res.status(200).json(
-      createResponse(200, 'Lấy dữ liệu sự kiện kiểm soát truy cập thành công', result.data)
+      createResponse(200, 'Lấy dữ liệu sự kiện kiểm soát truy cập thành công', enrichedData)
     );
 
   } catch (error) {
@@ -98,8 +179,57 @@ exports.searchAccessControlEvents = async (req, res) => {
       );
     }
 
+    // Enrich events with user information
+    let enrichedData = result.data;
+    try {
+      const events = result.data?.AcsEvent?.InfoList || [];
+      if (events.length > 0) {
+        const employeeNos = events
+          .map(e => e.employeeNoString)
+          .filter(no => no && no !== '' && no !== 'undefined');
+        
+        if (employeeNos.length > 0) {
+          const users = await UserRepository.findByUserIds(employeeNos);
+          const userMap = new Map();
+          users.forEach(user => {
+            if (user.user_id) {
+              userMap.set(String(user.user_id), {
+                id: user._id,
+                user_id: user.user_id,
+                username: user.username,
+                full_name: user.full_name,
+                email: user.email
+              });
+            }
+          });
+
+          const enrichedEvents = events.map(event => {
+            if (event.employeeNoString && userMap.has(event.employeeNoString)) {
+              return {
+                ...event,
+                user: userMap.get(event.employeeNoString)
+              };
+            }
+            return event;
+          });
+
+          if (result.data?.AcsEvent?.InfoList) {
+            enrichedData = {
+              ...result.data,
+              AcsEvent: {
+                ...result.data.AcsEvent,
+                InfoList: enrichedEvents
+              }
+            };
+          }
+        }
+      }
+    } catch (enrichError) {
+      console.error('⚠️ Error enriching events with user info:', enrichError);
+    }
+
     return res.status(200).json(
-      createResponse(200, 'Tìm kiếm sự kiện kiểm soát truy cập thành công', result.data)
+      createResponse(200, 'Tìm kiếm sự kiện kiểm soát truy cập thành công', enrichedData)
     );
 
   } catch (error) {

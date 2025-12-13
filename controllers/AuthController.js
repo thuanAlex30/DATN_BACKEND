@@ -97,7 +97,8 @@ class AuthController {
   static getProfile = ErrorMiddleware.asyncHandler(async (req, res) => {
     const userId = req.user._id || req.user.id;
     const result = await AuthService.getProfile(userId);
-    return ApiResponse.success(res, result, 'Profile retrieved successfully');
+    // Extract data from result object (result.data contains the actual profile data)
+    return ApiResponse.success(res, result.data, 'Profile retrieved successfully');
   });
 
   // Update user profile

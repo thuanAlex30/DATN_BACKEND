@@ -78,9 +78,14 @@ router.get('/:id',
   (req, res, next) => {
     // Check if user is reading themselves FIRST
     const currentUserId = req.user?.id?.toString() || req.user?._id?.toString();
+    // Support both user_id (integer) and _id (ObjectId)
+    const currentUserIntegerId = req.user?.user_id?.toString();
     const requestId = req.params.id?.toString();
     const isSelf = currentUserId === requestId || 
-                   req.user?._id?.toString() === requestId;
+    currentUserIntegerId === requestId ||
+    req.user?._id?.toString() === requestId ||
+    (req.user?.user_id && req.user.user_id.toString() === requestId);
+
     
     // Allow self access for any role
     if (isSelf) {

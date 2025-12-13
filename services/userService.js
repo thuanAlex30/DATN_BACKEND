@@ -45,7 +45,8 @@ class UserService {
       await user.populate(['role_id', 'department_id']);
 
       return createResponse(201, 'Tạo người dùng thành công', {
-        id: user._id,
+        id: user.user_id || user._id, // Use user_id (integer) as primary ID, fallback to _id
+        user_id: user.user_id,
         username: user.username,
         email: user.email,
         full_name: user.full_name,
@@ -74,6 +75,7 @@ class UserService {
 
       return createResponse(200, 'Lấy thông tin người dùng thành công', {
         id: user._id,
+        user_id: user.user_id || null,
         username: user.username,
         email: user.email,
         full_name: user.full_name,
@@ -135,6 +137,7 @@ class UserService {
 
       return createResponse(200, 'Cập nhật người dùng thành công', {
         id: updatedUser._id,
+        user_id: updatedUser.user_id || null,
         username: updatedUser.username,
         email: updatedUser.email,
         full_name: updatedUser.full_name,
@@ -176,6 +179,7 @@ class UserService {
       return createResponse(200, 'Lấy danh sách người dùng thành công', {
         users: result.users.map(user => ({
           id: user._id,
+          user_id: user.user_id || null,
           username: user.username,
           email: user.email,
           full_name: user.full_name,
@@ -211,11 +215,18 @@ class UserService {
       
       return result.users.map(user => ({
         id: user._id,
+        user_id: user.user_id || null,
         username: user.username,
         email: user.email,
         full_name: user.full_name,
         phone: user.phone || '',
         address: user.address || '',
+        tenant_id: user.tenant_id?._id || user.tenant_id || null,
+        tenant: user.tenant_id ? {
+          id: user.tenant_id._id || user.tenant_id.id || user.tenant_id,
+          tenant_name: user.tenant_id.name || user.tenant_id.tenant_name || '',
+          name: user.tenant_id.name || user.tenant_id.tenant_name || ''
+        } : null,
         role: user.role_id,
         department: user.department_id,
         is_active: user.is_active,

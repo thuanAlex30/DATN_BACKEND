@@ -1,8 +1,13 @@
 const mongoose = require('mongoose');
 const HashUtils = require('../utils/hash');
 const { getDefaultTenantObjectId } = require('../utils/tenancy');
-
+const CounterService = require('../services/counterService');
 const userSchema = new mongoose.Schema({
+  user_id: {
+    type: Number,
+    unique: true,
+    sparse: true // Allow null values but ensure uniqueness when present
+  },
   tenant_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Tenant',
@@ -72,6 +77,7 @@ const userSchema = new mongoose.Schema({
 });
 
 // Add indexes
+userSchema.index({ user_id: 1 }, { unique: true, sparse: true });
 userSchema.index({ tenant_id: 1 });
 userSchema.index({ username: 1 });
 userSchema.index({ email: 1 });
@@ -103,6 +109,20 @@ userSchema.set('toObject', {
     delete ret.__v;
     return ret;
   }
+});
+// Auto-increment user_id before saving (only for new documents)
+userSchema.pre('save', async function(next) {
+  // Only assign user_id if this is a new document and user_id is not already set
+  if (this.isNew && !this.user_id) {
+    try {
+      this.user_id = await CounterService.getNextSequence('user_id');
+      console.log(`✅ Auto-assigned user_id: ${this.user_id} for new user`);
+    } catch (error) {
+      console.error('❌ Error generating user_id:', error);
+      return next(error);
+    }
+  }
+  next();
 });
 
 // Hash password if set directly

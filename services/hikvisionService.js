@@ -15,7 +15,7 @@ class HikvisionService {
   constructor() {
     // Default Hikvision configuration
     // Can be overridden via environment variables
-    this.baseURL = process.env.HIKVISION_BASE_URL || 'http://192.168.3.100:80';
+    this.baseURL = process.env.HIKVISION_BASE_URL || 'http://192.168.1.3:80';
     this.username = process.env.HIKVISION_USERNAME || 'admin';
     this.password = process.env.HIKVISION_PASSWORD || '12345678A';
     this.timeout = 30000; // 30 seconds
@@ -433,7 +433,7 @@ class HikvisionService {
       searchResultPosition = 0,
       maxResults = 100, // Default to 100 like Python code
       major = 5,
-      minor = 0,
+      minor = 38, // Default to 38 (vân tay) thay vì 0
       startTime,
       endTime
     } = searchParams;
@@ -451,17 +451,20 @@ class HikvisionService {
 
     if (startTime) {
       // Remove milliseconds if present (e.g., "2025-11-29T17:00:00.000+08:00" -> "2025-11-29T17:00:00+08:00")
-      formattedStartTime = startTime.replace(/\.\d{3}/, '');
+      // Also remove timezone if present to match Hikvision format: "2025-12-13T00:00:00"
+      formattedStartTime = startTime.replace(/\.\d{3}/, '').replace(/[+-]\d{2}:\d{2}$/, '');
     } else {
-      formattedStartTime = this.formatHikvisionTimestamp(todayStart);
+      // Format without timezone to match Hikvision API format
+      formattedStartTime = this.formatHikvisionTimestamp(todayStart).replace(/[+-]\d{2}:\d{2}$/, '');
     }
 
     if (endTime) {
-      // Remove milliseconds if present
-      formattedEndTime = endTime.replace(/\.\d{3}/, '');
+      // Remove milliseconds and timezone if present
+      formattedEndTime = endTime.replace(/\.\d{3}/, '').replace(/[+-]\d{2}:\d{2}$/, '');
     } else {
       todayEnd.setHours(23, 59, 59, 0); // Set to 23:59:59 (no milliseconds)
-      formattedEndTime = this.formatHikvisionTimestamp(todayEnd);
+      // Format without timezone to match Hikvision API format
+      formattedEndTime = this.formatHikvisionTimestamp(todayEnd).replace(/[+-]\d{2}:\d{2}$/, '');
     }
 
     // Build request body exactly as Python code
@@ -472,7 +475,7 @@ class HikvisionService {
         searchResultPosition: Number(searchResultPosition || 0),
         maxResults: Number(maxResults || 100), // Default to 100 like Python
         major: Number(major || 5),
-        minor: Number(minor || 0),
+        minor: Number(minor !== undefined && minor !== null ? minor : 38), // Default to 38 (vân tay)
         startTime: formattedStartTime,
         endTime: formattedEndTime
       }
@@ -510,7 +513,11 @@ class HikvisionService {
 
     while (hasMore) {
       callCount++;
-      console.log(`📡 Lần gọi API thứ ${callCount}, vị trí: ${searchResultPosition}`);
+      console.log(`\n📡 Lần gọi API thứ ${callCount}, vị trí: ${searchResultPosition}`);
+      console.log(`📋 Search params:`, JSON.stringify({
+        ...searchParamsWithLimit,
+        searchResultPosition
+      }, null, 2));
 
       const result = await this.getAccessControlEvents({
         ...searchParamsWithLimit,
@@ -533,6 +540,7 @@ class HikvisionService {
       const acsEvent = result.data?.AcsEvent;
       if (!acsEvent) {
         console.log(`⚠️ Không có AcsEvent ở lần gọi thứ ${callCount}`);
+        console.log(`📥 Response data:`, JSON.stringify(result.data, null, 2));
         break;
       }
 
@@ -543,6 +551,13 @@ class HikvisionService {
       if (acsEvent.totalMatches !== undefined && acsEvent.totalMatches !== null) {
         totalMatches = acsEvent.totalMatches;
       }
+      
+      console.log(`📊 Response info:`, {
+        responseStatusStrg: acsEvent.responseStatusStrg,
+        numOfMatches: acsEvent.numOfMatches,
+        totalMatches: acsEvent.totalMatches,
+        eventsCount: events.length
+      });
       
       if (events.length === 0) {
         console.log(`⚠️ Không có dữ liệu ở lần gọi thứ ${callCount} (responseStatusStrg: ${acsEvent.responseStatusStrg || 'UNKNOWN'})`);
@@ -561,8 +576,15 @@ class HikvisionService {
       
       // Update position using numOfMatches (like Python code: position += data['AcsEvent']['numOfMatches'])
       if (hasMore && acsEvent.numOfMatches) {
+        const oldPosition = searchResultPosition;
         searchResultPosition += acsEvent.numOfMatches;
-        console.log(`  ➡️ Cập nhật position: ${searchResultPosition - acsEvent.numOfMatches} -> ${searchResultPosition}`);
+        console.log(`  ➡️ Cập nhật position: ${oldPosition} -> ${searchResultPosition} (numOfMatches: ${acsEvent.numOfMatches})`);
+        
+        // Kiểm tra xem đã lấy đủ chưa
+        if (totalMatches !== null && allEvents.length >= totalMatches) {
+          console.log(`  ✅ Đã lấy đủ ${totalMatches} events, dừng pagination`);
+          hasMore = false;
+        }
       } else {
         hasMore = false;
         console.log(`  ✅ Đã lấy hết dữ liệu (responseStatusStrg: ${acsEvent.responseStatusStrg || 'UNKNOWN'})`);

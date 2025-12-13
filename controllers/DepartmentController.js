@@ -19,7 +19,7 @@ class DepartmentController {
     };
 
     const result = await DepartmentRepository.findAll(options);
-    
+
     // Calculate employees_count for each department
     const User = require('../models/user');
     const departmentsWithCounts = await Promise.all(
@@ -232,7 +232,7 @@ class DepartmentController {
     // For inactive departments with employees, require password verification
     if (!department.is_active && totalEmployeeCount > 0) {
       if (!password) {
-        return ApiResponse.error(res, 
+      return ApiResponse.error(res, 
           `Phòng ban này còn ${totalEmployeeCount} nhân viên. Vui lòng nhập mật khẩu để xác nhận xóa.`, 
           400
         );
