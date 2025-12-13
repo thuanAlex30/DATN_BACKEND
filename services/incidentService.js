@@ -106,13 +106,44 @@ class IncidentService {
         
         // If department_header, filter results by department after query
         let incidents = result.incidents || [];
-        if (user?.department_id && user?.role?.role_code === 'department_header' && department_id) {
+        if (user?.department_id && user?.role?.role_code === 'department_header') {
+          const User = require('../models/user');
+          const mongoose = require('mongoose');
+          
+          // Filter incidents where createdBy or assignedTo belongs to the department_header's department
+          const filteredIncidents = [];
+          for (const incident of incidents) {
+            // Populate createdBy and assignedTo if not already populated
+            let createdByUser = incident.createdBy;
+            let assignedToUser = incident.assignedTo;
+            
+            if (mongoose.Types.ObjectId.isValid(incident.createdBy) && typeof incident.createdBy === 'object' && !incident.createdBy.department_id) {
+              createdByUser = await User.findById(incident.createdBy).select('department_id');
+            }
+            if (incident.assignedTo && mongoose.Types.ObjectId.isValid(incident.assignedTo) && typeof incident.assignedTo === 'object' && !incident.assignedTo.department_id) {
+              assignedToUser = await User.findById(incident.assignedTo).select('department_id');
+            }
+            
+            // Include incident if createdBy or assignedTo belongs to the same department
+            const createdByDeptId = createdByUser?.department_id?.toString() || (typeof createdByUser === 'object' && createdByUser?.department_id?.toString());
+            const assignedToDeptId = assignedToUser?.department_id?.toString() || (typeof assignedToUser === 'object' && assignedToUser?.department_id?.toString());
+            const userDeptId = user.department_id.toString();
+            
+            if (createdByDeptId === userDeptId || assignedToDeptId === userDeptId) {
+              filteredIncidents.push(incident);
+            }
+          }
+          incidents = filteredIncidents;
         }
         
         return {
           success: true,
           data: incidents,
-          pagination: result.pagination,
+          pagination: {
+            ...result.pagination,
+            totalItems: incidents.length,
+            totalPages: Math.ceil(incidents.length / (result.pagination?.itemsPerPage || 20))
+          },
           message: 'Lấy danh sách incidents thành công',
           statusCode: 200
         };
@@ -127,10 +158,46 @@ class IncidentService {
           }
         );
         
+        // If department_header, filter results by department after query
+        let incidents = result.incidents || [];
+        if (user?.department_id && user?.role?.role_code === 'department_header') {
+          const User = require('../models/user');
+          const mongoose = require('mongoose');
+          
+          // Filter incidents where createdBy or assignedTo belongs to the department_header's department
+          const filteredIncidents = [];
+          for (const incident of incidents) {
+            // Populate createdBy and assignedTo if not already populated
+            let createdByUser = incident.createdBy;
+            let assignedToUser = incident.assignedTo;
+            
+            if (mongoose.Types.ObjectId.isValid(incident.createdBy) && typeof incident.createdBy === 'object' && !incident.createdBy.department_id) {
+              createdByUser = await User.findById(incident.createdBy).select('department_id');
+            }
+            if (incident.assignedTo && mongoose.Types.ObjectId.isValid(incident.assignedTo) && typeof incident.assignedTo === 'object' && !incident.assignedTo.department_id) {
+              assignedToUser = await User.findById(incident.assignedTo).select('department_id');
+            }
+            
+            // Include incident if createdBy or assignedTo belongs to the same department
+            const createdByDeptId = createdByUser?.department_id?.toString() || (typeof createdByUser === 'object' && createdByUser?.department_id?.toString());
+            const assignedToDeptId = assignedToUser?.department_id?.toString() || (typeof assignedToUser === 'object' && assignedToUser?.department_id?.toString());
+            const userDeptId = user.department_id.toString();
+            
+            if (createdByDeptId === userDeptId || assignedToDeptId === userDeptId) {
+              filteredIncidents.push(incident);
+            }
+          }
+          incidents = filteredIncidents;
+        }
+        
         return {
           success: true,
-          data: result.incidents || [],
-          pagination: result.pagination,
+          data: incidents,
+          pagination: {
+            ...result.pagination,
+            totalItems: incidents.length,
+            totalPages: Math.ceil(incidents.length / (result.pagination?.itemsPerPage || 20))
+          },
           message: 'Lấy danh sách incidents thành công',
           statusCode: 200
         };
@@ -421,9 +488,101 @@ class IncidentService {
   /**
    * Lấy thống kê incidents
    */
-  static async getIncidentStats(filters = {}) {
+  static async getIncidentStats(filters = {}, tenantId = null, user = null) {
     try {
-      const stats = await incidentRepository.getIncidentStats(filters);
+      let stats = await incidentRepository.getIncidentStats({
+        ...filters,
+        tenant_id: tenantId
+      });
+      
+      // If department_header, filter stats by department
+      if (user?.department_id && user?.role?.role_code === 'department_header') {
+        console.log('🔍 Filtering stats for department_header:', {
+          userId: user._id,
+          departmentId: user.department_id,
+          roleCode: user.role?.role_code
+        });
+        
+        const User = require('../models/user');
+        const mongoose = require('mongoose');
+        const Incident = require('../models/incident');
+        
+        // Get all incidents of the tenant with populated users for department filtering
+        const allIncidents = await Incident.find({ tenant_id: tenantId })
+          .select('title description location severity status incidentId assignedTo createdBy images createdAt')
+          .populate('createdBy', 'department_id')
+          .populate('assignedTo', 'department_id')
+          .lean();
+        
+        console.log(`📊 Found ${allIncidents.length} total incidents for tenant ${tenantId}`);
+        
+        // Filter incidents by department
+        const filteredIncidents = [];
+        const userDeptId = user.department_id.toString();
+        
+        for (const incident of allIncidents || []) {
+          // Get department_id from populated or fetch if needed
+          let createdByDeptId = null;
+          let assignedToDeptId = null;
+          
+          if (incident.createdBy) {
+            if (typeof incident.createdBy === 'object' && incident.createdBy.department_id) {
+              createdByDeptId = incident.createdBy.department_id.toString();
+            } else if (mongoose.Types.ObjectId.isValid(incident.createdBy)) {
+              const createdByUser = await User.findById(incident.createdBy).select('department_id').lean();
+              createdByDeptId = createdByUser?.department_id?.toString() || null;
+            }
+          }
+          
+          if (incident.assignedTo) {
+            if (typeof incident.assignedTo === 'object' && incident.assignedTo.department_id) {
+              assignedToDeptId = incident.assignedTo.department_id.toString();
+            } else if (mongoose.Types.ObjectId.isValid(incident.assignedTo)) {
+              const assignedToUser = await User.findById(incident.assignedTo).select('department_id').lean();
+              assignedToDeptId = assignedToUser?.department_id?.toString() || null;
+            }
+          }
+          
+          // Include incident if createdBy or assignedTo belongs to the same department
+          if (createdByDeptId === userDeptId || assignedToDeptId === userDeptId) {
+            filteredIncidents.push(incident);
+          }
+        }
+        
+        console.log(`✅ Filtered to ${filteredIncidents.length} incidents for department ${userDeptId}`);
+        
+        // Recalculate stats from filtered incidents
+        const total = filteredIncidents.length;
+        const statusBreakdown = {};
+        const severityBreakdown = {};
+        
+        filteredIncidents.forEach(incident => {
+          const status = incident.status || 'Mới ghi nhận';
+          const severity = incident.severity || 'nhẹ';
+          
+          statusBreakdown[status] = (statusBreakdown[status] || 0) + 1;
+          severityBreakdown[severity] = (severityBreakdown[severity] || 0) + 1;
+        });
+        
+        const inProgress = (statusBreakdown['Đang xử lý'] || 0) + 
+                          (statusBreakdown['in_progress'] || 0) + 
+                          (statusBreakdown['investigating'] || 0);
+        const resolved = (statusBreakdown['Đã đóng'] || 0) + 
+                        (statusBreakdown['resolved'] || 0) + 
+                        (statusBreakdown['closed'] || 0);
+        const critical = (severityBreakdown['rất nghiêm trọng'] || 0) + 
+                       (severityBreakdown['critical'] || 0) + 
+                       (severityBreakdown['nặng'] || 0);
+        
+        stats = {
+          total,
+          inProgress,
+          resolved,
+          critical,
+          byStatus: statusBreakdown,
+          bySeverity: severityBreakdown
+        };
+      }
       
       return {
         success: true,
@@ -465,9 +624,9 @@ class IncidentService {
   /**
    * Lấy incidents theo user
    */
-  static async getIncidentsByUser(userId) {
+  static async getIncidentsByUser(userId, tenantId = null) {
     try {
-      const incidents = await incidentRepository.getIncidentsByUser(userId);
+      const incidents = await incidentRepository.getIncidentsByUser(userId, tenantId);
       
       return {
         success: true,
@@ -509,9 +668,9 @@ class IncidentService {
   /**
    * Lấy incidents theo status
    */
-  static async getIncidentsByStatus(status) {
+  static async getIncidentsByStatus(status, tenantId = null) {
     try {
-      const incidents = await incidentRepository.getIncidentsByStatus(status);
+      const incidents = await incidentRepository.getIncidentsByStatus(status, tenantId);
       
       return {
         success: true,
@@ -531,9 +690,9 @@ class IncidentService {
   /**
    * Lấy incidents theo severity
    */
-  static async getIncidentsBySeverity(severity) {
+  static async getIncidentsBySeverity(severity, tenantId = null) {
     try {
-      const incidents = await incidentRepository.getIncidentsBySeverity(severity);
+      const incidents = await incidentRepository.getIncidentsBySeverity(severity, tenantId);
       
       return {
         success: true,

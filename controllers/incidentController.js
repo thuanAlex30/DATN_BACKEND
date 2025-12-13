@@ -197,10 +197,15 @@ class IncidentController {
       const filters = {
         ...req.query
       };
+      const tenantId = req.user.tenant_id;
+      const user = req.user;
       
       console.log('📊 getIncidentStats filters:', filters);
+      console.log('📊 getIncidentStats tenantId:', tenantId);
+      console.log('📊 getIncidentStats user role:', user?.role?.role_code);
+      console.log('📊 getIncidentStats user department_id:', user?.department_id);
       
-      const result = await incidentService.getIncidentStats(filters);
+      const result = await incidentService.getIncidentStats(filters, tenantId, user);
       
       console.log('📊 getIncidentStats result:', {
         success: result.success,
@@ -236,7 +241,8 @@ class IncidentController {
   // 11. Lấy incidents theo user
   static getIncidentsByUser = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { userId } = req.params;
-    const result = await incidentService.getIncidentsByUser(userId);
+    const tenantId = req.user.tenant_id;
+    const result = await incidentService.getIncidentsByUser(userId, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -261,7 +267,8 @@ class IncidentController {
   // 13. Lấy incidents theo status
   static getIncidentsByStatus = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { status } = req.params;
-    const result = await incidentService.getIncidentsByStatus(status);
+    const tenantId = req.user.tenant_id;
+    const result = await incidentService.getIncidentsByStatus(status, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -273,7 +280,8 @@ class IncidentController {
   // 14. Lấy incidents theo severity
   static getIncidentsBySeverity = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { severity } = req.params;
-    const result = await incidentService.getIncidentsBySeverity(severity);
+    const tenantId = req.user.tenant_id;
+    const result = await incidentService.getIncidentsBySeverity(severity, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

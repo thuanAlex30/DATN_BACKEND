@@ -34,6 +34,7 @@ const companyAdminRoutes = require('./companyAdminRoutes');
 const hikvisionRoutes = require('./hikvisionRoutes');
 const chatbotRoutes = require('./chatbotRoutes');
 const pricingRoutes = require('./pricingRoutes');
+const contractRoutes = require('./contractRoutes');
 
 console.log('Loading kafkaMonitor...');
 const kafkaMonitor = require('../services/kafkaMonitor');
@@ -182,6 +183,9 @@ router.use('/chatbot', chatbotRoutes);
 
 // Pricing Routes (Public - không cần authentication)
 router.use('/pricing', pricingRoutes);
+
+// Contract Routes
+router.use('/contracts', contractRoutes);
 
 // Global 404 handler for API routes
 router.use('*', (req, res) => {

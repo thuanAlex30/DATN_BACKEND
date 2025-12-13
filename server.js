@@ -169,6 +169,27 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Serve static files from uploads directory with CORS headers
+const path = require('path');
+app.use('/uploads', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Expose-Headers', 'Content-Type, Content-Length');
+  
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+}, express.static(path.join(__dirname, 'uploads'), {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.pdf')) {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+    }
+  }
+}));
+
 // Express-validator middleware
 const { validationResult } = require('express-validator');
 app.use((req, res, next) => {

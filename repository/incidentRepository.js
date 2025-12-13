@@ -64,8 +64,12 @@ class IncidentRepository {
     try {
       const query = {};
       
+      // ⭐ Tenant filter - BẮT BUỘC để tránh leak dữ liệu
+      if (filters.tenant_id) {
+        query.tenant_id = filters.tenant_id;
+      }
+      
       // Apply filters (Note: Incident model doesn't have department_id field)
-      // Note: tenant_id filter removed - return all incidents regardless of tenant
       // Skip department_id as it's not in the model
       if (filters.status) query.status = filters.status;
       if (filters.severity) query.severity = filters.severity;
@@ -271,8 +275,12 @@ class IncidentRepository {
     try {
       const query = {};
       
+      // ⭐ Tenant filter - BẮT BUỘC để tránh leak dữ liệu
+      if (filters.tenant_id) {
+        query.tenant_id = filters.tenant_id;
+      }
+      
       // Apply filters (Note: Incident model doesn't have department_id field)
-      // Note: tenant_id filter removed - return all incidents regardless of tenant
       if (filters.dateFrom || filters.dateTo) {
         query.createdAt = {};
         if (filters.dateFrom) {
@@ -422,11 +430,18 @@ class IncidentRepository {
   }
 
   // Tìm sự cố theo trạng thái
-  async findByStatus(status) {
+  async findByStatus(status, tenantId = null) {
     try {
-      const incidents = await Incident.find({ status })
-        .populate('createdBy', 'full_name email role')
-        .populate('assignedTo', 'full_name email role')
+      const query = { status };
+      
+      // ⭐ Tenant filter - BẮT BUỘC để tránh leak dữ liệu
+      if (tenantId) {
+        query.tenant_id = tenantId;
+      }
+      
+      const incidents = await Incident.find(query)
+        .populate('createdBy', 'full_name email role department_id')
+        .populate('assignedTo', 'full_name email role department_id')
         .populate('histories.performedBy', 'full_name email role')
         .sort({ createdAt: -1 });
 
@@ -480,21 +495,28 @@ class IncidentRepository {
   }
 
   // Alias for findByStatus
-  async getIncidentsByStatus(status) {
-    return await this.findByStatus(status);
+  async getIncidentsByStatus(status, tenantId = null) {
+    return await this.findByStatus(status, tenantId);
   }
 
   // Get incidents by user (simplified version)
-  async getIncidentsByUser(userId) {
+  async getIncidentsByUser(userId, tenantId = null) {
     try {
-      const incidents = await Incident.find({
+      const query = {
         $or: [
           { createdBy: userId },
           { assignedTo: userId }
         ]
-      })
-        .populate('createdBy', 'full_name email role')
-        .populate('assignedTo', 'full_name email role')
+      };
+      
+      // ⭐ Tenant filter - BẮT BUỘC để tránh leak dữ liệu
+      if (tenantId) {
+        query.tenant_id = tenantId;
+      }
+      
+      const incidents = await Incident.find(query)
+        .populate('createdBy', 'full_name email role department_id')
+        .populate('assignedTo', 'full_name email role department_id')
         .populate('histories.performedBy', 'full_name email role')
         .sort({ createdAt: -1 });
 
@@ -527,11 +549,18 @@ class IncidentRepository {
   }
 
   // Get incidents by severity
-  async getIncidentsBySeverity(severity) {
+  async getIncidentsBySeverity(severity, tenantId = null) {
     try {
-      const incidents = await Incident.find({ severity })
-        .populate('createdBy', 'full_name email role')
-        .populate('assignedTo', 'full_name email role')
+      const query = { severity };
+      
+      // ⭐ Tenant filter - BẮT BUỘC để tránh leak dữ liệu
+      if (tenantId) {
+        query.tenant_id = tenantId;
+      }
+      
+      const incidents = await Incident.find(query)
+        .populate('createdBy', 'full_name email role department_id')
+        .populate('assignedTo', 'full_name email role department_id')
         .populate('histories.performedBy', 'full_name email role')
         .sort({ createdAt: -1 });
 
@@ -542,19 +571,26 @@ class IncidentRepository {
   }
 
   // Search incidents
-  async searchIncidents(searchTerm) {
+  async searchIncidents(searchTerm, tenantId = null) {
     try {
       const searchRegex = new RegExp(searchTerm, 'i');
-      const incidents = await Incident.find({
+      const query = {
         $or: [
           { title: searchRegex },
           { description: searchRegex },
           { incidentId: searchRegex },
           { location: searchRegex }
         ]
-      })
-        .populate('createdBy', 'full_name email role')
-        .populate('assignedTo', 'full_name email role')
+      };
+      
+      // ⭐ Tenant filter - BẮT BUỘC để tránh leak dữ liệu
+      if (tenantId) {
+        query.tenant_id = tenantId;
+      }
+      
+      const incidents = await Incident.find(query)
+        .populate('createdBy', 'full_name email role department_id')
+        .populate('assignedTo', 'full_name email role department_id')
         .populate('histories.performedBy', 'full_name email role')
         .sort({ createdAt: -1 });
 
