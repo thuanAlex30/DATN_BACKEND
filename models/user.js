@@ -56,10 +56,6 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Department' 
   },
-  position_id: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Position' 
-  },
   is_active: { 
     type: Boolean, 
     default: true 
@@ -82,7 +78,6 @@ userSchema.index({ email: 1 });
 userSchema.index({ role_id: 1 });
 userSchema.index({ is_active: 1 });
 userSchema.index({ department_id: 1 });
-userSchema.index({ position_id: 1 });
 
 // Virtual for getting role details
 userSchema.virtual('role', {

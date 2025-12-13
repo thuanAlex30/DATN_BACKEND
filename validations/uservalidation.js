@@ -51,9 +51,6 @@ const userValidation = {
       .pattern(/^[0-9a-fA-F]{24}$/)
       .optional(),
 
-    position_id: Joi.string()
-      .pattern(/^[0-9a-fA-F]{24}$/)
-      .optional(),
 
     is_active: Joi.boolean()
       .optional()
@@ -100,10 +97,6 @@ const userValidation = {
       .optional(),
 
     department_id: Joi.string()
-      .pattern(/^[0-9a-fA-F]{24}$/)
-      .optional(),
-
-    position_id: Joi.string()
       .pattern(/^[0-9a-fA-F]{24}$/)
       .optional(),
 

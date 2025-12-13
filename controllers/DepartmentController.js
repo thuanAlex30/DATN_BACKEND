@@ -19,8 +19,27 @@ class DepartmentController {
     };
 
     const result = await DepartmentRepository.findAll(options);
+    
+    // Calculate employees_count for each department
+    const User = require('../models/user');
+    const departmentsWithCounts = await Promise.all(
+      result.departments.map(async (dept) => {
+        const deptJson = dept.toJSON ? dept.toJSON({ virtuals: true }) : dept;
+        const employeeCount = await User.countDocuments({ 
+          department_id: dept._id 
+        });
+        return {
+          ...deptJson,
+          id: deptJson._id || deptJson.id || dept._id?.toString(),
+          employees_count: employeeCount
+        };
+      })
+    );
 
-    return ApiResponse.success(res, result, 'Departments retrieved successfully');
+    return ApiResponse.success(res, {
+      departments: departmentsWithCounts,
+      pagination: result.pagination
+    }, 'Departments retrieved successfully');
   });
 
   static getDepartmentById = ErrorMiddleware.asyncHandler(async (req, res) => {
@@ -179,22 +198,67 @@ class DepartmentController {
 
   static deleteDepartment = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const { password } = req.body; // Password for verification when department has employees
     const tenantId = req.user?.tenant_id || null;
+    const currentUser = req.user;
 
     const department = await DepartmentRepository.findById(id, tenantId);
     if (!department) {
       return ApiResponse.notFound(res, 'Department not found');
     }
 
-    // Check if department has active employees
-    const employeeCount = department.employees_count || 0;
-    if (employeeCount > 0) {
-      return ApiResponse.error(res, 
-        `Cannot delete department with ${employeeCount} active employees`, 
-        400
+    const User = require('../models/user');
+    
+    // Check if department has any employees (active or inactive)
+    const totalEmployeeCount = await User.countDocuments({ 
+      department_id: department._id
+    });
+
+    // For active departments, check if there are active employees
+    if (department.is_active) {
+      const activeEmployeeCount = await User.countDocuments({ 
+        department_id: department._id,
+        is_active: true 
+      });
+      
+      if (activeEmployeeCount > 0) {
+        return ApiResponse.error(res, 
+          `Không thể xóa phòng ban đang hoạt động có ${activeEmployeeCount} nhân viên đang hoạt động. Vui lòng chuyển nhân viên sang phòng ban khác trước.`, 
+          400
+        );
+      }
+    }
+
+    // For inactive departments with employees, require password verification
+    if (!department.is_active && totalEmployeeCount > 0) {
+      if (!password) {
+        return ApiResponse.error(res, 
+          `Phòng ban này còn ${totalEmployeeCount} nhân viên. Vui lòng nhập mật khẩu để xác nhận xóa.`, 
+          400
+        );
+      }
+
+      // Verify password of current user
+      const user = await UserRepository.findById(currentUser.id || currentUser._id);
+      if (!user) {
+        return ApiResponse.unauthorized(res, 'User not found');
+      }
+
+      const isPasswordValid = await user.comparePassword(password);
+      if (!isPasswordValid) {
+        return ApiResponse.error(res, 'Mật khẩu không đúng. Vui lòng thử lại.', 401);
+      }
+    }
+
+    // If department had employees, remove department_id from all users BEFORE deleting
+    if (totalEmployeeCount > 0) {
+      await User.updateMany(
+        { department_id: department._id },
+        { $unset: { department_id: 1 } }
       );
     }
 
+    // Hard delete - actually remove from database
     await DepartmentRepository.deleteById(id);
 
     // Emit department deleted event

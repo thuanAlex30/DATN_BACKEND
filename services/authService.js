@@ -292,7 +292,7 @@ class AuthService {
   // Get profile
   static async getProfile(userId) {
     try {
-      const user = await UserRepository.findById(userId, ['role_id', 'department_id', 'position_id']);
+      const user = await UserRepository.findById(userId, ['role_id', 'department_id']);
       if (!user) {
         return createResponse(404, 'User not found');
       }
@@ -309,13 +309,6 @@ class AuthService {
       if (user.department_id) {
         const DepartmentRepository = require('../repository/DepartmentRepository');
         departmentData = await DepartmentRepository.findById(user.department_id);
-      }
-
-      // Populate position data
-      let positionData = null;
-      if (user.position_id) {
-        const PositionRepository = require('../repository/PositionRepository');
-        positionData = await PositionRepository.findById(user.position_id);
       }
 
       return createResponse(200, 'Lấy thông tin profile thành công', {
@@ -346,15 +339,6 @@ class AuthService {
           updated_at: departmentData.updated_at
         } : null,
         department_id: user.department_id,
-        position: positionData ? {
-          _id: positionData._id,
-          name: positionData.name,
-          description: positionData.description,
-          is_active: positionData.is_active,
-          created_at: positionData.created_at,
-          updated_at: positionData.updated_at
-        } : null,
-        position_id: user.position_id,
         is_active: user.is_active,
         last_login: user.last_login,
         created_at: user.created_at,
@@ -390,7 +374,7 @@ class AuthService {
         return createResponse(404, 'User not found');
       }
 
-      await updatedUser.populate(['role_id', 'department_id', 'position_id']);
+      await updatedUser.populate(['role_id', 'department_id']);
 
       return createResponse(200, 'Cập nhật profile thành công', {
         id: updatedUser._id,
@@ -402,7 +386,6 @@ class AuthService {
         address: updatedUser.address,
         role: updatedUser.role_id,
         department: updatedUser.department_id,
-        position: updatedUser.position_id,
         is_active: updatedUser.is_active,
         updated_at: updatedUser.updated_at
       });

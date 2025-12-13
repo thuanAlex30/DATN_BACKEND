@@ -145,6 +145,7 @@ router.delete('/:id',
   AuthMiddleware.authenticate,
   AuthMiddleware.authorize(PERMISSIONS.DEPARTMENT_DELETE),
   ValidationMiddleware.validateParams(commonValidation.id),
+  ValidationMiddleware.validateBody(departmentValidation.delete),
   DepartmentController.deleteDepartment
 );
 

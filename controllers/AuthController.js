@@ -10,7 +10,7 @@ class AuthController {
     
     // Emit user registered event
     // try {
-    //   const metadata = {
+    //   const metadata = {ss
     //     userId: result.user?._id || result.user?.id,
     //     userRole: result.user?.role,
     //     userFullName: result.user?.full_name,

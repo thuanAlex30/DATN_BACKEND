@@ -15,40 +15,108 @@ class AdminController {
       // Get all tenants statistics
       const tenantsStats = await TenantRepository.getAllTenantsStats();
 
-      // Get recent system logs for activities
-      const recentLogs = await SystemLog.find({})
+      // Get task statistics
+      const [
+        totalTasks,
+        pendingTasks,
+        inProgressTasks,
+        completedTasks,
+        onHoldTasks,
+        cancelledTasks
+      ] = await Promise.all([
+        ProjectTask.countDocuments({}),
+        ProjectTask.countDocuments({ status: 'pending' }),
+        ProjectTask.countDocuments({ status: 'in_progress' }),
+        ProjectTask.countDocuments({ status: 'completed' }),
+        ProjectTask.countDocuments({ status: 'on_hold' }),
+        ProjectTask.countDocuments({ status: 'cancelled' })
+      ]);
+
+      // Get overdue tasks (tasks with due_date < now and status not completed/cancelled)
+      const overdueTasks = await ProjectTask.countDocuments({
+        due_date: { $lt: new Date() },
+        status: { $nin: ['completed', 'cancelled'] }
+      });
+
+      // Get permission alerts (errors and warnings)
+      const permissionErrorLogs = await SystemLog.find({
+        message: { $regex: /permission|authorization|access denied/i },
+        log_type: 'error'
+      })
         .sort({ created_at: -1 })
-        .limit(10)
-        .select('action module details ip_address created_at user_id tenant_id')
+        .limit(50)
         .populate('user_id', 'username full_name')
-        .populate('tenant_id', 'name tenant_name')
+        .populate('tenant_id', 'tenant_code name')
         .lean();
 
-      // Get role count
-      const Role = require('../models/role');
-      const totalRoles = await Role.countDocuments({});
+      const permissionWarningLogs = await SystemLog.find({
+        message: { $regex: /permission|authorization|access denied/i },
+        log_type: 'warning'
+      })
+        .sort({ created_at: -1 })
+        .limit(50)
+        .populate('user_id', 'username full_name')
+        .populate('tenant_id', 'tenant_code name')
+        .lean();
 
-      // Format recent activities
-      const recentActivities = recentLogs.map(log => ({
-        id: log._id?.toString(),
-        tenant_name: log.tenant_id?.name || log.tenant_id?.tenant_name,
-        user_name: log.user_id?.username || log.user_id?.full_name,
-        action: log.action,
-        module: log.module,
-        details: log.details,
-        ip_address: log.ip_address,
-        created_at: log.created_at
-      }));
+      // Format permission alerts
+      const permissionAlerts = {
+        errors: permissionErrorLogs.map(log => ({
+          _id: log._id?.toString(),
+          message: log.message,
+          created_at: log.created_at,
+          user_id: log.user_id ? {
+            username: log.user_id.username,
+            full_name: log.user_id.full_name
+          } : undefined,
+          tenant_id: log.tenant_id?._id?.toString()
+        })),
+        warnings: permissionWarningLogs.map(log => ({
+          _id: log._id?.toString(),
+          message: log.message,
+          created_at: log.created_at,
+          user_id: log.user_id ? {
+            username: log.user_id.username,
+            full_name: log.user_id.full_name
+          } : undefined,
+          tenant_id: log.tenant_id?._id?.toString()
+        })),
+        total_errors: permissionErrorLogs.length,
+        total_warnings: permissionWarningLogs.length
+      };
 
-      // Format dashboard data for frontend
+      // Format dashboard data for frontend (matching frontend interface)
       const dashboard = {
-        totalTenants: tenantsStats.totals.tenants,
-        activeTenants: tenantsStats.totals.active_tenants,
-        totalUsers: tenantsStats.totals.total_users,
-        activeUsers: tenantsStats.totals.total_active_users,
-        totalRoles: totalRoles,
-        systemLogs: await SystemLog.countDocuments({}),
-        recentActivities: recentActivities
+        tenants: {
+          tenants: tenantsStats.totals.tenants,
+          active_tenants: tenantsStats.totals.active_tenants,
+          suspended_tenants: tenantsStats.totals.suspended_tenants,
+          inactive_tenants: tenantsStats.totals.inactive_tenants,
+          total_users: tenantsStats.totals.total_users,
+          total_active_users: tenantsStats.totals.total_active_users,
+          total_departments: tenantsStats.totals.total_departments,
+          total_projects: tenantsStats.totals.total_projects,
+          total_tasks: tenantsStats.totals.total_tasks
+        },
+        tasks: {
+          total: totalTasks,
+          pending: pendingTasks,
+          in_progress: inProgressTasks,
+          completed: completedTasks,
+          on_hold: onHoldTasks,
+          cancelled: cancelledTasks,
+          overdue: overdueTasks
+        },
+        permission_alerts: permissionAlerts,
+        summary: {
+          total_tenants: tenantsStats.totals.tenants,
+          active_tenants: tenantsStats.totals.active_tenants,
+          total_users: tenantsStats.totals.total_users,
+          total_active_users: tenantsStats.totals.total_active_users,
+          total_projects: tenantsStats.totals.total_projects,
+          total_tasks: tenantsStats.totals.total_tasks,
+          permission_issues: permissionAlerts.total_errors + permissionAlerts.total_warnings
+        }
       };
 
       return ApiResponse.success(res, dashboard, 'System dashboard data retrieved successfully');

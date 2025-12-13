@@ -92,11 +92,8 @@ class DepartmentRepository {
   }
 
   static async deleteById(id) {
-    return await Department.findByIdAndUpdate(
-      id,
-      { is_active: false, updated_at: new Date() },
-      { new: true }
-    );
+    // Hard delete - actually remove from database
+    return await Department.findByIdAndDelete(id);
   }
 
   static async hardDeleteById(id) {

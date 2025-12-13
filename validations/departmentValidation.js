@@ -140,153 +140,14 @@ const departmentValidation = {
       .max(100)
       .optional()
       .default(20)
-  })
-};
-
-const positionValidation = {
-  create: Joi.object({
-    position_name: Joi.string()
-      .min(2)
-      .max(100)
-      .required()
-      .trim()
-      .messages({
-        'string.min': 'Position name must be at least 2 characters long',
-        'string.max': 'Position name must not exceed 100 characters',
-        'any.required': 'Position name is required'
-      }),
-
-    description: Joi.string()
-      .max(500)
-      .optional()
-      .trim()
-      .messages({
-        'string.max': 'Description must not exceed 500 characters'
-      }),
-
-    level: Joi.number()
-      .integer()
-      .min(1)
-      .max(10)
-      .required()
-      .messages({
-        'number.min': 'Position level must be at least 1',
-        'number.max': 'Position level cannot exceed 10',
-        'any.required': 'Position level is required'
-      }),
-
-    is_active: Joi.boolean()
-      .optional()
-      .default(true)
   }),
 
-  update: Joi.object({
-    position_name: Joi.string()
-      .min(2)
-      .max(100)
+  delete: Joi.object({
+    password: Joi.string()
       .optional()
-      .trim()
-      .messages({
-        'string.min': 'Position name must be at least 2 characters long',
-        'string.max': 'Position name must not exceed 100 characters'
-      }),
-
-    description: Joi.string()
-      .max(500)
-      .optional()
-      .trim()
       .allow('')
       .messages({
-        'string.max': 'Description must not exceed 500 characters'
-      }),
-
-    level: Joi.number()
-      .integer()
-      .min(1)
-      .max(10)
-      .optional()
-      .messages({
-        'number.min': 'Position level must be at least 1',
-        'number.max': 'Position level cannot exceed 10'
-      }),
-
-    is_active: Joi.boolean()
-      .optional()
-  }).min(1),
-
-  query: Joi.object({
-    page: Joi.number()
-      .integer()
-      .min(1)
-      .optional()
-      .default(1),
-
-    limit: Joi.number()
-      .integer()
-      .min(1)
-      .max(100)
-      .optional()
-      .default(10),
-
-    search: Joi.string()
-      .optional()
-      .trim(),
-
-    is_active: Joi.boolean()
-      .optional(),
-
-    level: Joi.number()
-      .integer()
-      .min(1)
-      .max(10)
-      .optional()
-      .messages({
-        'number.min': 'Level must be at least 1',
-        'number.max': 'Level cannot exceed 10'
-      }),
-
-    sort_by: Joi.string()
-      .valid('position_name', 'level', 'created_at', 'updated_at')
-      .optional()
-      .default('created_at'),
-
-    sort_order: Joi.string()
-      .valid('asc', 'desc')
-      .optional()
-      .default('desc')
-  }),
-
-  bulkDelete: Joi.object({
-    ids: Joi.array()
-      .items(
-        Joi.string()
-          .pattern(/^[0-9a-fA-F]{24}$/)
-          .messages({
-            'string.pattern.base': 'Invalid position ID format'
-          })
-      )
-      .min(1)
-      .max(50)
-      .required()
-      .messages({
-        'array.min': 'At least one position ID is required',
-        'array.max': 'Cannot delete more than 50 positions at once',
-        'any.required': 'Position IDs are required'
-      })
-  }),
-
-  levels: Joi.object({
-    levels: Joi.array()
-      .items(
-        Joi.number()
-          .integer()
-          .min(1)
-          .max(10)
-      )
-      .optional()
-      .messages({
-        'number.min': 'Level must be at least 1',
-        'number.max': 'Level cannot exceed 10'
+        'string.base': 'Password must be a string'
       })
   })
 };
@@ -330,6 +191,5 @@ const commonValidation = {
 
 module.exports = {
   departmentValidation,
-  positionValidation,
   commonValidation
 };
