@@ -472,6 +472,7 @@ class UserController {
       return ApiResponse.error(res, `Import failed: ${error.message}`, 500);
     }
   });
+
 }
 
 module.exports = UserController;

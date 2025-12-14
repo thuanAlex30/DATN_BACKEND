@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "checkJs": false
+  },
+  "exclude": [
+    "node_modules",
+    "**/*.test.js",
+    "**/*.spec.js"
+  ]
+}
+
