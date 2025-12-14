@@ -1,13 +1,7 @@
 const JWTConfig = require('../config/jwt');
-<<<<<<< HEAD
-const ApiResponse = require('../utils/response');
-const UserRepository = require('../repository/UserRepository');
-const { PermissionUtils } = require('../utils/permissions');
-=======
 const { ApiResponse } = require('../utils/response');
 const UserRepository = require('../repository/UserRepository');
 const { PermissionUtils, getHighestRole } = require('../utils/permissions');
->>>>>>> origin/main
 
 class AuthMiddleware {
   // Verify JWT token and extract user info
@@ -39,13 +33,6 @@ class AuthMiddleware {
         return ApiResponse.unauthorized(res, 'Account is deactivated');
       }
 
-<<<<<<< HEAD
-      // Populate role information
-      await user.populate('role_id');
-      
-      if (!user.role_id || !user.role_id.is_active) {
-        return ApiResponse.unauthorized(res, 'Invalid or inactive role');
-=======
       // Populate role and department information
       await user.populate({
         path: 'role_id',
@@ -90,7 +77,6 @@ class AuthMiddleware {
       if (!primaryRole._id || !primaryRole.role_code) {
         console.error('Invalid role structure:', primaryRole);
         return ApiResponse.error(res, 'Invalid role configuration', 500);
->>>>>>> origin/main
       }
 
       // Attach user info to request
@@ -100,17 +86,6 @@ class AuthMiddleware {
         username: user.username,
         email: user.email,
         full_name: user.full_name,
-<<<<<<< HEAD
-        role: {
-          _id: user.role_id._id,
-          role_name: user.role_id.role_name,
-          permissions: user.role_id.permissions || {}
-        },
-        role_id: user.role_id._id,
-        department_id: user.department_id,
-        position_id: user.position_id,
-        permissions: user.role_id.permissions || {}
-=======
         tenant_id: user.tenant_id?._id || user.tenant_id,
         tenant: user.tenant_id ? {
           _id: user.tenant_id._id || user.tenant_id,
@@ -143,7 +118,6 @@ class AuthMiddleware {
           role_level: r.role_level || 0,
           scope_rules: r.scope_rules || {}
         }))
->>>>>>> origin/main
       };
 
       next();
@@ -223,14 +197,6 @@ class AuthMiddleware {
     };
   }
 
-<<<<<<< HEAD
-  // Check if user has specific role
-  static authorizeRole(roles) {
-    const allowedRoles = Array.isArray(roles) ? roles : [roles];
-    
-    return (req, res, next) => {
-      try {
-=======
   // Check if user has specific role (legacy - use authorizeScope instead)
   static authorizeRole(roles) {
     const allowedRoles = (Array.isArray(roles) ? roles : [roles]).map(role =>
@@ -307,16 +273,10 @@ class AuthMiddleware {
 
     return (req, res, next) => {
       try {
->>>>>>> origin/main
         if (!req.user) {
           return ApiResponse.unauthorized(res, 'Authentication required');
         }
 
-<<<<<<< HEAD
-        const userRoleName = req.user.role?.role_name || req.user.role;
-        if (!allowedRoles.includes(userRoleName)) {
-          return ApiResponse.forbidden(res, 'Insufficient role permissions');
-=======
         const userRole = req.user.role;
         const userTenantId = req.user.tenant_id;
         const userDepartmentId = req.user.department_id;
@@ -454,18 +414,12 @@ class AuthMiddleware {
               return ApiResponse.forbidden(res, 'Department hierarchy scope required');
             }
           }
->>>>>>> origin/main
         }
 
         next();
       } catch (error) {
-<<<<<<< HEAD
-        console.error('Role authorization error:', error);
-        return ApiResponse.error(res, 'Role authorization failed', 500);
-=======
         console.error('Scope authorization error:', error);
         return ApiResponse.error(res, 'Scope authorization failed', 500);
->>>>>>> origin/main
       }
     };
   }
