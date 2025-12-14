@@ -227,3 +227,7 @@
 {"timestamp":"2025-12-14T16:25:07.421Z","level":"INFO","message":"Audit event processed","metadata":{"eventType":"system_health_check","eventId":"6f2252aa-7f57-41da-8669-1d8139e1e87c","action":"unknown","resource":"system:kafka-monitor","timestamp":"2025-12-14T16:25:07.407Z"},"pid":15848,"hostname":"Bravo"}
 {"timestamp":"2025-12-14T16:25:37.873Z","level":"INFO","message":"Audit event processed","metadata":{"eventType":"system_health_check","eventId":"593c7a0d-2c53-430e-b398-d86cf3522fae","action":"unknown","resource":"system:kafka-monitor","timestamp":"2025-12-14T16:25:37.828Z"},"pid":15848,"hostname":"Bravo"}
 {"timestamp":"2025-12-14T16:25:56.735Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":15848,"hostname":"Bravo"}
+{"timestamp":"2025-12-14T18:11:27.372Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":18928,"hostname":"Bravo"}
+{"timestamp":"2025-12-14T18:11:27.562Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":18928,"hostname":"Bravo"}
+{"timestamp":"2025-12-14T18:11:27.567Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":18928,"hostname":"Bravo"}
+{"timestamp":"2025-12-14T18:11:48.173Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":18928,"hostname":"Bravo"}
