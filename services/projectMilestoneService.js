@@ -453,7 +453,16 @@ class ProjectMilestoneService {
 
   async addMilestoneProgressLog(milestoneId, progressData, userId) {
     try {
+      console.log('addMilestoneProgressLog called:', { milestoneId, progressData, userId });
+      
       const progressValue = Number(progressData.progress_percentage || progressData.progress || 0);
+      console.log('addMilestoneProgressLog - progressValue:', progressValue);
+      
+      if (isNaN(progressValue)) {
+        console.error('addMilestoneProgressLog - Invalid progress value:', progressData);
+        return createResponse(400, 'Giá trị tiến độ không hợp lệ', null, 'Invalid progress value');
+      }
+      
       const logData = {
         progress_percentage: progressValue,
         work_description: progressData.work_description || progressData.note || '',
@@ -461,7 +470,9 @@ class ProjectMilestoneService {
         log_date: progressData.log_date ? new Date(progressData.log_date) : new Date()
       };
       
+      console.log('addMilestoneProgressLog - Creating progress log:', logData);
       const progressLog = await projectMilestoneRepository.createProgressLog(milestoneId, logData, userId);
+      console.log('addMilestoneProgressLog - Progress log created:', progressLog?._id);
       
       // Tự động cập nhật trạng thái milestone dựa trên tiến độ
       let status = 'IN_PROGRESS';
@@ -472,10 +483,39 @@ class ProjectMilestoneService {
       }
       
       // Cập nhật trạng thái và tiến độ milestone
-      await projectMilestoneRepository.updateMilestone(milestoneId, {
+      console.log('addMilestoneProgressLog - Updating milestone:', { milestoneId, progressValue, status });
+      const updatedMilestone = await projectMilestoneRepository.updateMilestone(milestoneId, {
         progress: progressValue,
         status: status
       }, userId);
+      
+      console.log('addMilestoneProgressLog - Updated milestone:', {
+        milestoneId,
+        progressValue,
+        status,
+        updatedMilestoneProgress: updatedMilestone?.progress,
+        updatedMilestoneStatus: updatedMilestone?.status
+      });
+      
+      if (!updatedMilestone) {
+        console.error('addMilestoneProgressLog - Milestone not found:', milestoneId);
+        return createResponse(404, 'Không tìm thấy cột mốc', null, 'Milestone not found');
+      }
+      
+      // Verify update bằng cách query lại
+      const verifiedMilestone = await projectMilestoneRepository.getMilestoneById(milestoneId);
+      console.log('addMilestoneProgressLog - Verified milestone (after update):', {
+        milestoneId,
+        verifiedProgress: verifiedMilestone?.progress,
+        verifiedStatus: verifiedMilestone?.status
+      });
+      
+      if (verifiedMilestone?.progress !== progressValue) {
+        console.error('addMilestoneProgressLog - Progress mismatch!', {
+          expected: progressValue,
+          actual: verifiedMilestone?.progress
+        });
+      }
       
       return createResponse(201, 'Thêm nhật ký tiến độ cột mốc thành công', progressLog);
     } catch (error) {

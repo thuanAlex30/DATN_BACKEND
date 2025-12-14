@@ -120,7 +120,8 @@ class KafkaProducer {
       };
 
     } catch (error) {
-      console.error(`❌ Failed to send event to topic ${topic}:`, error);
+      // Don't throw error - Kafka is optional, allow graceful degradation
+      console.warn(`⚠️ Failed to send event to topic ${topic} (Kafka unavailable, non-critical):`, error.message || error.name);
       
       // Update metrics if monitor is available
       try {

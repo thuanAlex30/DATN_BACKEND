@@ -10,7 +10,7 @@ class AuthController {
     
     // Emit user registered event
     // try {
-    //   const metadata = {
+    //   const metadata = {ss
     //     userId: result.user?._id || result.user?.id,
     //     userRole: result.user?.role,
     //     userFullName: result.user?.full_name,
@@ -97,7 +97,8 @@ class AuthController {
   static getProfile = ErrorMiddleware.asyncHandler(async (req, res) => {
     const userId = req.user._id || req.user.id;
     const result = await AuthService.getProfile(userId);
-    return ApiResponse.success(res, result, 'Profile retrieved successfully');
+    // Extract data from result object (result.data contains the actual profile data)
+    return ApiResponse.success(res, result.data, 'Profile retrieved successfully');
   });
 
   // Update user profile

@@ -17,7 +17,6 @@ class UserEvents {
         fullName: user.full_name,
         role: user.role,
         department: user.department,
-        position: user.position,
         phoneNumber: user.phone_number,
         address: user.address,
         dateOfBirth: user.date_of_birth,
@@ -49,11 +48,20 @@ class UserEvents {
         metadata
       );
 
-      console.log(`✅ User registered event emitted: ${result.eventId}`);
+      if (result && result.success !== false) {
+        console.log(`✅ User registered event emitted: ${result.eventId || 'N/A'}`);
+      } else {
+        console.warn(`⚠️ User registered event not sent (Kafka unavailable, non-critical)`);
+      }
       return result;
     } catch (error) {
-      console.error('❌ Error emitting user registered event:', error);
-      throw error;
+      // Don't throw - Kafka is optional, allow graceful degradation
+      console.warn('⚠️ Error emitting user registered event (non-critical, Kafka unavailable):', error.message || error.name);
+      return {
+        success: false,
+        error: error.message || error.name,
+        eventId: null
+      };
     }
   }
 
@@ -72,7 +80,6 @@ class UserEvents {
         fullName: user.full_name,
         role: user.role,
         department: user.department,
-        position: user.position,
         phoneNumber: user.phone_number,
         address: user.address,
         dateOfBirth: user.date_of_birth,
@@ -105,11 +112,20 @@ class UserEvents {
         metadata
       );
 
-      console.log(`✅ User profile updated event emitted: ${result.eventId}`);
+      if (result && result.success !== false) {
+        console.log(`✅ User profile updated event emitted: ${result.eventId || 'N/A'}`);
+      } else {
+        console.warn(`⚠️ User profile updated event not sent (Kafka unavailable, non-critical)`);
+      }
       return result;
     } catch (error) {
-      console.error('❌ Error emitting user profile updated event:', error);
-      throw error;
+      // Don't throw - Kafka is optional, allow graceful degradation
+      console.warn('⚠️ Error emitting user profile updated event (non-critical, Kafka unavailable):', error.message || error.name);
+      return {
+        success: false,
+        error: error.message || error.name,
+        eventId: null
+      };
     }
   }
 
@@ -130,7 +146,6 @@ class UserEvents {
         role: newRole,
         previousRole: previousRole,
         department: user.department,
-        position: user.position,
         phoneNumber: user.phone_number,
         address: user.address,
         dateOfBirth: user.date_of_birth,
@@ -183,7 +198,6 @@ class UserEvents {
         fullName: user.full_name,
         role: user.role,
         department: user.department,
-        position: user.position,
         phoneNumber: user.phone_number,
         address: user.address,
         dateOfBirth: user.date_of_birth,
@@ -213,11 +227,20 @@ class UserEvents {
         metadata
       );
 
-      console.log(`✅ User status updated event emitted: ${result.eventId}`);
+      if (result && result.success !== false) {
+        console.log(`✅ User status updated event emitted: ${result.eventId || 'N/A'}`);
+      } else {
+        console.warn(`⚠️ User status updated event not sent (Kafka unavailable, non-critical)`);
+      }
       return result;
     } catch (error) {
-      console.error('❌ Error emitting user status updated event:', error);
-      throw error;
+      // Don't throw - Kafka is optional, allow graceful degradation
+      console.warn('⚠️ Error emitting user status updated event (non-critical, Kafka unavailable):', error.message || error.name);
+      return {
+        success: false,
+        error: error.message || error.name,
+        eventId: null
+      };
     }
   }
 
@@ -236,7 +259,6 @@ class UserEvents {
         fullName: user.full_name,
         role: user.role,
         department: user.department,
-        position: user.position,
         phoneNumber: user.phone_number,
         status: user.status,
         siteId: user.site_id,
@@ -289,7 +311,6 @@ class UserEvents {
         fullName: user.full_name,
         role: user.role,
         department: user.department,
-        position: user.position,
         phoneNumber: user.phone_number,
         status: user.status,
         siteId: user.site_id,
@@ -342,7 +363,6 @@ class UserEvents {
         fullName: user.full_name,
         role: user.role,
         department: user.department,
-        position: user.position,
         phoneNumber: user.phone_number,
         status: user.status,
         siteId: user.site_id,
@@ -399,7 +419,6 @@ class UserEvents {
         fullName: user.full_name,
         role: user.role,
         department: user.department,
-        position: user.position,
         phoneNumber: user.phone_number,
         status: user.status,
         siteId: user.site_id,
@@ -454,7 +473,6 @@ class UserEvents {
         fullName: user.full_name,
         role: user.role,
         department: user.department,
-        position: user.position,
         phoneNumber: user.phone_number,
         status: user.status,
         siteId: user.site_id,
@@ -510,7 +528,6 @@ class UserEvents {
         fullName: user.full_name,
         role: user.role,
         department: user.department,
-        position: user.position,
         phoneNumber: user.phone_number,
         status: user.status,
         siteId: user.site_id,
@@ -561,7 +578,6 @@ class UserEvents {
         fullName: user.full_name,
         role: user.role,
         department: user.department,
-        position: user.position,
         phoneNumber: user.phone_number,
         status: user.status,
         siteId: user.site_id,
@@ -612,7 +628,6 @@ class UserEvents {
         fullName: user.full_name,
         role: user.role,
         department: user.department,
-        position: user.position,
         phoneNumber: user.phone_number,
         status: user.status,
         siteId: user.site_id,
@@ -638,11 +653,20 @@ class UserEvents {
         metadata
       );
 
-      console.log(`✅ User deleted event emitted: ${result.eventId}`);
+      if (result && result.success !== false) {
+        console.log(`✅ User deleted event emitted: ${result.eventId || 'N/A'}`);
+      } else {
+        console.warn(`⚠️ User deleted event not sent (Kafka unavailable, non-critical)`);
+      }
       return result;
     } catch (error) {
-      console.error('❌ Error emitting user deleted event:', error);
-      throw error;
+      // Don't throw - Kafka is optional, allow graceful degradation
+      console.warn('⚠️ Error emitting user deleted event (non-critical, Kafka unavailable):', error.message || error.name);
+      return {
+        success: false,
+        error: error.message || error.name,
+        eventId: null
+      };
     }
   }
 }

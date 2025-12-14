@@ -24,6 +24,17 @@ const departmentSchema = new mongoose.Schema({
     ref: 'User',
     default: null
   },
+  manager_ids: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: 'User',
+    default: [],
+    validate: {
+      validator: function(v) {
+        return v.length <= 5;
+      },
+      message: 'Một phòng ban chỉ có thể có tối đa 5 quản lý'
+    }
+  },
   is_active: {
     type: Boolean,
     default: true
