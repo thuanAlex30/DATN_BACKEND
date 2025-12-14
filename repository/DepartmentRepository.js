@@ -15,6 +15,7 @@ class DepartmentRepository {
 
     return await Department.findOne(filter)
       .populate('manager_id', 'username full_name email')
+      .populate('manager_ids', 'username full_name email')
       .populate('employees_count');
   }
 
@@ -61,6 +62,7 @@ class DepartmentRepository {
     const [departments, total] = await Promise.all([
       Department.find(filter)
         .populate('manager_id', 'username full_name email')
+        .populate('manager_ids', 'username full_name email')
         .populate('employees_count')
         .sort(sortObj)
         .skip(skip)
@@ -88,15 +90,13 @@ class DepartmentRepository {
       { new: true, runValidators: true }
     )
       .populate('manager_id', 'username full_name email')
+      .populate('manager_ids', 'username full_name email')
       .populate('employees_count');
   }
 
   static async deleteById(id) {
-    return await Department.findByIdAndUpdate(
-      id,
-      { is_active: false, updated_at: new Date() },
-      { new: true }
-    );
+    // Hard delete - actually remove from database
+    return await Department.findByIdAndDelete(id);
   }
 
   static async hardDeleteById(id) {
@@ -136,16 +136,29 @@ class DepartmentRepository {
     const [
       total,
       active,
-      inactive,
-      withManager,
-      withoutManager
+      inactive
     ] = await Promise.all([
       Department.countDocuments({ ...baseFilter }),
       Department.countDocuments({ ...baseFilter, is_active: true }),
-      Department.countDocuments({ ...baseFilter, is_active: false }),
-      Department.countDocuments({ ...baseFilter, manager_id: { $ne: null }, is_active: true }),
-      Department.countDocuments({ ...baseFilter, manager_id: null, is_active: true })
+      Department.countDocuments({ ...baseFilter, is_active: false })
     ]);
+
+    // Count departments with managers (either manager_id or manager_ids)
+    const activeDepartments = await Department.find({ ...baseFilter, is_active: true });
+    let withManager = 0;
+    let withoutManager = 0;
+    
+    for (const dept of activeDepartments) {
+      const hasManagers = 
+        (dept.manager_ids && Array.isArray(dept.manager_ids) && dept.manager_ids.length > 0) ||
+        dept.manager_id;
+      
+      if (hasManagers) {
+        withManager++;
+      } else {
+        withoutManager++;
+      }
+    }
 
     return {
       total,

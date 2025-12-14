@@ -96,56 +96,6 @@ const incidentValidation = {
       })
   }),
 
-  // Update incident validation
-  updateIncident: Joi.object({
-    title: Joi.string().trim().min(1).max(255).optional()
-      .messages({
-        'string.empty': 'Tiêu đề sự cố không được để trống',
-        'string.min': 'Tiêu đề sự cố phải có ít nhất 1 ký tự',
-        'string.max': 'Tiêu đề sự cố không được vượt quá 255 ký tự'
-      }),
-    
-    description: Joi.string().trim().min(1).max(2000).optional()
-      .messages({
-        'string.empty': 'Mô tả sự cố không được để trống',
-        'string.min': 'Mô tả sự cố phải có ít nhất 1 ký tự',
-        'string.max': 'Mô tả sự cố không được vượt quá 2000 ký tự'
-      }),
-    
-    location: Joi.string().trim().min(1).max(255).optional()
-      .messages({
-        'string.empty': 'Địa điểm không được để trống',
-        'string.min': 'Địa điểm phải có ít nhất 1 ký tự',
-        'string.max': 'Địa điểm không được vượt quá 255 ký tự'
-      }),
-    
-    severity: Joi.string().valid('nhẹ', 'nặng', 'rất nghiêm trọng').optional()
-      .messages({
-        'any.only': 'Mức độ nghiêm trọng phải là: nhẹ, nặng, hoặc rất nghiêm trọng'
-      }),
-    
-    status: Joi.string().valid('Mới ghi nhận', 'Đang xử lý', 'Đã đóng').optional()
-      .messages({
-        'any.only': 'Trạng thái phải là: Mới ghi nhận, Đang xử lý, hoặc Đã đóng'
-      }),
-    
-    assignedTo: Joi.string().custom((value, helpers) => {
-      if (value && !ObjectId.isValid(value)) {
-        return helpers.error('any.invalid');
-      }
-      return value;
-    }).optional()
-      .messages({
-        'any.invalid': 'ID người được phân công không hợp lệ'
-      }),
-    
-    images: Joi.array().items(Joi.string().uri()).max(10).optional()
-      .messages({
-        'array.max': 'Không được upload quá 10 ảnh',
-        'string.uri': 'URL ảnh không hợp lệ'
-      })
-  }),
-
   // Classify incident validation
   classifyIncident: Joi.object({
     severity: Joi.string().valid('nhẹ', 'nặng', 'rất nghiêm trọng').required()

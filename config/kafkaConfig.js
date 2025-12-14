@@ -13,19 +13,22 @@ const kafkaConfig = {
     initialRetryTime: 100,
     retries: 8
   },
-  
-  // Security settings (if needed)
-  ssl: process.env.KAFKA_SSL === 'true' ? {
-    rejectUnauthorized: false
-  } : false,
-  
-  // SASL settings (if needed)
-  sasl: process.env.KAFKA_SASL_MECHANISM ? {
+};
+
+// Security settings (SSL/SASL) - enable if env provided
+if (process.env.KAFKA_SSL === 'true' || process.env.KAFKA_SASL_MECHANISM) {
+  kafkaConfig.ssl = {
+    rejectUnauthorized: process.env.KAFKA_SSL_REJECT_UNAUTHORIZED !== 'false'
+  };
+}
+
+if (process.env.KAFKA_SASL_MECHANISM) {
+  kafkaConfig.sasl = {
     mechanism: process.env.KAFKA_SASL_MECHANISM,
     username: process.env.KAFKA_SASL_USERNAME,
     password: process.env.KAFKA_SASL_PASSWORD
-  } : undefined
-};
+  };
+}
 
 // Kafka Topics Configuration
 const topics = {

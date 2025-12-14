@@ -4,7 +4,54 @@ class UserRepository {
   // Find user by ID with full population
   static async findById(id, populate = []) {
     try {
-      let query = User.findById(id);
+      let query;
+      if (typeof id === 'number' || (typeof id === 'string' && /^\d+$/.test(id))) {
+        // Search by user_id (integer)
+        query = User.findOne({ user_id: parseInt(id) });
+      } else {
+        // Search by MongoDB _id
+        query = User.findById(id);
+      }
+      if (populate.length > 0) {
+        populate.forEach(field => {
+          if (field === 'role_id') {
+            query = query.populate('role_id', 'role_name role_code role_level scope_rules permissions is_active');
+          } else if (field === 'department_id') {
+            query = query.populate('department_id', 'department_name is_active');
+          } else {
+            query = query.populate(field);
+          }
+        });
+      } else {
+        // Default population
+        query = query
+          .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
+          .populate('department_id', 'department_name is_active');
+      }
+      
+      return await query.exec();
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Find users by user_id array (for bulk lookup)
+  static async findByUserIds(userIds, populate = []) {
+    try {
+      // Filter out invalid values and convert to numbers
+      const validUserIds = userIds
+        .filter(id => id !== null && id !== undefined && id !== '')
+        .map(id => {
+          const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+          return isNaN(numId) ? null : numId;
+        })
+        .filter(id => id !== null);
+
+      if (validUserIds.length === 0) {
+        return [];
+      }
+
+      let query = User.find({ user_id: { $in: validUserIds } });
       
       if (populate.length > 0) {
         populate.forEach(field => {
@@ -73,6 +120,7 @@ class UserRepository {
         User.find(filter)
           .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
           .populate('department_id', 'department_name is_active')
+          .populate('tenant_id', 'name tenant_name')
           .sort(sortObj)
           .skip(skip)
           .limit(limit),
@@ -120,13 +168,28 @@ class UserRepository {
   // Update user by ID
   static async updateById(id, updateData) {
     try {
-      return await User.findByIdAndUpdate(
-        id,
-        { ...updateData, updated_at: new Date() },
-        { new: true, runValidators: true }
-      )
+       // Check if id is a number (user_id) or ObjectId string
+       let query;
+       if (typeof id === 'number' || (typeof id === 'string' && /^\d+$/.test(id))) {
+         // Update by user_id (integer)
+         query = User.findOneAndUpdate(
+           { user_id: parseInt(id) },
+           { ...updateData, updated_at: new Date() },
+           { new: true, runValidators: true }
+         );
+       } else {
+         // Update by MongoDB _id
+         query = User.findByIdAndUpdate(
+           id,
+           { ...updateData, updated_at: new Date() },
+           { new: true, runValidators: true }
+         );
+       }
+       
+       return await query
         .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
-        .populate('department_id', 'department_name is_active');
+        .populate('department_id', 'department_name is_active')
+        .exec();
     } catch (error) {
       throw error;
     }
@@ -412,11 +475,22 @@ class UserRepository {
   // Update last login
   static async updateLastLogin(id) {
     try {
-      return await User.findByIdAndUpdate(
-        id,
-        { last_login: new Date() },
-        { new: true }
-      );
+      // Check if id is a number (user_id) or ObjectId string
+      if (typeof id === 'number' || (typeof id === 'string' && /^\d+$/.test(id))) {
+        // Update by user_id (integer)
+        return await User.findOneAndUpdate(
+          { user_id: parseInt(id) },
+          { last_login: new Date() },
+          { new: true }
+        );
+      } else {
+        // Update by MongoDB _id
+        return await User.findByIdAndUpdate(
+          id,
+          { last_login: new Date() },
+          { new: true }
+        );
+      }
     } catch (error) {
       throw error;
     }
@@ -425,11 +499,22 @@ class UserRepository {
   // Delete operations
   static async deleteById(id) {
     try {
-      return await User.findByIdAndUpdate(
-        id,
-        { is_active: false, updated_at: new Date() },
-        { new: true }
-      );
+      // Check if id is a number (user_id) or ObjectId string
+      if (typeof id === 'number' || (typeof id === 'string' && /^\d+$/.test(id))) {
+        // Update by user_id (integer)
+        return await User.findOneAndUpdate(
+          { user_id: parseInt(id) },
+          { is_active: false, updated_at: new Date() },
+          { new: true }
+        );
+      } else {
+        // Update by MongoDB _id
+        return await User.findByIdAndUpdate(
+          id,
+          { is_active: false, updated_at: new Date() },
+          { new: true }
+        );
+      }
     } catch (error) {
       throw error;
     }
@@ -438,7 +523,14 @@ class UserRepository {
   // Hard delete (use with caution)
   static async hardDeleteById(id) {
     try {
-      return await User.findByIdAndDelete(id);
+      // Check if id is a number (user_id) or ObjectId string
+      if (typeof id === 'number' || (typeof id === 'string' && /^\d+$/.test(id))) {
+        // Delete by user_id (integer)
+        return await User.findOneAndDelete({ user_id: parseInt(id) });
+      } else {
+        // Delete by MongoDB _id
+        return await User.findByIdAndDelete(id);
+      }
     } catch (error) {
       throw error;
     }

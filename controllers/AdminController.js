@@ -17,41 +17,77 @@ class AdminController {
         return { totals: { tenants: 0, active_tenants: 0, suspended_tenants: 0, inactive_tenants: 0, total_users: 0, total_active_users: 0, total_departments: 0, total_projects: 0, total_tasks: 0 } };
       });
 
-      const [taskStats, permissionAlerts] = await Promise.all([
-        ProjectTask.aggregate([
-          {
-            $group: {
-              _id: '$status',
-              count: { $sum: 1 }
-            }
-          }
-        ]).catch(() => []),
-        SystemLog.find({
-          severity: { $in: ['error', 'warning'] },
-          $or: [
-            { action: { $regex: /permission|authorization|access denied/i } },
-            { module: 'auth' }
-          ]
-        })
-        .sort({ timestamp: -1 })
-        .limit(100)
-        .select('action module details severity timestamp user_id')
-        .populate('user_id', 'username full_name')
-        .lean()
-        .catch(err => {
-          console.error('Error getting permission alerts:', err);
-          return [];
-        })
+      // Get task statistics
+      const [
+        totalTasks,
+        pendingTasks,
+        inProgressTasks,
+        completedTasks,
+        onHoldTasks,
+        cancelledTasks
+      ] = await Promise.all([
+        ProjectTask.countDocuments({}),
+        ProjectTask.countDocuments({ status: 'pending' }),
+        ProjectTask.countDocuments({ status: 'in_progress' }),
+        ProjectTask.countDocuments({ status: 'completed' }),
+        ProjectTask.countDocuments({ status: 'on_hold' }),
+        ProjectTask.countDocuments({ status: 'cancelled' })
       ]);
 
-      const taskStatusMap = {};
-      taskStats.forEach(stat => {
-        taskStatusMap[stat._id] = stat.count;
+      // Get overdue tasks (tasks with due_date < now and status not completed/cancelled)
+      const overdueTasks = await ProjectTask.countDocuments({
+        due_date: { $lt: new Date() },
+        status: { $nin: ['completed', 'cancelled'] }
       });
 
-      const errors = permissionAlerts.filter(a => a.severity === 'error').slice(0, 50);
-      const warnings = permissionAlerts.filter(a => a.severity === 'warning').slice(0, 50);
+      // Get permission alerts (errors and warnings)
+      const permissionErrorLogs = await SystemLog.find({
+        message: { $regex: /permission|authorization|access denied/i },
+        log_type: 'error'
+      })
+        .sort({ created_at: -1 })
+        .limit(50)
+        .populate('user_id', 'username full_name')
+        .populate('tenant_id', 'tenant_code name')
+        .lean();
 
+      const permissionWarningLogs = await SystemLog.find({
+        message: { $regex: /permission|authorization|access denied/i },
+        log_type: 'warning'
+      })
+        .sort({ created_at: -1 })
+        .limit(50)
+        .populate('user_id', 'username full_name')
+        .populate('tenant_id', 'tenant_code name')
+        .lean();
+
+      // Format permission alerts
+      const permissionAlerts = {
+        errors: permissionErrorLogs.map(log => ({
+          _id: log._id?.toString(),
+          message: log.message,
+          created_at: log.created_at,
+          user_id: log.user_id ? {
+            username: log.user_id.username,
+            full_name: log.user_id.full_name
+          } : undefined,
+          tenant_id: log.tenant_id?._id?.toString()
+        })),
+        warnings: permissionWarningLogs.map(log => ({
+          _id: log._id?.toString(),
+          message: log.message,
+          created_at: log.created_at,
+          user_id: log.user_id ? {
+            username: log.user_id.username,
+            full_name: log.user_id.full_name
+          } : undefined,
+          tenant_id: log.tenant_id?._id?.toString()
+        })),
+        total_errors: permissionErrorLogs.length,
+        total_warnings: permissionWarningLogs.length
+      };
+
+      // Format dashboard data for frontend (matching frontend interface)
       const dashboard = {
         tenants: {
           tenants: tenantsStats.totals.tenants,
@@ -65,36 +101,15 @@ class AdminController {
           total_tasks: tenantsStats.totals.total_tasks
         },
         tasks: {
-          total: taskStatusMap.total || Object.values(taskStatusMap).reduce((a, b) => a + b, 0),
-          pending: taskStatusMap.pending || taskStatusMap.PENDING || 0,
-          in_progress: taskStatusMap.in_progress || taskStatusMap.IN_PROGRESS || 0,
-          completed: taskStatusMap.completed || taskStatusMap.COMPLETED || 0,
-          on_hold: taskStatusMap.on_hold || taskStatusMap.ON_HOLD || 0,
-          cancelled: taskStatusMap.cancelled || taskStatusMap.CANCELLED || 0,
-          overdue: 0
+          total: totalTasks,
+          pending: pendingTasks,
+          in_progress: inProgressTasks,
+          completed: completedTasks,
+          on_hold: onHoldTasks,
+          cancelled: cancelledTasks,
+          overdue: overdueTasks
         },
-        permission_alerts: {
-          errors: errors.map(e => ({
-            _id: e._id?.toString(),
-            message: e.action || e.details?.message || 'Permission error',
-            created_at: e.timestamp || e.createdAt,
-            user_id: e.user_id ? {
-              username: e.user_id.username,
-              full_name: e.user_id.full_name
-            } : undefined
-          })),
-          warnings: warnings.map(w => ({
-            _id: w._id?.toString(),
-            message: w.action || w.details?.message || 'Permission warning',
-            created_at: w.timestamp || w.createdAt,
-            user_id: w.user_id ? {
-              username: w.user_id.username,
-              full_name: w.user_id.full_name
-            } : undefined
-          })),
-          total_errors: errors.length,
-          total_warnings: warnings.length
-        },
+        permission_alerts: permissionAlerts,
         summary: {
           total_tenants: tenantsStats.totals.tenants,
           active_tenants: tenantsStats.totals.active_tenants,
@@ -102,7 +117,7 @@ class AdminController {
           total_active_users: tenantsStats.totals.total_active_users,
           total_projects: tenantsStats.totals.total_projects,
           total_tasks: tenantsStats.totals.total_tasks,
-          permission_issues: errors.length + warnings.length
+          permission_issues: permissionAlerts.total_errors + permissionAlerts.total_warnings
         }
       };
 

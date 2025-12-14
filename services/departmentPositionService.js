@@ -1,5 +1,4 @@
 const DepartmentRepository = require('../repository/DepartmentRepository');
-const PositionRepository = require('../repository/PositionRepository');
 const UserRepository = require('../repository/UserRepository');
 const { transformDocumentId, transformDocumentsId, POPULATED_FIELDS } = require('../utils/transformId');
 const { createResponse } = require('../utils/response');
@@ -276,211 +275,18 @@ class DepartmentService {
   }
 }
 
-class PositionService {
-  // Create position with business logic
-  static async createPosition(positionData, createdBy) {
-    try {
-      // Validate level constraints
-      if (positionData.level < 1 || positionData.level > 10) {
-        return createResponse(400, 'Position level must be between 1 and 10');
-      }
-
-      const position = await PositionRepository.create({
-        ...positionData,
-        created_by: createdBy
-      });
-
-      return createResponse(201, 'Tạo chức vụ thành công',
-        transformDocumentId(position, POPULATED_FIELDS.POSITION));
-    } catch (error) {
-      console.error('Error creating position:', error);
-      return createResponse(500, 'Lỗi khi tạo chức vụ', null, error.message);
-    }
-  }
-
-  // Update position with business logic
-  static async updatePosition(id, updateData, updatedBy) {
-    try {
-      const position = await PositionRepository.findById(id);
-      if (!position) {
-        return createResponse(404, 'Position not found');
-      }
-
-      // Check if level change affects employees
-      if (updateData.level && updateData.level !== position.level) {
-        const employeeCount = position.employees_count || 0;
-        if (employeeCount > 0) {
-          // Log level change for audit
-          console.log(`Position level changed for ${employeeCount} employees`);
-        }
-      }
-
-      const updatedPosition = await PositionRepository.updateById(id, {
-        ...updateData,
-        updated_by: updatedBy
-      });
-
-      return createResponse(200, 'Cập nhật chức vụ thành công',
-        transformDocumentId(updatedPosition, POPULATED_FIELDS.POSITION));
-    } catch (error) {
-      console.error('Error updating position:', error);
-      return createResponse(500, 'Lỗi khi cập nhật chức vụ', null, error.message);
-    }
-  }
-
-  // Delete position with employee check
-  static async deletePosition(id, deletedBy) {
-    try {
-      const position = await PositionRepository.findById(id);
-      if (!position) {
-        return createResponse(404, 'Position not found');
-      }
-
-      // Check if position has active employees
-      const employeeCount = position.employees_count || 0;
-      if (employeeCount > 0) {
-        return createResponse(400, `Cannot delete position with ${employeeCount} active employees`);
-      }
-
-      const deletedPosition = await PositionRepository.updateById(id, {
-        is_active: false,
-        deleted_at: new Date(),
-        deleted_by: deletedBy
-      });
-
-      return createResponse(200, 'Xóa chức vụ thành công',
-        transformDocumentId(deletedPosition, POPULATED_FIELDS.POSITION));
-    } catch (error) {
-      console.error('Error deleting position:', error);
-      return createResponse(500, 'Lỗi khi xóa chức vụ', null, error.message);
-    }
-  }
-
-  // Get career progression paths
-  static async getCareerPaths(fromLevel, toLevel = null) {
-    try {
-      if (toLevel) {
-        const positions = await PositionRepository.findByLevelRange(fromLevel, toLevel);
-        return createResponse(200, 'Lấy đường phát triển nghề nghiệp thành công',
-          transformDocumentsId(positions, POPULATED_FIELDS.POSITION));
-      }
-
-      // Get next level positions (promotion path)
-      const nextLevelPositions = await PositionRepository.findByLevelRange(fromLevel + 1, fromLevel + 1);
-      
-      return createResponse(200, 'Lấy đường phát triển nghề nghiệp thành công', {
-        current_level: fromLevel,
-        promotion_options: transformDocumentsId(nextLevelPositions, POPULATED_FIELDS.POSITION)
-      });
-    } catch (error) {
-      console.error('Error getting career paths:', error);
-      return createResponse(500, 'Lỗi khi lấy đường phát triển nghề nghiệp', null, error.message);
-    }
-  }
-
-  // Suggest positions based on current position
-  static async suggestPositions(currentPositionId) {
-    try {
-      const currentPosition = await PositionRepository.findById(currentPositionId);
-      if (!currentPosition) {
-        return createResponse(404, 'Position not found');
-      }
-
-      const [promotions, lateralMoves, demotions] = await Promise.all([
-        PositionRepository.findByLevelRange(currentPosition.level + 1, currentPosition.level + 1),
-        PositionRepository.findByLevelRange(currentPosition.level, currentPosition.level),
-        currentPosition.level > 1 ? 
-          PositionRepository.findByLevelRange(currentPosition.level - 1, currentPosition.level - 1) : 
-          Promise.resolve([])
-      ]);
-
-      // Remove current position from lateral moves
-      const filteredLateralMoves = lateralMoves.filter(pos => pos._id.toString() !== currentPositionId);
-
-      return createResponse(200, 'Gợi ý chức vụ thành công', {
-        promotions: transformDocumentsId(promotions, POPULATED_FIELDS.POSITION),
-        lateral_moves: transformDocumentsId(filteredLateralMoves, POPULATED_FIELDS.POSITION),
-        demotions: transformDocumentsId(demotions, POPULATED_FIELDS.POSITION),
-        current_position: transformDocumentId(currentPosition, POPULATED_FIELDS.POSITION)
-      });
-    } catch (error) {
-      console.error('Error suggesting positions:', error);
-      return createResponse(500, 'Lỗi khi gợi ý chức vụ', null, error.message);
-    }
-  }
-
-  // Bulk update position levels
-  static async bulkUpdateLevels(updates, updatedBy) {
-    try {
-      const results = [];
-      
-      for (const { id, level } of updates) {
-        try {
-          const result = await this.updatePosition(id, { level }, updatedBy);
-          results.push({ id, status: 'success', position: result.data });
-        } catch (error) {
-          results.push({ id, status: 'error', error: error.message });
-        }
-      }
-
-      return createResponse(200, 'Cập nhật hàng loạt cấp độ chức vụ thành công', results);
-    } catch (error) {
-      console.error('Error bulk updating position levels:', error);
-      return createResponse(500, 'Lỗi khi cập nhật hàng loạt cấp độ chức vụ', null, error.message);
-    }
-  }
-
-  // Get position analytics
-  static async getPositionAnalytics() {
-    try {
-      const [stats, levelDistribution, employeeDistribution] = await Promise.all([
-        PositionRepository.getStats(),
-        PositionRepository.getPositionsByLevel(),
-        this.getEmployeeDistribution()
-      ]);
-
-      return createResponse(200, 'Lấy phân tích chức vụ thành công', {
-        overview: stats,
-        level_distribution: levelDistribution,
-        employee_distribution: employeeDistribution
-      });
-    } catch (error) {
-      console.error('Error getting position analytics:', error);
-      return createResponse(500, 'Lỗi khi lấy phân tích chức vụ', null, error.message);
-    }
-  }
-
-  // Get employee distribution across positions
-  static async getEmployeeDistribution() {
-    try {
-      // This would integrate with Employee model
-      // Mock implementation for now
-      return [];
-    } catch (error) {
-      console.error('Error getting employee distribution:', error);
-      return [];
-    }
-  }
-}
-
 class DepartmentPositionIntegrationService {
-  // Create organizational unit (department + position mapping)
-  static async createOrganizationalUnit(departmentData, positionIds, createdBy) {
+  // Create organizational unit
+  static async createOrganizationalUnit(departmentData, createdBy) {
     try {
       const departmentResult = await DepartmentService.createDepartment(departmentData, createdBy);
       
       if (!departmentResult.success) {
         return departmentResult;
       }
-      
-      // Associate positions with department (if needed in your business logic)
-      const positions = await Promise.all(
-        positionIds.map(positionId => PositionRepository.findById(positionId))
-      );
 
       return createResponse(201, 'Tạo đơn vị tổ chức thành công', {
-        department: departmentResult.data,
-        associated_positions: transformDocumentsId(positions.filter(pos => pos !== null), POPULATED_FIELDS.POSITION)
+        department: departmentResult.data
       });
     } catch (error) {
       console.error('Error creating organizational unit:', error);
@@ -491,14 +297,10 @@ class DepartmentPositionIntegrationService {
   // Get organizational structure
   static async getOrganizationalStructure() {
     try {
-      const [departmentsResult, positionResult] = await Promise.all([
-        DepartmentService.getAllDepartmentsWithStats(),
-        PositionService.getPositionAnalytics()
-      ]);
+      const departmentsResult = await DepartmentService.getAllDepartmentsWithStats();
 
       return createResponse(200, 'Lấy cấu trúc tổ chức thành công', {
-        departments: departmentsResult.data,
-        positions: positionResult.data
+        departments: departmentsResult.data
       });
     } catch (error) {
       console.error('Error getting organizational structure:', error);
@@ -512,9 +314,6 @@ class DepartmentPositionIntegrationService {
       const validations = [];
 
       switch (changeType) {
-        case 'POSITION_LEVEL_CHANGE':
-          validations.push(await this.validatePositionLevelChange(data));
-          break;
         case 'MANAGER_ASSIGNMENT':
           validations.push(await this.validateManagerAssignment(data));
           break;
@@ -526,17 +325,6 @@ class DepartmentPositionIntegrationService {
     } catch (error) {
       console.error('Error validating organizational change:', error);
       return createResponse(500, 'Lỗi khi kiểm tra thay đổi tổ chức', null, error.message);
-    }
-  }
-
-  // Validate position level changes
-  static async validatePositionLevelChange(data) {
-    try {
-      // Check salary implications, reporting structure, etc.
-      return { valid: true, message: 'Validation passed' };
-    } catch (error) {
-      console.error('Error validating position level change:', error);
-      return { valid: false, message: error.message };
     }
   }
 
@@ -554,6 +342,5 @@ class DepartmentPositionIntegrationService {
 
 module.exports = {
   DepartmentService,
-  PositionService,
   DepartmentPositionIntegrationService
 };

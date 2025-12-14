@@ -106,6 +106,13 @@ const PERMISSION_MATRIX = {
     escalate: [ROLE_CODES.SYSTEM_ADMIN, ROLE_CODES.COMPANY_ADMIN, ROLE_CODES.DEPARTMENT_HEADER, ROLE_CODES.SAFETY_OFFICER, 55, 100],
     list: [ROLE_CODES.SYSTEM_ADMIN, ROLE_CODES.COMPANY_ADMIN, ROLE_CODES.DEPARTMENT_HEADER, ROLE_CODES.MANAGER, ROLE_CODES.EMPLOYEE, ROLE_CODES.SAFETY_OFFICER, 10, 100]
   },
+  contract: {
+    create: [ROLE_CODES.SYSTEM_ADMIN, 100],
+    read: [ROLE_CODES.SYSTEM_ADMIN, ROLE_CODES.COMPANY_ADMIN, ROLE_CODES.DEPARTMENT_HEADER, ROLE_CODES.MANAGER, ROLE_CODES.EMPLOYEE, 10, 100],
+    update: [ROLE_CODES.SYSTEM_ADMIN, ROLE_CODES.COMPANY_ADMIN, 90, 100],
+    delete: [ROLE_CODES.SYSTEM_ADMIN, 100],
+    list: [ROLE_CODES.SYSTEM_ADMIN, ROLE_CODES.COMPANY_ADMIN, ROLE_CODES.DEPARTMENT_HEADER, ROLE_CODES.MANAGER, ROLE_CODES.EMPLOYEE, 10, 100]
+  },
   analytics: {
     view_global: [ROLE_CODES.SYSTEM_ADMIN, 100],
     view_tenant: [ROLE_CODES.SYSTEM_ADMIN, ROLE_CODES.COMPANY_ADMIN, 90, 100],
@@ -1090,29 +1097,97 @@ class PermissionUtils {
    * @returns {boolean}
    */
   static hasMatrixPermission(userRole, module, action) {
-    if (!userRole || !module || !action) return false;
+    if (!userRole || !module || !action) {
+      console.log(`❌ hasMatrixPermission: Missing parameters`, { userRole: !!userRole, module, action });
+      return false;
+    }
     
     const moduleMatrix = PERMISSION_MATRIX[module];
-    if (!moduleMatrix) return false;
+    if (!moduleMatrix) {
+      console.log(`❌ hasMatrixPermission: Module '${module}' not found in PERMISSION_MATRIX`);
+      return false;
+    }
     
     const allowedRoles = moduleMatrix[action];
-    if (!allowedRoles || allowedRoles.length === 0) return false;
+    if (!allowedRoles || allowedRoles.length === 0) {
+      console.log(`❌ hasMatrixPermission: Action '${action}' not found in module '${module}'`);
+      return false;
+    }
     
     const userRoleCode = userRole.role_code?.toLowerCase();
     const userRoleLevel = userRole.role_level;
+    const userRoleName = userRole.role_name?.toLowerCase();
+    
+    console.log(`🔍 hasMatrixPermission check:`, {
+      module,
+      action,
+      userRoleCode,
+      userRoleLevel,
+      userRoleName,
+      allowedRoles,
+      fullUserRole: {
+        role_code: userRole.role_code,
+        role_name: userRole.role_name,
+        role_level: userRole.role_level,
+        _id: userRole._id
+      }
+    });
     
     // Check if user's role_code or role_level is in allowed list
-    return allowedRoles.some(allowed => {
+    const hasPermission = allowedRoles.some(allowed => {
       // Check by role_code (string)
-      if (typeof allowed === 'string' && userRoleCode === allowed.toLowerCase()) {
-        return true;
+      if (typeof allowed === 'string') {
+        const allowedLower = allowed.toLowerCase().trim();
+        const userRoleCodeLower = userRoleCode?.toLowerCase().trim();
+        
+        // Direct match by role_code
+        if (userRoleCodeLower && userRoleCodeLower === allowedLower) {
+          console.log(`✅ Match by role_code: ${userRoleCodeLower} === ${allowedLower}`);
+          return true;
+        }
+        
+        // Check if allowed is a ROLE_CODES constant (e.g., 'company_admin')
+        // Also check role name as fallback
+        if (userRoleName && userRoleName === allowedLower) {
+          console.log(`✅ Match by role_name: ${userRoleName} === ${allowedLower}`);
+          return true;
+        }
+        
+        // Additional check: if userRoleCode is undefined/null, try to match by role_name
+        if (!userRoleCodeLower && userRoleName && userRoleName === allowedLower) {
+          console.log(`✅ Match by role_name (fallback): ${userRoleName} === ${allowedLower}`);
+          return true;
+        }
       }
       // Check by role_level (number) - user level >= required level
       if (typeof allowed === 'number' && typeof userRoleLevel === 'number') {
-        return userRoleLevel >= allowed;
+        if (userRoleLevel >= allowed) {
+          console.log(`✅ Match by role_level: ${userRoleLevel} >= ${allowed}`);
+          return true;
+        }
       }
       return false;
     });
+    
+    // Fallback: If no match found but user has high role_level, check if any numeric value in allowedRoles
+    // This handles cases where role_code might not match but role_level should grant access
+    let finalPermission = hasPermission;
+    if (!hasPermission && typeof userRoleLevel === 'number' && userRoleLevel >= 90) {
+      const hasNumericMatch = allowedRoles.some(allowed => {
+        if (typeof allowed === 'number' && userRoleLevel >= allowed) {
+          console.log(`✅ Fallback match by role_level: ${userRoleLevel} >= ${allowed}`);
+          return true;
+        }
+        return false;
+      });
+      if (hasNumericMatch) {
+        console.log(`✅ Permission granted via role_level fallback (${userRoleLevel} >= 90)`);
+        finalPermission = true;
+      }
+    }
+    
+    console.log(`🔍 hasMatrixPermission result: ${finalPermission}`);
+    return finalPermission;
   }
 
   /**

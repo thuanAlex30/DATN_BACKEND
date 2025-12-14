@@ -93,13 +93,6 @@ const authValidation = {
       .optional()
       .messages({
         'string.pattern.base': 'Invalid department ID format'
-      }),
-
-    position_id: Joi.string()
-      .pattern(/^[0-9a-fA-F]{24}$/)
-      .optional()
-      .messages({
-        'string.pattern.base': 'Invalid position ID format'
       })
   }),
 
