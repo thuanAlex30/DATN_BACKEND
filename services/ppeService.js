@@ -451,6 +451,19 @@ class PPEService {
         throw new Error(`Manager không đủ PPE để phát. Hiện có: ${availableQuantity}, cần phát: ${issuanceData.quantity}`);
       }
 
+      // Kiểm tra duplicate: không cho phép tạo issuance trùng lặp cho cùng user, item, và status pending
+      const existingIssuance = await PPEIssuance.findOne({
+        user_id: issuanceData.user_id,
+        item_id: issuanceData.item_id,
+        issuance_level: 'manager_to_employee',
+        status: { $in: ['pending_confirmation', 'issued'] },
+        issued_by: issuanceData.issued_by
+      });
+
+      if (existingIssuance) {
+        throw new Error('Đã tồn tại PPE đang chờ xác nhận hoặc đang sử dụng cho nhân viên này. Vui lòng kiểm tra lại.');
+      }
+
       // Get issuer and recipient info for WebSocket
       const issuer = await User.findById(issuanceData.issued_by);
       const recipient = await User.findById(issuanceData.user_id);
