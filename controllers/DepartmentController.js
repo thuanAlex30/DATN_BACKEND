@@ -72,7 +72,29 @@ class DepartmentController {
       return ApiResponse.error(res, 'Department name already exists', 409);
     }
 
-    // Validate manager if provided
+    // Validate manager_ids if provided
+    if (departmentData.manager_ids && Array.isArray(departmentData.manager_ids)) {
+      // Remove duplicates
+      departmentData.manager_ids = [...new Set(departmentData.manager_ids)];
+      
+      // Validate max 5 managers
+      if (departmentData.manager_ids.length > 5) {
+        return ApiResponse.error(res, 'Một phòng ban chỉ có thể có tối đa 5 quản lý', 400);
+      }
+
+      // Validate each manager
+      for (const managerId of departmentData.manager_ids) {
+        const manager = await UserRepository.findById(managerId);
+        if (!manager) {
+          return ApiResponse.error(res, `Manager với ID ${managerId} không tồn tại`, 404);
+        }
+        if (!manager.is_active) {
+          return ApiResponse.error(res, `Tài khoản manager ${manager.full_name || manager.username} không hoạt động`, 400);
+        }
+      }
+    }
+
+    // Validate manager_id (legacy support) if provided
     if (departmentData.manager_id) {
       const manager = await UserRepository.findById(departmentData.manager_id);
       if (!manager) {
@@ -82,15 +104,16 @@ class DepartmentController {
         return ApiResponse.error(res, 'Manager account is not active', 400);
       }
 
-      // Check if manager is already managing another department
-      const existingManagement = await DepartmentRepository.findAll({
-        manager_id: departmentData.manager_id,
-        is_active: true,
-        limit: 1
-      });
-      
-      if (existingManagement.departments.length > 0) {
-        return ApiResponse.error(res, 'User is already managing another department', 409);
+      // If manager_ids is not provided, convert manager_id to manager_ids array
+      if (!departmentData.manager_ids || !Array.isArray(departmentData.manager_ids)) {
+        departmentData.manager_ids = [departmentData.manager_id];
+      } else if (!departmentData.manager_ids.includes(departmentData.manager_id)) {
+        // Add manager_id to manager_ids if not already present
+        departmentData.manager_ids.push(departmentData.manager_id);
+        departmentData.manager_ids = [...new Set(departmentData.manager_ids)];
+        if (departmentData.manager_ids.length > 5) {
+          return ApiResponse.error(res, 'Một phòng ban chỉ có thể có tối đa 5 quản lý', 400);
+        }
       }
     }
 
@@ -149,7 +172,29 @@ class DepartmentController {
       }
     }
 
-    // Validate manager if being updated
+    // Validate manager_ids if being updated
+    if (updateData.manager_ids && Array.isArray(updateData.manager_ids)) {
+      // Remove duplicates
+      updateData.manager_ids = [...new Set(updateData.manager_ids)];
+      
+      // Validate max 5 managers
+      if (updateData.manager_ids.length > 5) {
+        return ApiResponse.error(res, 'Một phòng ban chỉ có thể có tối đa 5 quản lý', 400);
+      }
+
+      // Validate each manager
+      for (const managerId of updateData.manager_ids) {
+        const manager = await UserRepository.findById(managerId);
+        if (!manager) {
+          return ApiResponse.error(res, `Manager với ID ${managerId} không tồn tại`, 404);
+        }
+        if (!manager.is_active) {
+          return ApiResponse.error(res, `Tài khoản manager ${manager.full_name || manager.username} không hoạt động`, 400);
+        }
+      }
+    }
+
+    // Validate manager_id (legacy support) if being updated
     if (updateData.manager_id) {
       const manager = await UserRepository.findById(updateData.manager_id);
       if (!manager) {
@@ -159,20 +204,16 @@ class DepartmentController {
         return ApiResponse.error(res, 'Manager account is not active', 400);
       }
 
-      // Check if manager is already managing another department (excluding current)
-      const existingManagement = await DepartmentRepository.findAll({
-        manager_id: updateData.manager_id,
-        is_active: true,
-        limit: 10,
-        tenant_id: tenantId || undefined
-      });
-      
-      const otherManagement = existingManagement.departments.filter(
-        dept => dept._id.toString() !== id
-      );
-      
-      if (otherManagement.length > 0) {
-        return ApiResponse.error(res, 'User is already managing another department', 409);
+      // If manager_ids is not provided, convert manager_id to manager_ids array
+      if (!updateData.manager_ids || !Array.isArray(updateData.manager_ids)) {
+        updateData.manager_ids = [updateData.manager_id];
+      } else if (!updateData.manager_ids.includes(updateData.manager_id)) {
+        // Add manager_id to manager_ids if not already present
+        updateData.manager_ids.push(updateData.manager_id);
+        updateData.manager_ids = [...new Set(updateData.manager_ids)];
+        if (updateData.manager_ids.length > 5) {
+          return ApiResponse.error(res, 'Một phòng ban chỉ có thể có tối đa 5 quản lý', 400);
+        }
       }
     }
 
@@ -478,15 +519,28 @@ class DepartmentController {
     // Convert to JSON to include virtual fields
     const departmentJson = department.toJSON();
 
+    // Get managers from manager_ids array or fallback to manager_id
+    let managers = [];
+    if (departmentJson.manager_ids && Array.isArray(departmentJson.manager_ids) && departmentJson.manager_ids.length > 0) {
+      managers = departmentJson.manager_ids.map((m) => ({
+        id: m.id || m._id,
+        name: m.full_name || m.username,
+        email: m.email
+      })).filter((m) => m.id);
+    } else if (departmentJson.manager_id) {
+      managers = [{
+        id: departmentJson.manager_id.id || departmentJson.manager_id._id,
+        name: departmentJson.manager_id.full_name || departmentJson.manager_id.username,
+        email: departmentJson.manager_id.email
+      }];
+    }
+
     const summary = {
       id: departmentJson.id,
       name: departmentJson.department_name,
       description: departmentJson.description,
-      manager: departmentJson.manager_id ? {
-        id: departmentJson.manager_id.id || departmentJson.manager_id._id,
-        name: departmentJson.manager_id.full_name || departmentJson.manager_id.username,
-        email: departmentJson.manager_id.email
-      } : null,
+      manager: managers.length > 0 ? managers[0] : null, // Keep for backward compatibility
+      managers: managers.length > 0 ? managers : [], // New field for multiple managers
       employee_count: employeeCount,
       is_active: departmentJson.is_active,
       created_at: departmentJson.created_at,
@@ -541,33 +595,55 @@ class DepartmentController {
     console.log('Department found:', department.department_name);
 
     // Prepare options for UserRepository
+    // Nếu include_inactive là 'true' hoặc true, thì lấy tất cả (is_active = undefined)
+    // Nếu không, chỉ lấy nhân viên đang hoạt động (is_active = true)
+    const shouldIncludeInactive = include_inactive === 'true' || include_inactive === true;
     const options = {
-      is_active: include_inactive === 'true' ? undefined : (is_active === 'true'),
+      is_active: shouldIncludeInactive ? undefined : true, // Lấy tất cả nếu include inactive
       sort_by,
       sort_order
     };
 
     console.log('UserRepository options:', options);
+    console.log('include_inactive value:', include_inactive, 'type:', typeof include_inactive);
 
     // Get all users from the department
     const allUsers = await UserRepository.findByDepartment(id, options);
     console.log('Found all users:', allUsers.length);
 
-    // Filter out managers, only keep employees
+    // Filter out managers and admins, keep all other users (employees and other roles)
+    // Không filter theo is_active ở đây, để hiển thị cả nhân viên đã ngừng hoạt động
     const employees = allUsers.filter(user => {
-      const roleName = user.role_id?.role_name;
-      const roleCode = user.role_id?.role_code;
-      const isEmployee = (roleCode || roleName)?.toLowerCase() === 'employee';
+      const roleName = user.role_id?.role_name?.toLowerCase() || '';
+      const roleCode = user.role_id?.role_code?.toLowerCase() || '';
+      const roleLevel = user.role_id?.role_level || 0;
       
-      if (!isEmployee) {
-        console.log('Filtered out non-employee:', {
+      // Loại bỏ các role quản lý và admin (role_level >= 70)
+      // Chỉ giữ lại employee và các role khác có level thấp hơn
+      const isManagerOrAdmin = roleLevel >= 70 || 
+                               roleCode === 'manager' || 
+                               roleCode === 'department_header' || 
+                               roleCode === 'department_manager' ||
+                               roleCode === 'company_admin' ||
+                               roleCode === 'system_admin' ||
+                               roleName === 'manager' ||
+                               roleName === 'department header' ||
+                               roleName === 'department manager' ||
+                               roleName === 'company admin' ||
+                               roleName === 'system admin';
+      
+      if (isManagerOrAdmin) {
+        console.log('Filtered out manager/admin:', {
           name: user.full_name,
-          role_name: roleName,
-          role_code: roleCode
+          role_name: user.role_id?.role_name,
+          role_code: user.role_id?.role_code,
+          role_level: roleLevel
         });
+        return false;
       }
       
-      return isEmployee;
+      // Giữ lại tất cả user không phải manager/admin (bao gồm employee và các role khác)
+      return true;
     });
     
     console.log('Found employees after filtering:', employees.length);

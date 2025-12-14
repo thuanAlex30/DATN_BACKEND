@@ -29,6 +29,20 @@ const departmentValidation = {
         'string.pattern.base': 'Invalid manager ID format'
       }),
 
+    manager_ids: Joi.array()
+      .items(
+        Joi.string()
+          .pattern(/^[0-9a-fA-F]{24}$/)
+          .messages({
+            'string.pattern.base': 'Invalid manager ID format'
+          })
+      )
+      .max(5)
+      .optional()
+      .messages({
+        'array.max': 'Một phòng ban chỉ có thể có tối đa 5 quản lý'
+      }),
+
     is_active: Joi.boolean()
       .optional()
       .default(true)
@@ -60,6 +74,20 @@ const departmentValidation = {
       .allow(null)
       .messages({
         'string.pattern.base': 'Invalid manager ID format'
+      }),
+
+    manager_ids: Joi.array()
+      .items(
+        Joi.string()
+          .pattern(/^[0-9a-fA-F]{24}$/)
+          .messages({
+            'string.pattern.base': 'Invalid manager ID format'
+          })
+      )
+      .max(5)
+      .optional()
+      .messages({
+        'array.max': 'Một phòng ban chỉ có thể có tối đa 5 quản lý'
       }),
 
     is_active: Joi.boolean()

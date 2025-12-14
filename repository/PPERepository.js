@@ -841,8 +841,15 @@ class PPERepository {
 
   async getAssignmentById(id) {
     return await PPEIssuance.findById(id)
-      .populate('user_id', 'full_name email employee_id')
-      .populate('item_id', 'item_name category_id');
+      .populate('user_id', 'full_name email employee_id phone department_id')
+      .populate({
+        path: 'user_id',
+        populate: {
+          path: 'department_id',
+          select: 'department_name'
+        }
+      })
+      .populate('item_id', 'item_name item_code brand model image_url category_id');
   }
 
   async createAssignment(assignmentData) {

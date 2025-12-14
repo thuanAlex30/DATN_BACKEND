@@ -111,11 +111,14 @@ class PPEController {
     try {
       const filters = {
         category_id: req.query.category_id,
-        search: req.query.search
+        search: req.query.search,
+        include_inactive: req.query.include_inactive === 'true' || req.query.include_inactive === true
       };
       
       const tenantId = req.user.tenant_id;
+      console.log('getAllItems - filters:', filters, 'tenantId:', tenantId);
       const result = await ppeService.getAllItems(filters, tenantId);
+      console.log('getAllItems - result:', result.success, 'items count:', result.data?.length || 0);
       
       if (result.success) {
         // Use enhanced response handler with BSON error recovery
