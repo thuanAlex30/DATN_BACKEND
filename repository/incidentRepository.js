@@ -368,9 +368,9 @@ class IncidentRepository {
                       (statusBreakdown['resolved'] || 0) + 
                       (statusBreakdown['closed'] || 0);
       
+      // "Nghiêm trọng" chỉ đếm "rất nghiêm trọng" và "critical", không bao gồm "nặng"
       const critical = (severityBreakdown['rất nghiêm trọng'] || 0) + 
-                     (severityBreakdown['critical'] || 0) + 
-                     (severityBreakdown['nặng'] || 0);
+                     (severityBreakdown['critical'] || 0);
 
       return {
         total: totalResult || 0,
