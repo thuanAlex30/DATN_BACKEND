@@ -686,25 +686,50 @@ class DepartmentController {
     console.log('Found employees after filtering:', employees.length);
 
     // Format employee data
-    const formattedEmployees = employees.map(employee => ({
-      id: employee._id,
-      username: employee.username,
-      full_name: employee.full_name,
-      email: employee.email,
-      phone: employee.phone,
-      role: employee.role_id ? {
-        id: employee.role_id._id,
-        name: employee.role_id.role_name
-      } : null,
-      department: employee.department_id ? {
-        id: employee.department_id._id,
-        name: employee.department_id.department_name,
-        department_name: employee.department_id.department_name
-      } : null,
-      is_active: employee.is_active,
-      created_at: employee.created_at,
-      updated_at: employee.updated_at
-    }));
+    const formattedEmployees = employees.map(employee => {
+      // Handle department - use populated department_id or fallback to department from request
+      let departmentData = null;
+      if (employee.department_id) {
+        // If department_id is populated (object)
+        if (typeof employee.department_id === 'object' && employee.department_id.department_name) {
+          departmentData = {
+            id: employee.department_id._id || employee.department_id.id,
+            name: employee.department_id.department_name,
+            department_name: employee.department_id.department_name
+          };
+        } else {
+          // If department_id is just an ObjectId, use department from request
+          departmentData = {
+            id: department._id,
+            name: department.department_name,
+            department_name: department.department_name
+          };
+        }
+      } else {
+        // Fallback: use department from request if employee has no department_id
+        departmentData = {
+          id: department._id,
+          name: department.department_name,
+          department_name: department.department_name
+        };
+      }
+      
+      return {
+        id: employee._id,
+        username: employee.username,
+        full_name: employee.full_name,
+        email: employee.email,
+        phone: employee.phone,
+        role: employee.role_id ? {
+          id: employee.role_id._id,
+          name: employee.role_id.role_name
+        } : null,
+        department: departmentData,
+        is_active: employee.is_active,
+        created_at: employee.created_at,
+        updated_at: employee.updated_at
+      };
+    });
 
     return ApiResponse.success(res, {
       department: {

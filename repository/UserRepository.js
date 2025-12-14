@@ -273,6 +273,7 @@ class UserRepository {
 
       const result = await User.find(filter)
         .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
+        .populate('department_id', 'department_name is_active')
         .sort(sortObj)
         .exec();
       
