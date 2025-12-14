@@ -294,6 +294,51 @@ class IncidentService {
         };
       }
 
+      // Kiểm tra quyền phân công: Department Header chỉ được phân công cho managers dưới cấp
+      const assigner = await User.findById(userId).populate('role_id', 'role_code role_level');
+      const assignee = await User.findById(assignedTo).populate('role_id', 'role_code role_level');
+      
+      if (!assigner || !assigner.role_id) {
+        return {
+          success: false,
+          message: 'Không tìm thấy thông tin người phân công',
+          statusCode: 404
+        };
+      }
+      
+      if (!assignee || !assignee.role_id) {
+        return {
+          success: false,
+          message: 'Không tìm thấy thông tin người được phân công',
+          statusCode: 404
+        };
+      }
+
+      // Nếu người phân công là Department Header (role_level = 80)
+      if (assigner.role_id.role_level === 80 || assigner.role_id.role_code === 'department_header') {
+        const assigneeRoleLevel = assignee.role_id.role_level;
+        const assigneeRoleCode = assignee.role_id.role_code;
+        
+        // Chỉ được phân công cho users có role_level < 80 (Manager: 70, Employee: 10)
+        // Không được phân công cho Department Header (80), Company Admin (90), System Admin (100)
+        if (assigneeRoleLevel >= 80) {
+          return {
+            success: false,
+            message: 'Department Header chỉ được phân công cho Manager và Employee, không được phân công cho Department Header cùng cấp hoặc cấp cao hơn',
+            statusCode: 403
+          };
+        }
+        
+        // Kiểm tra thêm bằng role_code để đảm bảo
+        if (assigneeRoleCode === 'department_header' || assigneeRoleCode === 'company_admin' || assigneeRoleCode === 'system_admin') {
+          return {
+            success: false,
+            message: 'Department Header chỉ được phân công cho Manager và Employee',
+            statusCode: 403
+          };
+        }
+      }
+
       // Update assignedTo and status using repository
       const updatedIncident = await incidentRepository.updateById(id, {
         assignedTo,
@@ -304,7 +349,7 @@ class IncidentService {
       await incidentRepository.addHistory(id, {
         action: 'Phân công',
         performedBy: userId,
-        note: `Phân công xử lý cho user ID: ${assignedTo}`
+        note: `Phân công xử lý cho ${assignee.full_name} (${assignee.username})`
       }, tenantId);
 
       // Emit events
@@ -342,6 +387,17 @@ class IncidentService {
 
       const { investigation, solution, findingsImages, rootCauseImages } = investigationData;
 
+      // Cập nhật status: nếu đang là "Mới ghi nhận", chuyển sang "Đang xử lý"
+      const updateData = {};
+      if (incident.status === 'Mới ghi nhận') {
+        updateData.status = 'Đang xử lý';
+      }
+
+      // Cập nhật status nếu cần
+      if (Object.keys(updateData).length > 0) {
+        await incidentRepository.updateById(id, updateData, tenantId);
+      }
+
       // Thêm investigation entry
       await incidentRepository.addHistory(id, {
         action: 'Điều tra',
@@ -359,7 +415,7 @@ class IncidentService {
       }, tenantId);
 
       // Get updated incident with history
-      const updatedIncident = await incidentRepository.getIncidentById(id);
+      const updatedIncident = await incidentRepository.getIncidentById(id, tenantId);
 
       // Emit events
       await IncidentService.emitIncidentEvents('investigated', updatedIncident, userId);
@@ -405,6 +461,31 @@ class IncidentService {
         };
       }
 
+      // Kiểm tra xem sự cố đã có các action xử lý chưa
+      const histories = incident.histories || [];
+      const hasProgressHistory = histories.some(h => h.action === 'Cập nhật tiến độ');
+      const hasInvestigationHistory = histories.some(h => h.action === 'Điều tra');
+      const hasSolutionHistory = histories.some(h => h.action === 'Khắc phục');
+      const hasAssignmentHistory = histories.some(h => h.action === 'Phân công');
+      
+      // Nếu đã có bất kỳ action xử lý nào, chuyển status thành "Đang xử lý"
+      const hasAnyProcessingAction = hasProgressHistory || hasInvestigationHistory || 
+                                     hasSolutionHistory || hasAssignmentHistory;
+
+      const updateData = {};
+      if (hasAnyProcessingAction && incident.status !== 'Đang xử lý') {
+        // Nếu đã có action xử lý và status chưa phải "Đang xử lý", cập nhật
+        updateData.status = 'Đang xử lý';
+      } else if (!hasAnyProcessingAction && incident.status === 'Mới ghi nhận') {
+        // Nếu chưa có action xử lý nào và đang là "Mới ghi nhận", chuyển sang "Đang xử lý" (lần đầu cập nhật tiến độ)
+        updateData.status = 'Đang xử lý';
+      }
+
+      // Cập nhật status nếu cần
+      if (Object.keys(updateData).length > 0) {
+        await incidentRepository.updateById(id, updateData, tenantId);
+      }
+
       // Thêm progress entry
       await incidentRepository.addHistory(id, {
         action: 'Cập nhật tiến độ',
@@ -414,7 +495,7 @@ class IncidentService {
       }, tenantId);
 
       // Get updated incident with history
-      const updatedIncident = await incidentRepository.getIncidentById(id);
+      const updatedIncident = await incidentRepository.getIncidentById(id, tenantId);
 
       // Emit events
       await IncidentService.emitIncidentEvents('progress_updated', updatedIncident, userId);
@@ -570,9 +651,9 @@ class IncidentService {
         const resolved = (statusBreakdown['Đã đóng'] || 0) + 
                         (statusBreakdown['resolved'] || 0) + 
                         (statusBreakdown['closed'] || 0);
+        // "Nghiêm trọng" chỉ đếm "rất nghiêm trọng", không bao gồm "nặng"
         const critical = (severityBreakdown['rất nghiêm trọng'] || 0) + 
-                       (severityBreakdown['critical'] || 0) + 
-                       (severityBreakdown['nặng'] || 0);
+                       (severityBreakdown['critical'] || 0);
         
         stats = {
           total,
@@ -754,66 +835,16 @@ class IncidentService {
   }
 
   /**
-   * Cập nhật incident
-   */
-  static async updateIncident(id, updateData, userId) {
-    try {
-      const incident = await incidentRepository.getIncidentById(id);
-      
-      if (!incident) {
-        return {
-          success: false,
-          message: 'Không tìm thấy incident',
-          statusCode: 404
-        };
-      }
-
-      // Validate dữ liệu cập nhật (only validate if required fields are present)
-      // For partial updates, we don't require all fields
-      if (updateData.title !== undefined && (!updateData.title || updateData.title.trim() === '')) {
-        return {
-          success: false,
-          message: 'Tiêu đề không được để trống',
-          statusCode: 400
-        };
-      }
-
-      const updatedIncident = await incidentRepository.updateIncident(id, updateData);
-
-      // Emit events
-      await IncidentService.emitIncidentEvents('updated', updatedIncident, userId);
-
-      return {
-        success: true,
-        data: updatedIncident,
-        message: 'Cập nhật incident thành công',
-        statusCode: 200
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-        statusCode: 500
-      };
-    }
-  }
-
-  /**
    * Emit incident events
    */
   static async emitIncidentEvents(eventType, incident, userId) {
     try {
-      // Emit WebSocket event
-      websocketService.emitIncidentEvent(eventType, incident, userId);
-      
       // Emit Kafka event based on event type
+      // WebSocket events will be emitted by Kafka consumer
       switch (eventType) {
         case 'created':
         case 'reported':
           await IncidentEvents.emitIncidentReported(incident, { _id: userId });
-          break;
-        case 'updated':
-          await IncidentEvents.emitIncidentUpdated(incident, { _id: userId }, {});
           break;
         case 'assigned':
           await IncidentEvents.emitIncidentAssigned(incident, { _id: incident.assignedTo }, { _id: userId });

@@ -304,36 +304,6 @@ class IncidentController {
     }
   });
 
-  // 16. Cập nhật incident
-  static updateIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const updateData = req.body;
-    const userId = req.user._id;
-    
-    const result = await incidentService.updateIncident(id, updateData, userId);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
-    }
-  });
-
-  // 17. Cập nhật thông tin nhân viên trong incident
-  static updateEmployeeIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const updateData = req.body;
-    const userId = req.user._id;
-    
-    const result = await incidentService.updateIncident(id, updateData, userId);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
-    }
-  });
-
   // 9. Escalate incident (Department Header)
   static escalateIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
