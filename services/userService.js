@@ -337,8 +337,10 @@ class UserService {
   }
 
   // Import users from Excel
-  static async importUsersFromExcel(file, tenantId = null) {
+  static async importUsersFromExcel(file, tenantId = null, options = {}) {
     try {
+      const { projectId = null, importedBy = null } = options || {};
+
       // Read Excel file
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(file.buffer);
@@ -374,6 +376,16 @@ class UserService {
         errors: [],
         total: data.length
       };
+
+      // If import gắn vào dự án, kiểm tra dự án tồn tại trước
+      let projectRepository = null;
+      if (projectId) {
+        projectRepository = require('../repository/projectRepository');
+        const project = await projectRepository.getProjectById(projectId);
+        if (!project) {
+          return createResponse(404, `Không tìm thấy dự án với id ${projectId}`);
+        }
+      }
 
       // Get all roles and departments for validation
       const rolesResult = await RoleRepository.findAll();
@@ -411,39 +423,57 @@ class UserService {
       const roleMap = new Map(roles.map(role => [role.role_name.toLowerCase(), role._id]));
       const departmentMap = new Map(departments.map(dept => [dept.department_name.toLowerCase(), dept._id]));
 
+      // Helper: normalize gender
+      const normalizeGender = (value) => {
+        if (!value) return undefined;
+        const v = String(value).trim().toLowerCase();
+        if (['nam', 'male', 'm'].includes(v)) return 'male';
+        if (['nữ', 'nu', 'female', 'f'].includes(v)) return 'female';
+        return undefined;
+      };
+
+      // Helper: generate username/email if missing
+      const randomSuffix = () => Math.random().toString(36).slice(2, 6);
+      const makeSlug = (name) => name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '').replace(/^-+|-+$/g, '');
+
       for (let i = 0; i < data.length; i++) {
         const row = data[i];
         const rowNumber = i + 2; // +2 because Excel is 1-indexed and we skip header
 
         try {
-          // Validate required fields
-          const requiredFields = ['username', 'email', 'full_name', 'password'];
-          const missingFields = requiredFields.filter(field => !row[field]);
-          
-          if (missingFields.length > 0) {
+          // Validate required fields (minimal: full_name)
+          if (!row.full_name) {
             results.errors.push({
               row: rowNumber,
-              error: `Missing required fields: ${missingFields.join(', ')}`
+              error: 'Missing required field: full_name'
             });
             continue;
           }
 
+          // Auto-generate username/email/password if not provided
+          const slug = makeSlug(row.username || row.full_name || '');
+          const suffix = randomSuffix();
+          const generatedUsername = row.username ? String(row.username).trim() : `${slug || 'user'}${suffix}`;
+          // Use a valid domain to pass email validation
+          const generatedEmail = row.email ? String(row.email).trim().toLowerCase() : `${generatedUsername}@import.example.com`;
+          const generatedPassword = row.password || 'Password123';
+
           // Check if username already exists
-          const existingUsername = await UserRepository.usernameExists(row.username);
+          const existingUsername = await UserRepository.usernameExists(generatedUsername);
           if (existingUsername) {
             results.errors.push({
               row: rowNumber,
-              error: `Username '${row.username}' already exists`
+              error: `Username '${generatedUsername}' already exists`
             });
             continue;
           }
 
           // Check if email already exists
-          const existingEmail = await UserRepository.emailExists(row.email);
+          const existingEmail = await UserRepository.emailExists(generatedEmail);
           if (existingEmail) {
             results.errors.push({
               row: rowNumber,
-              error: `Email '${row.email}' already exists`
+              error: `Email '${generatedEmail}' already exists`
             });
             continue;
           }
@@ -512,15 +542,16 @@ class UserService {
 
           // Prepare user data - luôn gán tenant_id theo context truyền vào
           const userData = {
-            username: row.username.trim(),
-            email: row.email.trim().toLowerCase(),
+            username: generatedUsername,
+            email: generatedEmail,
             full_name: row.full_name.trim(),
-            phone: row.phone ? row.phone.trim() : undefined,
+            phone: row.phone ? String(row.phone).trim() : undefined,
             birth_date: birthDate,
             address: row.address ? row.address.trim() : undefined,
             role_id: roleId,
             department_id: departmentId || undefined,
-            password: row.password || 'Password123', // Default password
+            password: generatedPassword, // Default password (can be overridden by file)
+            gender: normalizeGender(row.gender || row.sex || row['giới tính']),
             is_active: row.is_active !== undefined ? (row.is_active === true || row.is_active === 1 || row.is_active === 'true' || row.is_active === '1') : true,
             tenant_id: tenantId || undefined
           };
@@ -541,11 +572,42 @@ class UserService {
           const user = await UserRepository.create(userData);
           await user.populate(['role_id', 'department_id']);
 
+          // Nếu có projectId, gán người dùng vào dự án luôn
+          if (projectId && projectRepository) {
+            try {
+              // Tránh duplicate bằng cách kiểm tra trước
+              const existingAssignments = await projectRepository.getProjectAssignments(projectId);
+              const alreadyAssigned = existingAssignments.some(
+                assignment => assignment.user_id && assignment.user_id._id?.toString() === user._id.toString()
+              );
+
+              if (!alreadyAssigned) {
+                const roleInProject = row.role_in_project || row.project_role || 'WORKER';
+                await projectRepository.addProjectAssignment({
+                  project_id: projectId,
+                  user_id: user._id,
+                  role_in_project: roleInProject,
+                  start_date: row.start_date ? new Date(row.start_date) : new Date(),
+                  status: 'active',
+                  responsibilities: row.responsibilities || undefined,
+                  assigned_by: importedBy || undefined
+                });
+              }
+            } catch (assignError) {
+              console.error(`Error assigning user ${user._id} to project ${projectId}:`, assignError);
+              results.errors.push({
+                row: rowNumber,
+                error: `Không thể gán vào dự án: ${assignError.message}`
+              });
+            }
+          }
+
+          // Chỉ trả về thông tin tối thiểu, ẩn username/email/password được sinh tự động
           results.success.push({
             row: rowNumber,
-            username: user.username,
-            email: user.email,
-            full_name: user.full_name
+            full_name: user.full_name,
+            gender: user.gender || undefined,
+            project_id: projectId || null
           });
 
         } catch (error) {

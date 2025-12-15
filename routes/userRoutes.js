@@ -60,9 +60,15 @@ router.post('/',
 );
 
 // Import users from Excel
+// Cho phép Department Head, Company Admin, System Admin
 router.post('/import', 
+  AuthMiddleware.authenticate,
   upload.single('file'),
-  AuthMiddleware.authorizeScope({ modules: 'user', action: 'create', tenantScope: 'tenant' }),
+  AuthMiddleware.authorizeRole([
+    'department_header',
+    'company_admin',
+    'system_admin'
+  ]),
   (req, res, next) => {
     // Set timeout for this specific route
     req.setTimeout(300000); // 5 minutes

@@ -132,7 +132,15 @@ class ProjectRepository {
   // ========== PROJECT ASSIGNMENTS ==========
   async getProjectAssignments(projectId) {
     const assignments = await ProjectAssignment.find({ project_id: projectId })
-      .populate('user_id', 'full_name email phone')
+      .populate({
+        path: 'user_id',
+        // cần cả user_id (số nguyên) để export đúng
+        select: 'user_id full_name email phone gender tenant_id',
+        populate: {
+          path: 'tenant_id',
+          select: 'name tenant_name tenant_code company_name'
+        }
+      })
       .sort({ created_at: -1 });
 
     return assignments;

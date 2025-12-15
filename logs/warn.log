@@ -234,3 +234,5 @@
 {"timestamp":"2025-12-14T16:23:11.531Z","level":"WARN","message":"User not connected","metadata":{"userId":"693d215442ce47030aba287d","event":"ppe_notification"},"pid":15848,"hostname":"Bravo"}
 {"timestamp":"2025-12-14T16:24:03.885Z","level":"WARN","message":"User not connected","metadata":{"userId":"693d215442ce47030aba287d","event":"ppe_notification"},"pid":15848,"hostname":"Bravo"}
 {"timestamp":"2025-12-14T16:24:03.887Z","level":"WARN","message":"User not connected","metadata":{"userId":"692fe64ea505fa8c97485c4f","event":"ppe_notification"},"pid":15848,"hostname":"Bravo"}
+{"timestamp":"2025-12-15T03:18:06.839Z","level":"WARN","message":"User not connected","metadata":{"userId":"692fe64ea505fa8c97485c4f","event":"ppe_notification"},"pid":21452,"hostname":"Bravo"}
+{"timestamp":"2025-12-15T03:18:06.854Z","level":"WARN","message":"User not connected","metadata":{"userId":"693002add4c22c766d371d25","event":"ppe_notification"},"pid":21452,"hostname":"Bravo"}

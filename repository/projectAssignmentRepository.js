@@ -25,7 +25,14 @@ class ProjectAssignmentRepository {
 
     return await ProjectAssignment.find(query)
       .populate('project_id', 'project_name project_code')
-      .populate('user_id', 'full_name email')
+      .populate({
+        path: 'user_id',
+        // cần cả user_id (employee number) để lọc Hikvision và export
+        select: 'user_id full_name email phone gender tenant_id',
+        populate: [
+          { path: 'tenant_id', select: 'name tenant_name tenant_code company_name' }
+        ]
+      })
       .sort({ assigned_at: -1 });
   }
 
@@ -55,8 +62,15 @@ class ProjectAssignmentRepository {
   // ========== PROJECT ASSIGNMENT MANAGEMENT ==========
   async getProjectAssignments(projectId) {
     return await ProjectAssignment.find({ project_id: projectId })
-      .populate('user_id', 'full_name email position_id')
-      .populate('user_id.position_id', 'position_name')
+      .populate({
+        path: 'user_id',
+        // cần cả user_id (số nguyên) + tenant để export
+        select: 'user_id full_name email phone gender position_id tenant_id',
+        populate: [
+          { path: 'position_id', select: 'position_name' },
+          { path: 'tenant_id', select: 'name tenant_name tenant_code company_name' }
+        ]
+      })
       .sort({ assigned_at: -1 });
   }
 
