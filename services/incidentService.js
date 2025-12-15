@@ -339,17 +339,33 @@ class IncidentService {
         }
       }
 
+      // Kiểm tra xem incident đã được phân công cho cùng một người chưa
+      const currentAssignedTo = typeof incident.assignedTo === 'object' 
+        ? incident.assignedTo?._id?.toString() 
+        : incident.assignedTo?.toString();
+      const newAssignedToId = assignedTo.toString();
+      
+      // Nếu đã được phân công cho cùng một người, không tạo history entry mới
+      if (currentAssignedTo === newAssignedToId) {
+        return {
+          success: false,
+          message: 'Sự cố đã được phân công cho người này rồi',
+          statusCode: 400
+        };
+      }
+
       // Update assignedTo and status using repository
       const updatedIncident = await incidentRepository.updateById(id, {
         assignedTo,
         status: 'Đang xử lý'
       }, tenantId);
       
-      // Thêm history entry
+      // Thêm history entry chỉ khi thực sự có thay đổi
       await incidentRepository.addHistory(id, {
         action: 'Phân công',
         performedBy: userId,
-        note: `Phân công xử lý cho ${assignee.full_name} (${assignee.username})`
+        note: `Phân công xử lý cho ${assignee.full_name} (${assignee.username})`,
+        timestamp: new Date()
       }, tenantId);
 
       // Emit events
