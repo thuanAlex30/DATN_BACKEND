@@ -150,3 +150,8 @@
 {"timestamp":"2025-12-15T02:01:14.701Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","socketId":"BjbM6sANEfOimC_VAAAP"},"pid":9420,"hostname":"MSI"}
 {"timestamp":"2025-12-15T02:01:14.914Z","level":"INFO","message":"User connected","metadata":{"socketId":"b7jkEOW739CEqlieAAAS"},"pid":9420,"hostname":"MSI"}
 {"timestamp":"2025-12-15T02:01:14.916Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"b7jkEOW739CEqlieAAAS"},"pid":9420,"hostname":"MSI"}
+{"timestamp":"2025-12-15T02:06:27.926Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":10704,"hostname":"MSI"}
+{"timestamp":"2025-12-15T02:06:27.943Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":10704,"hostname":"MSI"}
+{"timestamp":"2025-12-15T02:06:52.396Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","socketId":"b7jkEOW739CEqlieAAAS"},"pid":9420,"hostname":"MSI"}
+{"timestamp":"2025-12-15T02:06:54.597Z","level":"INFO","message":"User connected","metadata":{"socketId":"5Xzk3LOQjKY8Zu8EAAAU"},"pid":9420,"hostname":"MSI"}
+{"timestamp":"2025-12-15T02:06:54.599Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"5Xzk3LOQjKY8Zu8EAAAU"},"pid":9420,"hostname":"MSI"}
