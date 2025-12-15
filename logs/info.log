@@ -93,3 +93,14 @@
 {"timestamp":"2025-12-12T15:07:33.164Z","level":"INFO","message":"Weather forecast fetched","metadata":{"latencyMs":228,"cacheKey":"forecast:15.3653:108.7629:7days"},"pid":3672,"hostname":"Bravo"}
 {"timestamp":"2025-12-12T15:14:50.000Z","level":"INFO","message":"User disconnected","metadata":{"userId":"693001f5d4c22c766d371c57","socketId":"gHJSRbb_jtEL6xjTAAAE"},"pid":3672,"hostname":"Bravo"}
 >>>>>>> main
+{"timestamp":"2025-12-15T05:32:22.930Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":16060,"hostname":"DESKTOP-SP69UT9"}
+{"timestamp":"2025-12-15T05:32:22.996Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":16060,"hostname":"DESKTOP-SP69UT9"}
+{"timestamp":"2025-12-15T05:34:34.774Z","level":"INFO","message":"User connected","metadata":{"socketId":"6xST-GujLnDzRWqKAAAC"},"pid":16060,"hostname":"DESKTOP-SP69UT9"}
+{"timestamp":"2025-12-15T05:34:34.779Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"6xST-GujLnDzRWqKAAAC"},"pid":16060,"hostname":"DESKTOP-SP69UT9"}
+{"timestamp":"2025-12-15T05:35:10.423Z","level":"INFO","message":"Weather fetched","metadata":{"latencyMs":750,"cacheKey":"weather:15.9804018:108.2503675:undefined:precipitation"},"pid":16060,"hostname":"DESKTOP-SP69UT9"}
+{"timestamp":"2025-12-15T05:36:32.662Z","level":"INFO","message":"Weather forecast fetched","metadata":{"latencyMs":770,"cacheKey":"forecast:15.9804018:108.2503675:7days"},"pid":16060,"hostname":"DESKTOP-SP69UT9"}
+{"timestamp":"2025-12-15T05:38:26.391Z","level":"INFO","message":"User connected","metadata":{"socketId":"iyNGoufr2n-696JFAAAF"},"pid":16060,"hostname":"DESKTOP-SP69UT9"}
+{"timestamp":"2025-12-15T05:38:26.393Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"iyNGoufr2n-696JFAAAF"},"pid":16060,"hostname":"DESKTOP-SP69UT9"}
+{"timestamp":"2025-12-15T05:38:26.414Z","level":"INFO","message":"User connected","metadata":{"socketId":"KwJJpPx3RCs1b1jsAAAG"},"pid":16060,"hostname":"DESKTOP-SP69UT9"}
+{"timestamp":"2025-12-15T05:38:26.418Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"KwJJpPx3RCs1b1jsAAAG"},"pid":16060,"hostname":"DESKTOP-SP69UT9"}
+{"timestamp":"2025-12-15T05:38:35.072Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":16060,"hostname":"DESKTOP-SP69UT9"}
