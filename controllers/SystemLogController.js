@@ -41,7 +41,17 @@ class SystemLogController {
                 filters.tenant_id = tenantId;
             }
 
-            const resultPromise = SystemLog.getLogs(filters, parseInt(page), parseInt(limit));
+            // Get current user's role level to filter logs
+            const currentUserRoleLevel = req.user?.role?.role_level || req.user?.role_level || 0;
+            
+            // For company admin (level 90), only show logs of users with lower level
+            // For system admin (level 100), show all logs
+            if (currentUserRoleLevel >= 90 && currentUserRoleLevel < 100) {
+                // Company Admin: only show logs of users with role_level < 90
+                filters.max_role_level = 89;
+            }
+
+            const resultPromise = SystemLog.getLogs(filters, parseInt(page), parseInt(limit), currentUserRoleLevel);
             const result = await Promise.race([resultPromise, timeoutPromise]);
             
             // Map logs to frontend format
@@ -60,16 +70,23 @@ class SystemLogController {
                 let userPayload = null;
                 if (logObj.user_id) {
                     if (typeof logObj.user_id === 'object' && (logObj.user_id._id || logObj.user_id.username)) {
+                        const roleInfo = logObj.user_id.role_id || {};
                         userPayload = {
                             _id: logObj.user_id._id?.toString() || logObj.user_id._id,
                             username: logObj.user_id.username,
-                            full_name: logObj.user_id.full_name
+                            full_name: logObj.user_id.full_name,
+                            role: roleInfo && roleInfo.role_name ? {
+                                role_name: roleInfo.role_name,
+                                role_code: roleInfo.role_code,
+                                role_level: roleInfo.role_level
+                            } : null
                         };
                     } else {
                         userPayload = {
                             _id: logObj.user_id?.toString(),
                             username: null,
-                            full_name: null
+                            full_name: null,
+                            role: null
                         };
                     }
                 }

@@ -87,6 +87,16 @@ class IncidentService {
       // Build query filters - extract pagination options
       const { page, limit, sortBy, sortOrder, department_id, ...queryFilters } = filters;
 
+      // If user is Manager, automatically filter by assignedTo
+      // Manager chỉ xem được incidents đã được phân công cho họ
+      if (user && user.role && (user.role.role_code === 'manager' || user.role.role_name?.toLowerCase() === 'manager' || user.role.role_name?.toLowerCase() === 'department manager')) {
+        const managerId = user._id || user.id;
+        if (managerId && !filters.assignedTo) {
+          // Tự động thêm filter assignedTo nếu manager chưa chỉ định
+          queryFilters.assignedTo = managerId;
+        }
+      }
+
       if (page || limit || Object.keys(queryFilters).length > 0) {
         const result = await incidentRepository.findAll(
           { ...queryFilters, tenant_id: tenantId },
@@ -97,7 +107,7 @@ class IncidentService {
             sortOrder: sortOrder || 'desc',
             status: filters.status,
             severity: filters.severity,
-            assignedTo: filters.assignedTo,
+            assignedTo: queryFilters.assignedTo || filters.assignedTo,
             createdBy: filters.createdBy,
             dateFrom: filters.dateFrom,
             dateTo: filters.dateTo
@@ -117,13 +127,23 @@ class IncidentService {
           statusCode: 200
         };
       } else {
+        // If no filters and user is Manager, still filter by assignedTo
+        let queryFiltersForManager = { tenant_id: tenantId };
+        if (user && user.role && (user.role.role_code === 'manager' || user.role.role_name?.toLowerCase() === 'manager' || user.role.role_name?.toLowerCase() === 'department manager')) {
+          const managerId = user._id || user.id;
+          if (managerId) {
+            queryFiltersForManager.assignedTo = managerId;
+          }
+        }
+        
         const result = await incidentRepository.findAll(
-          { tenant_id: tenantId },
+          queryFiltersForManager,
           {
             page: 1,
             limit: 20,
             sortBy: 'createdAt',
-            sortOrder: 'desc'
+            sortOrder: 'desc',
+            assignedTo: queryFiltersForManager.assignedTo
           }
         );
         

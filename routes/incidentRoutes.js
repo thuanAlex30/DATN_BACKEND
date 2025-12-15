@@ -202,22 +202,6 @@ router.get('/:id/escalations',
   IncidentController.getIncidentEscalations
 );
 
-// Cập nhật incident (phải đặt trước route /:id)
-// Department Header, Manager có thể cập nhật (update permission)
-router.put('/:id', 
-  AuthMiddleware.authorizeScope({
-    modules: 'incident',
-    action: 'update',
-    tenantScope: 'tenant',
-    departmentScope: 'hierarchy'
-  }),
-  ValidationMiddleware.validate({
-    params: incidentValidation.id,
-    body: incidentValidation.updateIncident
-  }),
-  IncidentController.updateIncident
-);
-
 // Xóa incident (phải đặt trước route /:id)
 // Chỉ Department Header có thể xóa (delete permission)
 router.delete('/:id', 

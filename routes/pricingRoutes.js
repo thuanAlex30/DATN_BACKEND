@@ -53,6 +53,7 @@ const orderLookupLimiter = rateLimit({
 });
 
 // Public routes - không cần authentication
+router.post('/contract-preview', pricingLimiter, PricingController.generateContractPreview);
 router.post('/orders', pricingLimiter, PricingController.createOrder);
 router.get('/orders/:orderId', orderLookupLimiter, PricingController.getOrder);
 router.post('/orders/:orderId/resend-email', pricingLimiter, PricingController.resendEmail);

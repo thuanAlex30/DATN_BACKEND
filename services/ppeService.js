@@ -4,6 +4,7 @@ const UserService = require('./userService');
 const mongoose = require('mongoose');
 const User = require('../models/user');
 const PPEIssuance = require('../models/ppeIssuance');
+const PPEItem = require('../models/ppeItem');
 const Department = require('../models/department');
 const ExcelJS = require('exceljs');
 const { transformDocumentId, transformDocumentsId, POPULATED_FIELDS } = require('../utils/transformId');
@@ -255,9 +256,11 @@ class PPEService {
       }
 
       // Use normalized item_code
+      // Ensure quantity_allocated has default value if not provided
       const itemDataWithNormalizedCode = {
         ...itemData,
-        item_code: normalizedItemCode
+        item_code: normalizedItemCode,
+        quantity_allocated: itemData.quantity_allocated ?? 0
       };
 
       const item = await ppeRepository.createItem(itemDataWithNormalizedCode, tenantId);
@@ -292,6 +295,18 @@ class PPEService {
 
   async deleteItem(id, tenantId = null) {
     try {
+      // Hard guard: prevent delete if item has any active/historical issuances
+      const activeIssuances = await PPEIssuance.countDocuments({
+        item_id: id,
+        // any issuance record counts, even returned, to keep audit trail
+      });
+      if (activeIssuances > 0) {
+        return createResponse(
+          400,
+          'Không thể xóa thiết bị PPE vì đã có phát sinh phát/nhận. Vui lòng thu hồi/hủy và dùng ngưng hoạt động thay vì xóa.'
+        );
+      }
+
       const deleted = await ppeRepository.deleteItem(id, tenantId);
       if (!deleted) {
         return createResponse(404, 'Không tìm thấy thiết bị PPE để xóa');
@@ -346,83 +361,176 @@ class PPEService {
 
   // Manager phát PPE cho Employee
   async createIssuanceToEmployee(issuanceData, tenantId = null) {
-    const session = await mongoose.startSession();
-    
-    try {
+    // Helper function to execute the issuance logic
+    const executeIssuance = async (session = null) => {
       console.log('🔍 createIssuanceToEmployee - issuanceData:', issuanceData);
       console.log('🔍 createIssuanceToEmployee - issued_by type:', typeof issuanceData.issued_by);
       console.log('🔍 createIssuanceToEmployee - issued_by value:', issuanceData.issued_by);
       
-      let issuance, issuer, recipient, manager;
-      await session.withTransaction(async () => {
-        // Validate required fields
-        if (!issuanceData.user_id || !issuanceData.item_id || !issuanceData.quantity || 
-            !issuanceData.issued_date || !issuanceData.expected_return_date || !issuanceData.issued_by) {
-          console.log('❌ Validation failed - missing fields:', {
-            user_id: !!issuanceData.user_id,
-            item_id: !!issuanceData.item_id,
-            quantity: !!issuanceData.quantity,
-            issued_date: !!issuanceData.issued_date,
-            expected_return_date: !!issuanceData.expected_return_date,
-            issued_by: !!issuanceData.issued_by
-          });
-          throw new Error('Tất cả các trường bắt buộc phải được điền');
-        }
+      // Validate required fields
+      if (!issuanceData.user_id || !issuanceData.item_id || !issuanceData.quantity || 
+          !issuanceData.issued_date || !issuanceData.expected_return_date || !issuanceData.issued_by) {
+        console.log('❌ Validation failed - missing fields:', {
+          user_id: !!issuanceData.user_id,
+          item_id: !!issuanceData.item_id,
+          quantity: !!issuanceData.quantity,
+          issued_date: !!issuanceData.issued_date,
+          expected_return_date: !!issuanceData.expected_return_date,
+          issued_by: !!issuanceData.issued_by
+        });
+        throw new Error('Tất cả các trường bắt buộc phải được điền');
+      }
 
-        // Kiểm tra vai trò và cùng phòng ban
-        const managerUser = await User.findById(issuanceData.issued_by)
-          .populate('role_id', 'role_name')
-          .populate('department_id');
-        const employeeUser = await User.findById(issuanceData.user_id)
-          .populate('role_id', 'role_name')
-          .populate('department_id');
+      // Kiểm tra vai trò và cùng phòng ban
+      const managerUser = await User.findById(issuanceData.issued_by)
+        .populate('role_id', 'role_name role_code role_level')
+        .populate('department_id');
+      const employeeUser = await User.findById(issuanceData.user_id)
+        .populate('role_id', 'role_name role_code')
+        .populate('department_id');
+      // Check item active
+      const itemDoc = await PPEItem.findById(issuanceData.item_id).select('status');
+      if (!itemDoc) {
+        throw new Error('Không tìm thấy thiết bị PPE');
+      }
+      if (itemDoc.status !== 'active') {
+        throw new Error('Thiết bị PPE đã bị ngưng sử dụng, không thể phát');
+      }
 
-        if (!managerUser) {
-          throw new Error('Manager không tồn tại');
-        }
-        if (!employeeUser) {
-          throw new Error('Nhân viên không tồn tại');
-        }
-        const managerRole = managerUser.role_id && managerUser.role_id.role_name ? managerUser.role_id.role_name : null;
-        if (managerRole !== 'manager') {
-          throw new Error('Chỉ Manager mới được phát PPE cho nhân viên');
-        }
-        if (!managerUser.department_id) {
-          throw new Error('Manager chưa được gán phòng ban');
-        }
-        const managerDeptId = (managerUser.department_id._id || managerUser.department_id).toString();
-        const employeeDeptId = employeeUser.department_id ? (employeeUser.department_id._id || employeeUser.department_id).toString() : '';
-        if (!employeeDeptId || employeeDeptId !== managerDeptId) {
-          throw new Error('Chỉ được phát PPE cho nhân viên trong cùng phòng ban');
-        }
+      // Guard: require Manager đã xác nhận nhận PPE từ Header Department cho item này
+      const pendingAdminToManager = await PPEIssuance.findOne({
+        user_id: issuanceData.issued_by,
+        item_id: issuanceData.item_id,
+        issuance_level: 'admin_to_manager',
+        status: 'pending_confirmation'
+      }).lean();
+      if (pendingAdminToManager) {
+        throw new Error('Bạn cần xác nhận nhận PPE từ Header Department trước khi phát cho Employee');
+      }
 
-        // Kiểm tra Manager có đủ PPE in-hand để phát - sử dụng aggregation để tính chính xác
-        const managerPPEStats = await ppeRepository.getManagerPPEStats(issuanceData.issued_by, issuanceData.item_id);
-        
-        if (!managerPPEStats || managerPPEStats.total_received === 0) {
-          throw new Error('Manager chưa nhận PPE này từ Admin');
-        }
+      if (!managerUser) {
+        throw new Error('Manager không tồn tại');
+      }
+      if (!employeeUser) {
+        throw new Error('Nhân viên không tồn tại');
+      }
+      
+      // Kiểm tra role - có thể là role_name hoặc role_code
+      const managerRoleName = managerUser.role_id && managerUser.role_id.role_name ? managerUser.role_id.role_name.toLowerCase() : '';
+      const managerRoleCode = managerUser.role_id && managerUser.role_id.role_code ? managerUser.role_id.role_code.toLowerCase() : '';
+      const managerRoleLevel = managerUser.role_id && managerUser.role_id.role_level ? managerUser.role_id.role_level : 0;
+      
+      // Kiểm tra nếu là manager (role_code = 'manager' hoặc role_name chứa 'manager' hoặc role_level >= 70)
+      const isManager = managerRoleCode === 'manager' || 
+                        managerRoleName.includes('manager') || 
+                        managerRoleLevel >= 70;
+      
+      if (!isManager) {
+        throw new Error('Chỉ Manager mới được phát PPE cho nhân viên');
+      }
+      if (!managerUser.department_id) {
+        throw new Error('Manager chưa được gán phòng ban');
+      }
+      const managerDeptId = (managerUser.department_id._id || managerUser.department_id).toString();
+      const employeeDeptId = employeeUser.department_id ? (employeeUser.department_id._id || employeeUser.department_id).toString() : '';
+      if (!employeeDeptId || employeeDeptId !== managerDeptId) {
+        throw new Error('Chỉ được phát PPE cho nhân viên trong cùng phòng ban');
+      }
 
-        // Tính số PPE có thể phát = remaining_in_hand - total_issued_to_employees
-        const availableQuantity = Math.max(0, (managerPPEStats.remaining_in_hand || 0) - (managerPPEStats.total_issued_to_employees || 0));
+      // Kiểm tra Manager có đủ PPE in-hand để phát - sử dụng aggregation để tính chính xác
+      const managerPPEStats = await ppeRepository.getManagerPPEStats(issuanceData.issued_by, issuanceData.item_id);
+      
+      if (!managerPPEStats || managerPPEStats.total_received === 0) {
+        throw new Error('Manager chưa nhận PPE này từ Admin');
+      }
 
-        if (availableQuantity < issuanceData.quantity) {
-          throw new Error(`Manager không đủ PPE để phát. Hiện có: ${availableQuantity}, cần phát: ${issuanceData.quantity}`);
-        }
+      // Tính số PPE có thể phát = remaining_in_hand - total_issued_to_employees
+      const availableQuantity = Math.max(0, (managerPPEStats.remaining_in_hand || 0) - (managerPPEStats.total_issued_to_employees || 0));
 
-        // Get issuer and recipient info for WebSocket
-        issuer = await User.findById(issuanceData.issued_by);
-        recipient = await User.findById(issuanceData.user_id);
-        manager = issuer;
+      if (availableQuantity < issuanceData.quantity) {
+        throw new Error(`Manager không đủ PPE để phát. Hiện có: ${availableQuantity}, cần phát: ${issuanceData.quantity}`);
+      }
 
-        // Create issuance with proper level and manager reference
-        const issuancePayload = {
-          ...issuanceData,
-          issuance_level: 'manager_to_employee',
-          manager_id: issuanceData.issued_by
-        };
-        issuance = await ppeRepository.createIssuance(issuancePayload, tenantId);
+      // Kiểm tra duplicate: không cho phép tạo issuance trùng lặp cho cùng user, item, và status pending
+      const existingIssuance = await PPEIssuance.findOne({
+        user_id: issuanceData.user_id,
+        item_id: issuanceData.item_id,
+        issuance_level: 'manager_to_employee',
+        status: { $in: ['pending_confirmation', 'issued'] },
+        issued_by: issuanceData.issued_by
       });
+
+      if (existingIssuance) {
+        throw new Error('Đã tồn tại PPE đang chờ xác nhận hoặc đang sử dụng cho nhân viên này. Vui lòng kiểm tra lại.');
+      }
+
+      // Get issuer and recipient info for WebSocket
+      const issuer = await User.findById(issuanceData.issued_by);
+      const recipient = await User.findById(issuanceData.user_id);
+      const manager = issuer;
+
+      // Create issuance with proper level and manager reference
+      const issuancePayload = {
+        ...issuanceData,
+        issuance_level: 'manager_to_employee',
+        manager_id: issuanceData.issued_by
+      };
+      const issuance = await ppeRepository.createIssuance(issuancePayload, tenantId);
+
+      // Decrease remaining_quantity on Manager's admin_to_manager issuances for this item
+      let deductQty = issuanceData.quantity;
+      while (deductQty > 0) {
+        const sourceIssuance = await PPEIssuance.findOne({
+          user_id: issuanceData.issued_by,
+          item_id: issuanceData.item_id,
+          issuance_level: 'admin_to_manager',
+          status: { $in: ['issued', 'pending_confirmation'] },
+          remaining_quantity: { $gt: 0 }
+        }).sort({ issued_date: -1 }); // latest first
+
+        if (!sourceIssuance) break;
+
+        const useQty = Math.min(sourceIssuance.remaining_quantity ?? sourceIssuance.quantity, deductQty);
+        sourceIssuance.remaining_quantity = (sourceIssuance.remaining_quantity ?? sourceIssuance.quantity) - useQty;
+        const saveOptions = session ? { session } : {};
+        await sourceIssuance.save(saveOptions);
+
+        // If fully consumed and status still issued, keep as is; remaining_quantity reflects the rest
+        deductQty -= useQty;
+      }
+      
+      return { issuance, issuer, recipient, manager };
+    };
+
+    // Try to use transaction, fallback to non-transaction if not supported
+    let session = null;
+    try {
+      session = await mongoose.startSession();
+      let issuance, issuer, recipient, manager;
+      
+      try {
+        await session.withTransaction(async () => {
+          const result = await executeIssuance(session);
+          issuance = result.issuance;
+          issuer = result.issuer;
+          recipient = result.recipient;
+          manager = result.manager;
+        });
+      } catch (transactionError) {
+        // If transaction is not supported (e.g., not a replica set), fallback to non-transaction
+        if (transactionError.message && transactionError.message.includes('Transaction numbers are only allowed')) {
+          console.warn('⚠️ MongoDB transactions not supported, falling back to non-transaction mode');
+          session.endSession();
+          session = null;
+          const result = await executeIssuance(null);
+          issuance = result.issuance;
+          issuer = result.issuer;
+          recipient = result.recipient;
+          manager = result.manager;
+        } else {
+          throw transactionError;
+        }
+      }
       
       return createResponse(201, 'Manager phát PPE cho Employee thành công', {
         issuance: transformDocumentId(issuance, POPULATED_FIELDS.PPE_ISSUANCE),
@@ -434,7 +542,9 @@ class PPEService {
       console.error('Error creating PPE issuance to employee:', error);
       return createResponse(500, 'Lỗi khi Manager phát PPE cho Employee', null, error.message);
     } finally {
-      await session.endSession();
+      if (session) {
+        await session.endSession();
+      }
     }
   }
 
@@ -716,7 +826,20 @@ class PPEService {
       const ppeSummary = {};
       
       for (const issuance of receivedIssuances) {
-        const itemId = issuance.item_id._id || issuance.item_id;
+        // ✅ Kiểm tra null/undefined trước khi truy cập _id
+        if (!issuance.item_id) {
+          console.warn('[getManagerPPE] Skipping issuance with null item_id:', issuance._id || issuance.id);
+          continue;
+        }
+        
+        const itemId = (typeof issuance.item_id === 'object' && issuance.item_id._id) 
+          ? issuance.item_id._id.toString() 
+          : issuance.item_id?.toString() || issuance.item_id;
+        
+        if (!itemId) {
+          console.warn('[getManagerPPE] Skipping issuance with invalid item_id:', issuance._id || issuance.id);
+          continue;
+        }
         
         if (!ppeSummary[itemId]) {
           ppeSummary[itemId] = {
@@ -844,78 +967,126 @@ class PPEService {
 
   // Legacy method - Admin phát PPE trực tiếp (giữ lại để tương thích)
   async createIssuance(issuanceData) {
-    const session = await mongoose.startSession();
-    
-    try {
-      let issuance, issuer, recipient;
-      await session.withTransaction(async () => {
-        // Validate required fields
-        if (!issuanceData.user_id || !issuanceData.item_id || !issuanceData.quantity || 
-            !issuanceData.issued_date || !issuanceData.expected_return_date || !issuanceData.issued_by) {
-          throw new Error('Tất cả các trường bắt buộc phải được điền');
-        }
+    // Helper function to execute the issuance logic
+    const executeIssuance = async (session = null) => {
+      // Validate required fields
+      if (!issuanceData.user_id || !issuanceData.item_id || !issuanceData.quantity || 
+          !issuanceData.issued_date || !issuanceData.expected_return_date || !issuanceData.issued_by) {
+        throw new Error('Tất cả các trường bắt buộc phải được điền');
+      }
 
-        // If admin → manager, enforce recipient is manager or warehouse_staff
-        if (issuanceData.issuance_level === 'admin_to_manager') {
-          const recipientUser = await User.findById(issuanceData.user_id)
-            .populate('role_id', 'role_name role_code')
-            .populate('department_id');
-          if (!recipientUser) {
-            throw new Error('Người nhận (Manager/Warehouse Staff) không tồn tại');
-          }
-          const roleName = recipientUser.role_id && recipientUser.role_id.role_name ? recipientUser.role_id.role_name.toLowerCase() : '';
-          const roleCode = recipientUser.role_id && recipientUser.role_id.role_code ? recipientUser.role_id.role_code.toLowerCase() : '';
-          
-          // Check if user has manager or warehouse_staff role
-          const isManager = roleName === 'manager' || roleCode === 'manager';
-          const isWarehouseStaff = roleName === 'warehouse_staff' || roleCode === 'warehouse_staff' || 
-                                   roleName === 'warehouse staff' || roleCode === 'warehouse_staff';
-          
-          if (!isManager && !isWarehouseStaff) {
-            throw new Error('Chỉ được phát PPE cho người có vai trò Manager hoặc Warehouse Staff');
-          }
-          
-          // For manager role, check if they are department head
-          if (isManager && !isWarehouseStaff) {
-            if (!recipientUser.department_id) {
-              throw new Error('Manager chưa được gán phòng ban');
-            }
-            const dept = await Department.findOne({ _id: recipientUser.department_id._id || recipientUser.department_id, manager_id: recipientUser._id });
-            if (!dept) {
-              throw new Error('Chỉ được phát PPE cho Trưởng phòng (department head)');
-            }
-          }
-          // For warehouse_staff, no department head check required
+      // If admin → manager, enforce recipient is manager or warehouse_staff
+      if (issuanceData.issuance_level === 'admin_to_manager') {
+        const recipientUser = await User.findById(issuanceData.user_id)
+          .populate('role_id', 'role_name role_code')
+          .populate('department_id');
+        if (!recipientUser) {
+          throw new Error('Người nhận (Manager/Warehouse Staff) không tồn tại');
         }
-
-        // Check if enough stock is available
-        const item = await ppeRepository.getItemById(issuanceData.item_id);
-        if (!item) {
-          throw new Error('Không tìm thấy thiết bị PPE');
+        const roleName = recipientUser.role_id && recipientUser.role_id.role_name ? recipientUser.role_id.role_name.toLowerCase() : '';
+        const roleCode = recipientUser.role_id && recipientUser.role_id.role_code ? recipientUser.role_id.role_code.toLowerCase() : '';
+        
+        // Check if user has manager or warehouse_staff role
+        const isManager = roleName === 'manager' || roleCode === 'manager';
+        const isWarehouseStaff = roleName === 'warehouse_staff' || roleCode === 'warehouse_staff' || 
+                                 roleName === 'warehouse staff' || roleCode === 'warehouse_staff';
+        
+        if (!isManager && !isWarehouseStaff) {
+          throw new Error('Chỉ được phát PPE cho người có vai trò Manager hoặc Warehouse Staff');
         }
         
-        if (item.quantity_available < issuanceData.quantity) {
-          throw new Error(`Không đủ tồn kho để phát. Hiện có: ${item.quantity_available}, cần phát: ${issuanceData.quantity}`);
+        // For manager role, check if they are from "AN TOÀN LAO ĐỘNG" department
+        if (isManager && !isWarehouseStaff) {
+          if (!recipientUser.department_id) {
+            throw new Error('Manager chưa được gán phòng ban');
+          }
+          
+          const departmentId = recipientUser.department_id._id || recipientUser.department_id;
+          
+          // Tìm department để kiểm tra tên phòng ban
+          const dept = await Department.findById(departmentId);
+          
+          if (!dept) {
+            throw new Error('Không tìm thấy phòng ban của Manager');
+          }
+          
+          // Check if department is "AN TOÀN LAO ĐỘNG" or "PHÒNG AN TOÀN LAO ĐỘNG"
+          const deptName = dept.department_name || '';
+          const normalizedDeptName = deptName.toUpperCase().trim();
+          if (normalizedDeptName !== 'AN TOÀN LAO ĐỘNG' && normalizedDeptName !== 'PHÒNG AN TOÀN LAO ĐỘNG') {
+            throw new Error('Chỉ được phát PPE cho Manager của phòng An Toàn Lao Động');
+          }
         }
+        // For warehouse_staff, no department head check required
+      }
 
-        // Get issuer and recipient info for WebSocket
-        issuer = await User.findById(issuanceData.issued_by);
-        recipient = await User.findById(issuanceData.user_id);
+      // Check stock and item status atomically
+      const qty = issuanceData.quantity;
+      const findAndUpdateOptions = { new: true };
+      if (session) {
+        findAndUpdateOptions.session = session;
+      }
+      
+      const item = await PPEItem.findOneAndUpdate(
+        {
+          _id: issuanceData.item_id,
+          status: 'active',
+          quantity_available: { $gte: qty }
+        },
+        {
+          $inc: {
+            quantity_available: -qty,
+            quantity_allocated: qty
+          }
+        },
+        findAndUpdateOptions
+      );
+      if (!item) {
+        throw new Error('Không đủ tồn kho hoặc thiết bị không khả dụng (inactive)');
+      }
 
-        // Initialize remaining_quantity for admin_to_manager issuances
-        if (issuanceData.issuance_level === 'admin_to_manager') {
-          issuanceData.remaining_quantity = issuanceData.quantity;
-        }
+      // Get issuer and recipient info for WebSocket
+      const issuer = await User.findById(issuanceData.issued_by);
+      const recipient = await User.findById(issuanceData.user_id);
 
-        // Create issuance
-        issuance = await ppeRepository.createIssuance(issuanceData);
+      // Initialize remaining_quantity for admin_to_manager issuances
+      if (issuanceData.issuance_level === 'admin_to_manager') {
+        issuanceData.remaining_quantity = issuanceData.quantity;
+      }
 
-        // Update item quantity - allocate the quantity
-        await ppeRepository.updateItemQuantity(issuanceData.item_id, {
-          quantity_available: item.quantity_available - issuanceData.quantity,
-          quantity_allocated: item.quantity_allocated + issuanceData.quantity
+      // Create issuance (stock was already updated atomically above)
+      const issuance = await ppeRepository.createIssuance(issuanceData);
+      
+      return { issuance, issuer, recipient };
+    };
+
+    // Try to use transaction, fallback to non-transaction if not supported
+    let session = null;
+    try {
+      session = await mongoose.startSession();
+      let issuance, issuer, recipient;
+      
+      try {
+        await session.withTransaction(async () => {
+          const result = await executeIssuance(session);
+          issuance = result.issuance;
+          issuer = result.issuer;
+          recipient = result.recipient;
         });
-      });
+      } catch (transactionError) {
+        // If transaction is not supported (e.g., not a replica set), fallback to non-transaction
+        if (transactionError.message && transactionError.message.includes('Transaction numbers are only allowed')) {
+          console.warn('⚠️ MongoDB transactions not supported, falling back to non-transaction mode');
+          session.endSession();
+          session = null;
+          const result = await executeIssuance(null);
+          issuance = result.issuance;
+          issuer = result.issuer;
+          recipient = result.recipient;
+        } else {
+          throw transactionError;
+        }
+      }
       
       return createResponse(201, 'Phát PPE thành công', {
         issuance: transformDocumentId(issuance, POPULATED_FIELDS.PPE_ISSUANCE),
@@ -926,7 +1097,9 @@ class PPEService {
       console.error('Error creating PPE issuance:', error);
       return createResponse(500, 'Lỗi khi phát PPE', null, error.message);
     } finally {
-      await session.endSession();
+      if (session) {
+        await session.endSession();
+      }
     }
   }
 
@@ -1556,6 +1729,17 @@ class PPEService {
 
   async deleteInventory(id) {
     try {
+      // Guard: prevent delete if inventory item has any issuances referencing it
+      const activeIssuances = await PPEIssuance.countDocuments({
+        item_id: id,
+      });
+      if (activeIssuances > 0) {
+        return createResponse(
+          400,
+          'Không thể xóa tồn kho vì thiết bị đã/đang được phát. Vui lòng thu hồi/hủy thay vì xóa.'
+        );
+      }
+
       const deleted = await ppeRepository.deleteItem(id);
       if (!deleted) {
         return createResponse(404, 'Không tìm thấy thiết bị trong tồn kho');

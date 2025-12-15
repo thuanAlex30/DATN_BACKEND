@@ -34,7 +34,11 @@ const companyAdminRoutes = require('./companyAdminRoutes');
 const hikvisionRoutes = require('./hikvisionRoutes');
 const chatbotRoutes = require('./chatbotRoutes');
 const pricingRoutes = require('./pricingRoutes');
+<<<<<<< HEAD
 const weatherRoutes = require('./weatherRoutes');
+=======
+const contractRoutes = require('./contractRoutes');
+>>>>>>> 3e1e00eb1995aabc99e1ed1daa053243df8685af
 
 console.log('Loading kafkaMonitor...');
 const kafkaMonitor = require('../services/kafkaMonitor');
@@ -184,8 +188,13 @@ router.use('/chatbot', chatbotRoutes);
 // Pricing Routes (Public - không cần authentication)
 router.use('/pricing', pricingRoutes);
 
+<<<<<<< HEAD
 // Weather Integration Routes
 router.use('/integrations/weather', weatherRoutes);
+=======
+// Contract Routes
+router.use('/contracts', contractRoutes);
+>>>>>>> 3e1e00eb1995aabc99e1ed1daa053243df8685af
 
 // Global 404 handler for API routes
 router.use('*', (req, res) => {

@@ -52,7 +52,6 @@ class KafkaConsumer {
         await this.consumer.disconnect();
         this.isConnected = false;
         this.isConsuming = false;
-        this.isInitialized = false;
         console.log('✅ Kafka Consumer disconnected successfully');
       }
     } catch (error) {
@@ -65,9 +64,9 @@ class KafkaConsumer {
    */
   async startConsuming() {
     try {
-      // If already consuming, just return
+      // If already consuming, just return (allow multiple services to call this)
       if (this.isConsuming) {
-        console.log('📥 Kafka Consumer is already consuming');
+        console.log('📥 Kafka Consumer already consuming, skipping subscription');
         return;
       }
 
@@ -222,9 +221,6 @@ class KafkaConsumer {
           break;
         case topics.DEPARTMENT_EVENTS:
           await this.handleDepartmentEvent(eventData);
-          break;
-        case topics.POSITION_EVENTS:
-          await this.handlePositionEvent(eventData);
           break;
         case topics.TRAINING_EVENTS:
           await this.handleTrainingEvent(eventData);
@@ -838,86 +834,6 @@ class KafkaConsumer {
     }
   }
 
-  /**
-   * Handle Position Events
-   */
-  async handlePositionEvent(eventData) {
-    try {
-      const { eventType, data, metadata } = eventData;
-
-      switch (eventType) {
-        case eventTypes.POSITION_CREATED:
-          websocketService.emitToAll('position_created', {
-            position: data,
-            creator: metadata,
-            timestamp: eventData.timestamp
-          });
-          break;
-
-        case eventTypes.POSITION_UPDATED:
-          websocketService.emitToAll('position_updated', {
-            position: data,
-            changes: data.changes,
-            updater: metadata,
-            timestamp: eventData.timestamp
-          });
-          break;
-
-        case eventTypes.POSITION_DELETED:
-          websocketService.emitToAll('position_deleted', {
-            position: data,
-            deleter: metadata,
-            timestamp: eventData.timestamp
-          });
-          break;
-
-        case eventTypes.POSITION_CLONED:
-          websocketService.emitToAll('position_cloned', {
-            newPosition: data.newPosition,
-            originalPosition: data.originalPosition,
-            cloner: metadata,
-            timestamp: eventData.timestamp
-          });
-          break;
-
-        case eventTypes.POSITION_BULK_DELETED:
-          websocketService.emitToAll('positions_bulk_deleted', {
-            deletedPositions: data.deletedPositions,
-            count: data.count,
-            deleter: metadata,
-            timestamp: eventData.timestamp
-          });
-          break;
-
-        case eventTypes.POSITION_LEVEL_CHANGED:
-          websocketService.emitToAll('position_level_changed', {
-            position: data.position,
-            levelChange: data.levelChange,
-            updater: metadata,
-            timestamp: eventData.timestamp
-          });
-          break;
-
-        case eventTypes.POSITION_STATUS_TOGGLED:
-          websocketService.emitToAll('position_status_toggled', {
-            position: data.position,
-            statusChange: data.statusChange,
-            updater: metadata,
-            timestamp: eventData.timestamp
-          });
-          break;
-
-        default:
-          console.warn(`⚠️ Unknown position event type: ${eventType}`);
-      }
-
-      console.log(`✅ Processed position event: ${eventType}`);
-
-    } catch (error) {
-      console.error(`❌ Error handling position event:`, error);
-      throw error;
-    }
-  }
 
   /**
    * Handle Training Events

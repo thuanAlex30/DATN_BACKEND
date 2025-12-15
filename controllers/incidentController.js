@@ -194,8 +194,11 @@ class IncidentController {
       console.log('📊 Request path:', req.path);
       console.log('📊 Request originalUrl:', req.originalUrl);
       
+      const tenantId = req.user?.tenant_id || null;
+      
       const filters = {
-        ...req.query
+        ...req.query,
+        tenant_id: tenantId
       };
       
       console.log('📊 getIncidentStats filters:', filters);
