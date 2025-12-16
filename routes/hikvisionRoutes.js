@@ -15,5 +15,11 @@ router.post('/events/search',
   HikvisionController.searchAccessControlEvents
 );
 
+// Get Access Control Events filtered by Project
+router.get('/events/project/:projectId',
+  AuthMiddleware.authenticate,
+  HikvisionController.getAccessControlEventsByProject
+);
+
 module.exports = router;
 

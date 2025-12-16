@@ -12,10 +12,23 @@ class Logger {
         this.logDir = process.env.LOG_DIR || './logs';
         this.maxLogSize = parseInt(process.env.MAX_LOG_SIZE) || 10 * 1024 * 1024; // 10MB
         this.maxLogFiles = parseInt(process.env.MAX_LOG_FILES) || 5;
-        
-        // Ensure log directory exists
-        if (!fs.existsSync(this.logDir)) {
-            fs.mkdirSync(this.logDir, { recursive: true });
+        this.enableFileLogging = (process.env.LOG_TO_FILES || 'true').toLowerCase() === 'true';
+
+        // Ensure log directory exists (if file logging is enabled)
+        if (this.enableFileLogging) {
+            try {
+                if (!fs.existsSync(this.logDir)) {
+                    fs.mkdirSync(this.logDir, { recursive: true });
+                }
+            } catch (error) {
+                // If we cannot create the log directory (e.g. read-only filesystem),
+                // disable file logging but keep console logging working.
+                this.enableFileLogging = false;
+                console.error('Logger: failed to initialize log directory, file logging disabled:', {
+                    logDir: this.logDir,
+                    error: error.message
+                });
+            }
         }
     }
 
@@ -44,6 +57,9 @@ class Logger {
      * Write log to file
      */
     writeToFile(level, message, metadata = {}) {
+        if (!this.enableFileLogging) {
+            return;
+        }
         try {
             const logEntry = this.formatMessage(level, message, metadata);
             const logFile = path.join(this.logDir, `${level}.log`);

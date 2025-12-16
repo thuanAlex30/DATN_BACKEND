@@ -1,7 +1,8 @@
-// Load .env
+// =====================
+// Load environment
+// =====================
 require('dotenv').config();
 
-// Require JWT secret explicitly (security hardening)
 if (!process.env.JWT_SECRET) {
   console.error('❌ JWT_SECRET is missing. Please set it in .env');
   process.exit(1);
@@ -10,8 +11,12 @@ if (!process.env.JWT_SECRET) {
 // Kafka warning suppression
 process.env.KAFKAJS_NO_PARTITIONER_WARNING ||= '1';
 
+// =====================
+// Imports
+// =====================
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
@@ -24,10 +29,15 @@ const ErrorMiddleware = require('./middlewares/ErrorMiddleware');
 const LoggingMiddleware = require('./middlewares/LoggingMiddleware');
 const initializeTrainingData = require('./database/initializeTrainingData');
 const websocketService = require('./services/websocketService');
+const kafkaProducer = require('./services/kafkaProducer');
+const kafkaConsumer = require('./services/kafkaConsumer');
 const kafkaMonitor = require('./services/kafkaMonitor');
 const expiryCheckJob = require('./jobs/expiryCheckJob');
 const ppeOverdueJob = require('./jobs/ppeOverdueJob');
 
+// =====================
+// App & Server
+// =====================
 const app = express();
 const server = createServer(app);
 const PORT = process.env.PORT || 3000;
@@ -84,26 +94,6 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-<<<<<<< HEAD
-// Express-validator middleware - chỉ chạy khi có validation rules được set
-const { validationResult } = require('express-validator');
-app.use((req, res, next) => {
-    // Chỉ kiểm tra validation nếu có validation rules được set (thông qua check)
-    // Skip cho các routes không có validation
-    const errors = validationResult(req);
-    if (errors && !errors.isEmpty() && errors.array().length > 0) {
-        return res.status(400).json({
-            success: false,
-            message: 'Validation failed',
-            errors: errors.array().map(error => ({
-                field: error.path || error.param,
-                message: error.msg || error.message || 'Invalid value',
-                value: error.value
-            }))
-        });
-    }
-    next();
-=======
 // =====================
 // Rate limit
 // =====================
@@ -112,20 +102,44 @@ const limiter = rateLimit({
   max: process.env.NODE_ENV === 'production' ? 200 : 10000,
   standardHeaders: true,
   legacyHeaders: false,
->>>>>>> 3e1e00eb1995aabc99e1ed1daa053243df8685af
 });
 app.use(limiter);
 
 // =====================
-// Static uploads
+// Static uploads (writable path with fallback)
 // =====================
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+const resolveUploadsDir = () => {
+  const preferred = process.env.UPLOADS_DIR
+    ? path.resolve(process.env.UPLOADS_DIR)
+    : path.join(process.cwd(), 'uploads');
+  const fallback = path.resolve('/tmp/uploads');
+
+  for (const dir of [preferred, fallback]) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.accessSync(dir, fs.constants.W_OK);
+      if (dir !== preferred) {
+        console.warn(`⚠️ uploads dir not writable (${preferred}), using fallback ${dir}`);
+      }
+      return dir;
+    } catch (err) {
+      console.warn(`⚠️ Cannot use uploads dir ${dir}: ${err.message}`);
+    }
+  }
+
+  throw new Error('No writable uploads directory available');
+};
+
+const uploadsDir = resolveUploadsDir();
+app.use('/uploads', express.static(uploadsDir));
 
 // =====================
 // Logging
 // =====================
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl} - IP: ${req.ip}`);
+  console.log(
+    `${new Date().toISOString()} - ${req.method} ${req.originalUrl} - IP: ${req.ip}`
+  );
   next();
 });
 app.use(LoggingMiddleware.logAllRequests);
@@ -180,10 +194,8 @@ const io = new Server(server, {
     expiryCheckJob.start();
     ppeOverdueJob.start();
 
+    // Kafka (optional)
     try {
-      const kafkaProducer = require('./services/kafkaProducer');
-      const kafkaConsumer = require('./services/kafkaConsumer');
-
       await kafkaProducer.initialize();
       await kafkaConsumer.initialize();
       await kafkaMonitor.startMonitoring();
@@ -194,7 +206,8 @@ const io = new Server(server, {
     }
 
     const shutdown = () => {
-      console.log('Shutting down...');
+      console.log('🛑 Shutting down...');
+
       expiryCheckJob.stop();
       kafkaMonitor.stopMonitoring();
       server.close(() => process.exit(0));
@@ -202,7 +215,6 @@ const io = new Server(server, {
 
     process.on('SIGTERM', shutdown);
     process.on('SIGINT', shutdown);
-
   } catch (err) {
     console.error('❌ Startup failed', err);
     process.exit(1);
