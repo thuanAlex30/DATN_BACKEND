@@ -21,13 +21,37 @@ class DepartmentController {
     const result = await DepartmentRepository.findAll(options);
 
     // Calculate employees_count for each department
+
     const User = require('../models/user');
     const departmentsWithCounts = await Promise.all(
       result.departments.map(async (dept) => {
         const deptJson = dept.toJSON ? dept.toJSON({ virtuals: true }) : dept;
-        const employeeCount = await User.countDocuments({ 
-          department_id: dept._id 
+        
+
+        const allUsers = await User.find({ 
+          department_id: dept._id,
+          is_active: true
+        }).populate('role_id', 'role_name role_code role_level');
+        
+        // Count from Department Head (role_level 80) down to all lower roles
+        // Exclude only System Admin (100) and Company Admin (90)
+        const employees = allUsers.filter(user => {
+          const roleLevel = user.role_id?.role_level || 0;
+          const roleCode = user.role_id?.role_code?.toLowerCase() || '';
+          const roleName = user.role_id?.role_name?.toLowerCase() || '';
+          
+          // Exclude only System Admin and Company Admin
+          const isSystemOrCompanyAdmin = roleLevel >= 90 || 
+                                         roleCode === 'company_admin' ||
+                                         roleCode === 'system_admin' ||
+                                         roleName === 'company admin' ||
+                                         roleName === 'system admin';
+          
+          return !isSystemOrCompanyAdmin;
         });
+        
+        const employeeCount = employees.length;
+        
         return {
           ...deptJson,
           id: deptJson._id || deptJson.id || dept._id?.toString(),
@@ -509,12 +533,31 @@ class DepartmentController {
       return ApiResponse.notFound(res, 'Department not found');
     }
 
-    // Get employee count using aggregation
+    // Get employee count - count from Department Head (role_level 80) down
+    // Exclude only System Admin (100) and Company Admin (90)
     const User = require('../models/user');
-    const employeeCount = await User.countDocuments({ 
+    const allUsers = await User.find({ 
       department_id: department._id,
       is_active: true 
+    }).populate('role_id', 'role_name role_code role_level');
+    
+    // Filter: Include Department Head (80) and below, exclude System Admin (100) and Company Admin (90)
+    const employees = allUsers.filter(user => {
+      const roleLevel = user.role_id?.role_level || 0;
+      const roleCode = user.role_id?.role_code?.toLowerCase() || '';
+      const roleName = user.role_id?.role_name?.toLowerCase() || '';
+      
+      // Exclude only System Admin and Company Admin
+      const isSystemOrCompanyAdmin = roleLevel >= 90 || 
+                                     roleCode === 'company_admin' ||
+                                     roleCode === 'system_admin' ||
+                                     roleName === 'company admin' ||
+                                     roleName === 'system admin';
+      
+      return !isSystemOrCompanyAdmin;
     });
+    
+    const employeeCount = employees.length;
 
     // Convert to JSON to include virtual fields
     const departmentJson = department.toJSON();
@@ -611,29 +654,23 @@ class DepartmentController {
     const allUsers = await UserRepository.findByDepartment(id, options);
     console.log('Found all users:', allUsers.length);
 
-    // Filter out managers and admins, keep all other users (employees and other roles)
+    // Count from Department Head (role_level 80) down to all lower roles
+    // Exclude only System Admin (100) and Company Admin (90)
     // Không filter theo is_active ở đây, để hiển thị cả nhân viên đã ngừng hoạt động
     const employees = allUsers.filter(user => {
       const roleName = user.role_id?.role_name?.toLowerCase() || '';
       const roleCode = user.role_id?.role_code?.toLowerCase() || '';
       const roleLevel = user.role_id?.role_level || 0;
       
-      // Loại bỏ các role quản lý và admin (role_level >= 70)
-      // Chỉ giữ lại employee và các role khác có level thấp hơn
-      const isManagerOrAdmin = roleLevel >= 70 || 
-                               roleCode === 'manager' || 
-                               roleCode === 'department_header' || 
-                               roleCode === 'department_manager' ||
-                               roleCode === 'company_admin' ||
-                               roleCode === 'system_admin' ||
-                               roleName === 'manager' ||
-                               roleName === 'department header' ||
-                               roleName === 'department manager' ||
-                               roleName === 'company admin' ||
-                               roleName === 'system admin';
+      // Exclude only System Admin and Company Admin
+      const isSystemOrCompanyAdmin = roleLevel >= 90 || 
+                                     roleCode === 'company_admin' ||
+                                     roleCode === 'system_admin' ||
+                                     roleName === 'company admin' ||
+                                     roleName === 'system admin';
       
-      if (isManagerOrAdmin) {
-        console.log('Filtered out manager/admin:', {
+      if (isSystemOrCompanyAdmin) {
+        console.log('Filtered out system/company admin:', {
           name: user.full_name,
           role_name: user.role_id?.role_name,
           role_code: user.role_id?.role_code,
@@ -642,7 +679,7 @@ class DepartmentController {
         return false;
       }
       
-      // Giữ lại tất cả user không phải manager/admin (bao gồm employee và các role khác)
+      // Keep all users from Department Head (80) down (including Department Header, Manager, Employee, Trainer, Safety Officer, Warehouse Staff, Maintenance Staff)
       return true;
     });
     

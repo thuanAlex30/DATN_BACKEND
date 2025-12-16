@@ -995,32 +995,26 @@ class PPEService {
           throw new Error('Chỉ được phát PPE cho người có vai trò Manager hoặc Warehouse Staff');
         }
         
-        // For manager role, check if they are department head of "AN TOÀN LAO ĐỘNG"
+        // For manager role, check if they are from "AN TOÀN LAO ĐỘNG" department
         if (isManager && !isWarehouseStaff) {
           if (!recipientUser.department_id) {
             throw new Error('Manager chưa được gán phòng ban');
           }
           
           const departmentId = recipientUser.department_id._id || recipientUser.department_id;
-          const recipientUserId = recipientUser._id;
           
-          // Tìm department và kiểm tra xem user có trong manager_ids hoặc manager_id không
-          const dept = await Department.findOne({ 
-            _id: departmentId,
-            $or: [
-              { manager_id: recipientUserId }, // Legacy: kiểm tra manager_id
-              { manager_ids: recipientUserId } // Mới: kiểm tra manager_ids array
-            ]
-          });
+          // Tìm department để kiểm tra tên phòng ban
+          const dept = await Department.findById(departmentId);
           
           if (!dept) {
-            throw new Error('Chỉ được phát PPE cho Trưởng phòng (department head)');
+            throw new Error('Không tìm thấy phòng ban của Manager');
           }
           
-          // Check if department is "AN TOÀN LAO ĐỘNG"
+          // Check if department is "AN TOÀN LAO ĐỘNG" or "PHÒNG AN TOÀN LAO ĐỘNG"
           const deptName = dept.department_name || '';
-          if (deptName.toUpperCase() !== 'AN TOÀN LAO ĐỘNG') {
-            throw new Error('Chỉ được phát PPE cho Trưởng phòng của phòng AN TOÀN LAO ĐỘNG');
+          const normalizedDeptName = deptName.toUpperCase().trim();
+          if (normalizedDeptName !== 'AN TOÀN LAO ĐỘNG' && normalizedDeptName !== 'PHÒNG AN TOÀN LAO ĐỘNG') {
+            throw new Error('Chỉ được phát PPE cho Manager của phòng An Toàn Lao Động');
           }
         }
         // For warehouse_staff, no department head check required

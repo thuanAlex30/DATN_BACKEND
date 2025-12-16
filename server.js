@@ -1,7 +1,8 @@
-// Load .env
+// =====================
+// Load environment
+// =====================
 require('dotenv').config();
 
-// Require JWT secret explicitly (security hardening)
 if (!process.env.JWT_SECRET) {
   console.error('❌ JWT_SECRET is missing. Please set it in .env');
   process.exit(1);
@@ -10,6 +11,9 @@ if (!process.env.JWT_SECRET) {
 // Kafka warning suppression
 process.env.KAFKAJS_NO_PARTITIONER_WARNING ||= '1';
 
+// =====================
+// Imports
+// =====================
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -25,10 +29,15 @@ const ErrorMiddleware = require('./middlewares/ErrorMiddleware');
 const LoggingMiddleware = require('./middlewares/LoggingMiddleware');
 const initializeTrainingData = require('./database/initializeTrainingData');
 const websocketService = require('./services/websocketService');
+const kafkaProducer = require('./services/kafkaProducer');
+const kafkaConsumer = require('./services/kafkaConsumer');
 const kafkaMonitor = require('./services/kafkaMonitor');
 const expiryCheckJob = require('./jobs/expiryCheckJob');
 const ppeOverdueJob = require('./jobs/ppeOverdueJob');
 
+// =====================
+// App & Server
+// =====================
 const app = express();
 const server = createServer(app);
 const PORT = process.env.PORT || 3000;
@@ -128,7 +137,9 @@ app.use('/uploads', express.static(uploadsDir));
 // Logging
 // =====================
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl} - IP: ${req.ip}`);
+  console.log(
+    `${new Date().toISOString()} - ${req.method} ${req.originalUrl} - IP: ${req.ip}`
+  );
   next();
 });
 app.use(LoggingMiddleware.logAllRequests);
@@ -183,10 +194,8 @@ const io = new Server(server, {
     expiryCheckJob.start();
     ppeOverdueJob.start();
 
+    // Kafka (optional)
     try {
-      const kafkaProducer = require('./services/kafkaProducer');
-      const kafkaConsumer = require('./services/kafkaConsumer');
-
       await kafkaProducer.initialize();
       await kafkaConsumer.initialize();
       await kafkaMonitor.startMonitoring();
@@ -197,7 +206,8 @@ const io = new Server(server, {
     }
 
     const shutdown = () => {
-      console.log('Shutting down...');
+      console.log('🛑 Shutting down...');
+
       expiryCheckJob.stop();
       kafkaMonitor.stopMonitoring();
       server.close(() => process.exit(0));
@@ -205,7 +215,6 @@ const io = new Server(server, {
 
     process.on('SIGTERM', shutdown);
     process.on('SIGINT', shutdown);
-
   } catch (err) {
     console.error('❌ Startup failed', err);
     process.exit(1);

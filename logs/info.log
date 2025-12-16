@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {"timestamp":"2025-12-14T15:38:00.118Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":1872,"hostname":"Bravo"}
 {"timestamp":"2025-12-14T15:38:00.318Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":1872,"hostname":"Bravo"}
 {"timestamp":"2025-12-14T15:38:00.323Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":1872,"hostname":"Bravo"}
@@ -675,3 +676,5 @@
 {"timestamp":"2025-12-16T09:19:13.401Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"693001f5d4c22c766d371c57","role":"Department Head","socketId":"gIKVBLnDX7wSbg6JAAAH"},"pid":2828,"hostname":"Bravo"}
 {"timestamp":"2025-12-16T09:19:33.623Z","level":"INFO","message":"User disconnected","metadata":{"userId":"693001f5d4c22c766d371c57","socketId":"gIKVBLnDX7wSbg6JAAAH"},"pid":2828,"hostname":"Bravo"}
 {"timestamp":"2025-12-16T09:26:56.490Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":2828,"hostname":"Bravo"}
+=======
+>>>>>>> origin/main
