@@ -22,8 +22,9 @@ yarn-error.log*
 
 # Uploads
 uploads/*
-!uploads/contract/
-!uploads/contract/**
+!uploads/contracts/
+!uploads/contracts/**
+
 
 
 # Coverage
