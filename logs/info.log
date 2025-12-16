@@ -1,5 +1,0 @@
-{"timestamp":"2025-12-16T13:10:07.046Z","level":"INFO","message":"User connected","metadata":{"socketId":"5vUkYbR6mhPMvbw5AAAC"},"pid":10244,"hostname":"MSI"}
-{"timestamp":"2025-12-16T13:10:07.048Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"693762346890b8984d13558b","role":"Company Admin","socketId":"5vUkYbR6mhPMvbw5AAAC"},"pid":10244,"hostname":"MSI"}
-{"timestamp":"2025-12-16T13:10:07.227Z","level":"INFO","message":"User disconnected","metadata":{"userId":"693762346890b8984d13558b","socketId":"5vUkYbR6mhPMvbw5AAAC"},"pid":10244,"hostname":"MSI"}
-{"timestamp":"2025-12-16T13:10:07.285Z","level":"INFO","message":"User connected","metadata":{"socketId":"8O9HtXjnnIsfpmOzAAAF"},"pid":10244,"hostname":"MSI"}
-{"timestamp":"2025-12-16T13:10:07.287Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"693762346890b8984d13558b","role":"Company Admin","socketId":"8O9HtXjnnIsfpmOzAAAF"},"pid":10244,"hostname":"MSI"}
