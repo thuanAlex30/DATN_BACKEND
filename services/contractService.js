@@ -148,6 +148,8 @@ class ContractService {
       const uploadFolder = folder || CLOUDINARY_CONFIG.folder || 'contracts';
       const res = await cloudinary.uploader.upload(filePath, {
         resource_type: 'raw', // allow PDFs
+        type: 'upload',       // make it publicly accessible
+        access_mode: 'public',
         folder: uploadFolder,
         public_id: publicId,
         overwrite: true,
@@ -1088,7 +1090,13 @@ class ContractService {
         throw new Error(`PDF file không tồn tại sau khi tạo: ${filePath}`);
       }
       
-      return remoteUrl || fullUrl;
+      // Prefer Cloudinary (public) URL; fall back to backend static URL if upload fails.
+      if (remoteUrl) {
+        console.log(`🌐 Cloudinary URL (preview): ${remoteUrl}`);
+        return remoteUrl;
+      }
+      console.warn('⚠️ Cloudinary upload unavailable, falling back to backend URL');
+      return fullUrl;
     } catch (error) {
       console.error('Error generating preview PDF:', error);
       throw error;
