@@ -859,50 +859,6 @@ class ContractService {
         console.log('📝 [ContractPreview] Drawing text overlay on PDF...');
         console.log(`📐 [ContractPreview] Page size: ${width} x ${height} points`);
         
-        // Test: Draw markers to verify coordinates work
-        try {
-          // Test 1: ASCII text
-          firstPage.drawText('TEST ASCII', {
-            x: 50,
-            y: 800,
-            size: 12,
-            font: font,
-          });
-          console.log('✅ [ContractPreview] Test ASCII marker drawn at (50, 800)');
-          
-          // Test 2: At exact coordinates
-          firstPage.drawText('TEST 110,505', {
-            x: 110,
-            y: 505,
-            size: 10,
-            font: font,
-          });
-          console.log('✅ [ContractPreview] Test marker at exact coordinates (110, 505)');
-          
-          // Test 3: Draw numbers to verify position
-          firstPage.drawText('505', {
-            x: 90,
-            y: 505,
-            size: 8,
-            font: font,
-          });
-          firstPage.drawText('485', {
-            x: 90,
-            y: 485,
-            size: 8,
-            font: font,
-          });
-          firstPage.drawText('465', {
-            x: 90,
-            y: 465,
-            size: 8,
-            font: font,
-          });
-          console.log('✅ [ContractPreview] Test coordinate markers drawn');
-        } catch (testError) {
-          console.error('❌ [ContractPreview] Error drawing test markers:', testError.message);
-        }
-        
         // Coordinates are in points (1/72 inch)
         // A4 page: 595 x 842 points (width x height)
         // Y coordinate starts from bottom (0) to top (height)
@@ -1196,12 +1152,7 @@ class ContractService {
         contactPosition: 'Giám đốc'
       };
 
-      console.log(`🔧 [Debug] Testing text overlay with:`);
-      console.log(`   - baseY: ${baseY}`);
-      console.log(`   - textX: ${textX}`);
-      console.log(`   - lineHeight: ${lineHeight}`);
-      console.log(`   - fontSize: ${fontSize}`);
-      console.log(`   - Page size: ${width} x ${height}`);
+      // Debug-only helper; avoid verbose console logging in production.
 
       let currentY = baseY;
 
@@ -1244,7 +1195,6 @@ class ContractService {
           size: fontSize,
           font: font,
         });
-        console.log(`✅ Drew company name at (${textX}, ${currentY})`);
       }
       currentY -= lineHeight;
 
@@ -1256,7 +1206,6 @@ class ContractService {
           size: fontSize,
           font: font,
         });
-        console.log(`✅ Drew company email at (${textX}, ${currentY})`);
       }
       currentY -= lineHeight;
 
@@ -1285,7 +1234,6 @@ class ContractService {
           });
         });
         currentY -= (addressLines.length * lineHeight);
-        console.log(`✅ Drew company address (${addressLines.length} lines) starting at y=${currentY + (addressLines.length * lineHeight)}`);
       } else {
         currentY -= lineHeight;
       }
@@ -1298,7 +1246,6 @@ class ContractService {
           size: fontSize,
           font: font,
         });
-        console.log(`✅ Drew company phone at (${textX}, ${currentY})`);
       }
       currentY -= lineHeight;
 
@@ -1310,7 +1257,6 @@ class ContractService {
           size: fontSize,
           font: font,
         });
-        console.log(`✅ Drew company tax code at (${textX}, ${currentY})`);
       }
       currentY -= lineHeight;
 
@@ -1322,7 +1268,6 @@ class ContractService {
           size: fontSize,
           font: font,
         });
-        console.log(`✅ Drew contact name at (${textX}, ${currentY})`);
       }
       currentY -= lineHeight;
 
@@ -1334,7 +1279,6 @@ class ContractService {
           size: fontSize,
           font: font,
         });
-        console.log(`✅ Drew contact position at (${textX}, ${currentY})`);
       }
 
       const fileName = `debug-test-${Date.now()}.pdf`;
