@@ -5,6 +5,39 @@ const fs = require('fs');
 const fsPromises = require('fs').promises;
 const fontkit = require('@pdf-lib/fontkit');
 
+// Resolve a writable uploads/contracts directory.
+// Uses env UPLOADS_DIR or project uploads folder, falls back to /tmp/uploads.
+const DEFAULT_UPLOADS_DIR = process.env.UPLOADS_DIR
+  ? path.resolve(process.env.UPLOADS_DIR)
+  : path.resolve(__dirname, '../uploads');
+const FALLBACK_UPLOADS_DIR = path.resolve('/tmp/uploads');
+let resolvedContractsDir = null;
+
+async function getContractsUploadDir() {
+  if (resolvedContractsDir) return resolvedContractsDir;
+
+  const candidates = [
+    path.join(DEFAULT_UPLOADS_DIR, 'contracts'),
+    path.join(FALLBACK_UPLOADS_DIR, 'contracts')
+  ];
+
+  for (const dir of candidates) {
+    try {
+      await fsPromises.mkdir(dir, { recursive: true });
+      await fsPromises.access(dir, fs.constants.W_OK);
+      if (dir !== candidates[0]) {
+        console.warn(`⚠️ [ContractPreview] Using fallback upload dir: ${dir}`);
+      }
+      resolvedContractsDir = dir;
+      return dir;
+    } catch (err) {
+      console.warn(`⚠️ [ContractPreview] Cannot use upload dir ${dir}: ${err.message}`);
+    }
+  }
+
+  throw new Error('Không tìm thấy thư mục uploads/contracts có thể ghi');
+}
+
 class ContractService {
   /**
    * Helper function to load Vietnamese font
@@ -155,10 +188,9 @@ class ContractService {
         throw new Error('Contract không hợp lệ');
       }
 
-      const uploadsDir = path.join(__dirname, '../uploads/contracts');
-      await fsPromises.mkdir(uploadsDir, { recursive: true });
+      const uploadsDir = await getContractsUploadDir();
 
-      const templatePath = path.join(uploadsDir, 'CHMS_HopDongThanhToan.pdf');
+      const templatePath = path.join(__dirname, '../uploads/contracts/CHMS_HopDongThanhToan.pdf');
       
       if (!await fsPromises.access(templatePath).then(() => true).catch(() => false)) {
         throw new Error('Template PDF không tồn tại: CHMS_HopDongThanhToan.pdf');
@@ -553,10 +585,9 @@ class ContractService {
         throw new Error('Thiếu thông tin để tạo preview hợp đồng');
       }
 
-      const uploadsDir = path.join(__dirname, '../uploads/contracts');
-      await fsPromises.mkdir(uploadsDir, { recursive: true });
+      const uploadsDir = await getContractsUploadDir();
 
-      const templatePath = path.join(uploadsDir, 'CHMS_HopDongThanhToan.pdf');
+      const templatePath = path.join(__dirname, '../uploads/contracts/CHMS_HopDongThanhToan.pdf');
       
       if (!await fsPromises.access(templatePath).then(() => true).catch(() => false)) {
         throw new Error('Template PDF không tồn tại: CHMS_HopDongThanhToan.pdf');
@@ -973,8 +1004,8 @@ class ContractService {
 
   async listPdfFormFields() {
     try {
-      const uploadsDir = path.join(__dirname, '../uploads/contracts');
-      const templatePath = path.join(uploadsDir, 'CHMS_HopDongThanhToan.pdf');
+      const uploadsDir = await getContractsUploadDir();
+      const templatePath = path.join(__dirname, '../uploads/contracts/CHMS_HopDongThanhToan.pdf');
       
       if (!await fsPromises.access(templatePath).then(() => true).catch(() => false)) {
         throw new Error('Template PDF không tồn tại: CHMS_HopDongThanhToan.pdf');
@@ -1027,10 +1058,9 @@ class ContractService {
    */
   async testTextOverlay(options = {}) {
     try {
-      const uploadsDir = path.join(__dirname, '../uploads/contracts');
-      await fsPromises.mkdir(uploadsDir, { recursive: true });
+      const uploadsDir = await getContractsUploadDir();
 
-      const templatePath = path.join(uploadsDir, 'CHMS_HopDongThanhToan.pdf');
+      const templatePath = path.join(__dirname, '../uploads/contracts/CHMS_HopDongThanhToan.pdf');
       
       if (!await fsPromises.access(templatePath).then(() => true).catch(() => false)) {
         throw new Error('Template PDF không tồn tại: CHMS_HopDongThanhToan.pdf');

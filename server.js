@@ -12,6 +12,7 @@ process.env.KAFKAJS_NO_PARTITIONER_WARNING ||= '1';
 
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
@@ -96,9 +97,32 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // =====================
-// Static uploads
+// Static uploads (writable path with fallback)
 // =====================
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+const resolveUploadsDir = () => {
+  const preferred = process.env.UPLOADS_DIR
+    ? path.resolve(process.env.UPLOADS_DIR)
+    : path.join(process.cwd(), 'uploads');
+  const fallback = path.resolve('/tmp/uploads');
+
+  for (const dir of [preferred, fallback]) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.accessSync(dir, fs.constants.W_OK);
+      if (dir !== preferred) {
+        console.warn(`⚠️ uploads dir not writable (${preferred}), using fallback ${dir}`);
+      }
+      return dir;
+    } catch (err) {
+      console.warn(`⚠️ Cannot use uploads dir ${dir}: ${err.message}`);
+    }
+  }
+
+  throw new Error('No writable uploads directory available');
+};
+
+const uploadsDir = resolveUploadsDir();
+app.use('/uploads', express.static(uploadsDir));
 
 // =====================
 // Logging
