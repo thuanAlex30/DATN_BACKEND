@@ -84,6 +84,26 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+<<<<<<< HEAD
+// Express-validator middleware - chỉ chạy khi có validation rules được set
+const { validationResult } = require('express-validator');
+app.use((req, res, next) => {
+    // Chỉ kiểm tra validation nếu có validation rules được set (thông qua check)
+    // Skip cho các routes không có validation
+    const errors = validationResult(req);
+    if (errors && !errors.isEmpty() && errors.array().length > 0) {
+        return res.status(400).json({
+            success: false,
+            message: 'Validation failed',
+            errors: errors.array().map(error => ({
+                field: error.path || error.param,
+                message: error.msg || error.message || 'Invalid value',
+                value: error.value
+            }))
+        });
+    }
+    next();
+=======
 // =====================
 // Rate limit
 // =====================
@@ -92,6 +112,7 @@ const limiter = rateLimit({
   max: process.env.NODE_ENV === 'production' ? 200 : 10000,
   standardHeaders: true,
   legacyHeaders: false,
+>>>>>>> 3e1e00eb1995aabc99e1ed1daa053243df8685af
 });
 app.use(limiter);
 
