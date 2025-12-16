@@ -1,7 +1,8 @@
-// Load .env
+// =====================
+// Load environment
+// =====================
 require('dotenv').config();
 
-// Require JWT secret explicitly (security hardening)
 if (!process.env.JWT_SECRET) {
   console.error('❌ JWT_SECRET is missing. Please set it in .env');
   process.exit(1);
@@ -10,6 +11,9 @@ if (!process.env.JWT_SECRET) {
 // Kafka warning suppression
 process.env.KAFKAJS_NO_PARTITIONER_WARNING ||= '1';
 
+// =====================
+// Imports
+// =====================
 const express = require('express');
 const path = require('path');
 const { createServer } = require('http');
@@ -28,6 +32,9 @@ const kafkaMonitor = require('./services/kafkaMonitor');
 const expiryCheckJob = require('./jobs/expiryCheckJob');
 const ppeOverdueJob = require('./jobs/ppeOverdueJob');
 
+// =====================
+// App & Server
+// =====================
 const app = express();
 const server = createServer(app);
 const PORT = process.env.PORT || 3000;
@@ -43,14 +50,17 @@ const parseAllowedOrigins = () => {
     'http://127.0.0.1:3000',
     'http://127.0.0.1:3001',
     'http://127.0.0.1:5173',
-    'https://safe-n814.onrender.com'
+    'https://safe-n814.onrender.com',
   ];
 
   if (process.env.FRONTEND_URL) base.push(process.env.FRONTEND_URL);
 
   if (process.env.ALLOWED_ORIGINS) {
     base.push(
-      ...process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
+      ...process.env.ALLOWED_ORIGINS
+        .split(',')
+        .map(o => o.trim())
+        .filter(Boolean)
     );
   }
 
@@ -60,13 +70,13 @@ const parseAllowedOrigins = () => {
 const allowedOrigins = parseAllowedOrigins();
 
 // =====================
-// CORS (FIXED)
+// CORS
 // =====================
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true); // Postman / server-side
     if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(null, false); // ❗ NEVER throw error
+    return callback(null, false); // never throw
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -79,31 +89,15 @@ app.options('*', cors(corsOptions));
 // =====================
 // Security & parsers
 // =====================
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-<<<<<<< HEAD
-// Express-validator middleware - chỉ chạy khi có validation rules được set
-const { validationResult } = require('express-validator');
-app.use((req, res, next) => {
-    // Chỉ kiểm tra validation nếu có validation rules được set (thông qua check)
-    // Skip cho các routes không có validation
-    const errors = validationResult(req);
-    if (errors && !errors.isEmpty() && errors.array().length > 0) {
-        return res.status(400).json({
-            success: false,
-            message: 'Validation failed',
-            errors: errors.array().map(error => ({
-                field: error.path || error.param,
-                message: error.msg || error.message || 'Invalid value',
-                value: error.value
-            }))
-        });
-    }
-    next();
-=======
 // =====================
 // Rate limit
 // =====================
@@ -112,7 +106,6 @@ const limiter = rateLimit({
   max: process.env.NODE_ENV === 'production' ? 200 : 10000,
   standardHeaders: true,
   legacyHeaders: false,
->>>>>>> 3e1e00eb1995aabc99e1ed1daa053243df8685af
 });
 app.use(limiter);
 
@@ -125,7 +118,9 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Logging
 // =====================
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl} - IP: ${req.ip}`);
+  console.log(
+    `${new Date().toISOString()} - ${req.method} ${req.originalUrl} - IP: ${req.ip}`
+  );
   next();
 });
 app.use(LoggingMiddleware.logAllRequests);
@@ -145,7 +140,7 @@ app.get('/', (req, res) => {
 });
 
 // =====================
-// Errors
+// Error handling
 // =====================
 app.use(ErrorMiddleware.notFound);
 app.use(ErrorMiddleware.handle);
@@ -177,9 +172,13 @@ const io = new Server(server, {
     });
 
     websocketService.initialize(io);
+
     expiryCheckJob.start();
     ppeOverdueJob.start();
 
+    // =====================
+    // Kafka (optional)
+    // =====================
     try {
       const kafkaProducer = require('./services/kafkaProducer');
       const kafkaConsumer = require('./services/kafkaConsumer');
@@ -193,8 +192,11 @@ const io = new Server(server, {
       console.log('⚠️ Kafka disabled:', e.message);
     }
 
+    // =====================
+    // Graceful shutdown
+    // =====================
     const shutdown = () => {
-      console.log('Shutting down...');
+      console.log('🛑 Shutting down...');
       expiryCheckJob.stop();
       kafkaMonitor.stopMonitoring();
       server.close(() => process.exit(0));
@@ -202,7 +204,6 @@ const io = new Server(server, {
 
     process.on('SIGTERM', shutdown);
     process.on('SIGINT', shutdown);
-
   } catch (err) {
     console.error('❌ Startup failed', err);
     process.exit(1);
