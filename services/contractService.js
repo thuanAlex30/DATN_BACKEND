@@ -1090,12 +1090,12 @@ class ContractService {
         throw new Error(`PDF file không tồn tại sau khi tạo: ${filePath}`);
       }
       
-      // Prefer Cloudinary (public) URL; fall back to backend static URL if upload fails.
+      // Upload lên Cloudinary để lưu trữ, nhưng luôn serve qua backend.
       if (remoteUrl) {
-        console.log(`🌐 Cloudinary URL (preview): ${remoteUrl}`);
-        return remoteUrl;
+        console.log(`🌐 Cloudinary URL (preview, stored only): ${remoteUrl}`);
+      } else {
+        console.warn('⚠️ Cloudinary upload unavailable, only backend URL will be used');
       }
-      console.warn('⚠️ Cloudinary upload unavailable, falling back to backend URL');
       return fullUrl;
     } catch (error) {
       console.error('Error generating preview PDF:', error);
