@@ -14,6 +14,10 @@ const DEFAULT_UPLOADS_DIR = process.env.UPLOADS_DIR
 const FALLBACK_UPLOADS_DIR = path.resolve('/tmp/uploads');
 let resolvedContractsDir = null;
 
+// Template directory (read‑only is fine – used only for reading the base PDF)
+// Always points to the project uploads/contracts folder inside the image.
+const TEMPLATE_CONTRACTS_DIR = path.resolve(__dirname, '../uploads/contracts');
+
 // Cloudinary configuration (optional)
 const CLOUDINARY_CONFIG = {
   cloudName: process.env.CLOUDINARY_CLOUD_NAME,
@@ -260,8 +264,8 @@ class ContractService {
       }
 
       const uploadsDir = await getContractsUploadDir();
-
-      const templatePath = path.join(uploadsDir, 'CHMS_HopDongThanhToan.pdf');
+      // Always read template from the project template folder (can be read‑only in production)
+      const templatePath = path.join(TEMPLATE_CONTRACTS_DIR, 'CHMS_HopDongThanhToan.pdf');
       
       if (!await fsPromises.access(templatePath).then(() => true).catch(() => false)) {
         throw new Error('Template PDF không tồn tại: CHMS_HopDongThanhToan.pdf');
@@ -665,8 +669,8 @@ class ContractService {
       }
 
       const uploadsDir = await getContractsUploadDir();
-
-      const templatePath = path.join(uploadsDir, 'CHMS_HopDongThanhToan.pdf');
+      // Always read template from the project template folder (can be read‑only in production)
+      const templatePath = path.join(TEMPLATE_CONTRACTS_DIR, 'CHMS_HopDongThanhToan.pdf');
       
       if (!await fsPromises.access(templatePath).then(() => true).catch(() => false)) {
         throw new Error('Template PDF không tồn tại: CHMS_HopDongThanhToan.pdf');
@@ -1094,7 +1098,8 @@ class ContractService {
   async listPdfFormFields() {
     try {
       const uploadsDir = await getContractsUploadDir();
-      const templatePath = path.join(uploadsDir, 'CHMS_HopDongThanhToan.pdf');
+      // Always read template from the project template folder (can be read‑only in production)
+      const templatePath = path.join(TEMPLATE_CONTRACTS_DIR, 'CHMS_HopDongThanhToan.pdf');
       
       if (!await fsPromises.access(templatePath).then(() => true).catch(() => false)) {
         throw new Error('Template PDF không tồn tại: CHMS_HopDongThanhToan.pdf');
@@ -1149,7 +1154,8 @@ class ContractService {
     try {
       const uploadsDir = await getContractsUploadDir();
 
-      const templatePath = path.join(uploadsDir, 'CHMS_HopDongThanhToan.pdf');
+      // Always read template from the project template folder (can be read‑only in production)
+      const templatePath = path.join(TEMPLATE_CONTRACTS_DIR, 'CHMS_HopDongThanhToan.pdf');
       
       if (!await fsPromises.access(templatePath).then(() => true).catch(() => false)) {
         throw new Error('Template PDF không tồn tại: CHMS_HopDongThanhToan.pdf');
