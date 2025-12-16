@@ -190,7 +190,7 @@ class ContractService {
 
       const uploadsDir = await getContractsUploadDir();
 
-      const templatePath = path.join(__dirname, '../uploads/contracts/CHMS_HopDongThanhToan.pdf');
+      const templatePath = path.join(uploadsDir, 'CHMS_HopDongThanhToan.pdf');
       
       if (!await fsPromises.access(templatePath).then(() => true).catch(() => false)) {
         throw new Error('Template PDF không tồn tại: CHMS_HopDongThanhToan.pdf');
@@ -587,7 +587,7 @@ class ContractService {
 
       const uploadsDir = await getContractsUploadDir();
 
-      const templatePath = path.join(__dirname, '../uploads/contracts/CHMS_HopDongThanhToan.pdf');
+      const templatePath = path.join(uploadsDir, 'CHMS_HopDongThanhToan.pdf');
       
       if (!await fsPromises.access(templatePath).then(() => true).catch(() => false)) {
         throw new Error('Template PDF không tồn tại: CHMS_HopDongThanhToan.pdf');
@@ -1005,7 +1005,7 @@ class ContractService {
   async listPdfFormFields() {
     try {
       const uploadsDir = await getContractsUploadDir();
-      const templatePath = path.join(__dirname, '../uploads/contracts/CHMS_HopDongThanhToan.pdf');
+      const templatePath = path.join(uploadsDir, 'CHMS_HopDongThanhToan.pdf');
       
       if (!await fsPromises.access(templatePath).then(() => true).catch(() => false)) {
         throw new Error('Template PDF không tồn tại: CHMS_HopDongThanhToan.pdf');
@@ -1060,7 +1060,7 @@ class ContractService {
     try {
       const uploadsDir = await getContractsUploadDir();
 
-      const templatePath = path.join(__dirname, '../uploads/contracts/CHMS_HopDongThanhToan.pdf');
+      const templatePath = path.join(uploadsDir, 'CHMS_HopDongThanhToan.pdf');
       
       if (!await fsPromises.access(templatePath).then(() => true).catch(() => false)) {
         throw new Error('Template PDF không tồn tại: CHMS_HopDongThanhToan.pdf');
