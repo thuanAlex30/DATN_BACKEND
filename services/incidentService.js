@@ -247,85 +247,17 @@ class IncidentService {
         };
       }
 
-<<<<<<< HEAD
-      // Kiểm tra quyền phân công: Department Header chỉ được phân công cho managers dưới cấp
-      const assigner = await User.findById(userId).populate('role_id', 'role_code role_level');
-      const assignee = await User.findById(assignedTo).populate('role_id', 'role_code role_level');
-      
-      if (!assigner || !assigner.role_id) {
-        return {
-          success: false,
-          message: 'Không tìm thấy thông tin người phân công',
-          statusCode: 404
-        };
-      }
-      
-      if (!assignee || !assignee.role_id) {
-        return {
-          success: false,
-          message: 'Không tìm thấy thông tin người được phân công',
-          statusCode: 404
-        };
-      }
-
-      // Nếu người phân công là Department Header (role_level = 80)
-      if (assigner.role_id.role_level === 80 || assigner.role_id.role_code === 'department_header') {
-        const assigneeRoleLevel = assignee.role_id.role_level;
-        const assigneeRoleCode = assignee.role_id.role_code;
-        
-        // Chỉ được phân công cho users có role_level < 80 (Manager: 70, Employee: 10)
-        // Không được phân công cho Department Header (80), Company Admin (90), System Admin (100)
-        if (assigneeRoleLevel >= 80) {
-          return {
-            success: false,
-            message: 'Department Header chỉ được phân công cho Manager và Employee, không được phân công cho Department Header cùng cấp hoặc cấp cao hơn',
-            statusCode: 403
-          };
-        }
-        
-        // Kiểm tra thêm bằng role_code để đảm bảo
-        if (assigneeRoleCode === 'department_header' || assigneeRoleCode === 'company_admin' || assigneeRoleCode === 'system_admin') {
-          return {
-            success: false,
-            message: 'Department Header chỉ được phân công cho Manager và Employee',
-            statusCode: 403
-          };
-        }
-      }
-
-      // Kiểm tra xem incident đã được phân công cho cùng một người chưa
-      const currentAssignedTo = typeof incident.assignedTo === 'object' 
-        ? incident.assignedTo?._id?.toString() 
-        : incident.assignedTo?.toString();
-      const newAssignedToId = assignedTo.toString();
-      
-      // Nếu đã được phân công cho cùng một người, không tạo history entry mới
-      if (currentAssignedTo === newAssignedToId) {
-        return {
-          success: false,
-          message: 'Sự cố đã được phân công cho người này rồi',
-          statusCode: 400
-        };
-      }
-
-=======
->>>>>>> 5de98284b1a84878cd89f0f0acbf2ae5dac8431f
       // Update assignedTo and status using repository
       const updatedIncident = await incidentRepository.updateById(id, {
         assignedTo,
         status: 'Đang xử lý'
       }, tenantId);
       
-      // Thêm history entry chỉ khi thực sự có thay đổi
+      // Thêm history entry
       await incidentRepository.addHistory(id, {
         action: 'Phân công',
         performedBy: userId,
-<<<<<<< HEAD
-        note: `Phân công xử lý cho ${assignee.full_name} (${assignee.username})`,
-        timestamp: new Date()
-=======
         note: `Phân công xử lý cho user ID: ${assignedTo}`
->>>>>>> 5de98284b1a84878cd89f0f0acbf2ae5dac8431f
       }, tenantId);
 
       // Emit events
