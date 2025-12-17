@@ -48,13 +48,19 @@ class WebSocketService {
           
           socket.emit('authenticated', { success: true, userId, role });
         } catch (error) {
-          logger.error('WebSocket authentication error', { error: error.message });
-          socket.emit('authentication_error', { message: 'Authentication failed' });
+          // Phân biệt token hết hạn với các lỗi khác để tránh spam lỗi đỏ trong log
+          if (error.name === 'TokenExpiredError') {
+            logger.warn('WebSocket authentication error - token expired', { error: error.message });
+            socket.emit('auth_error', { message: 'jwt expired' });
+          } else {
+            logger.error('WebSocket authentication error', { error: error.message });
+            socket.emit('auth_error', { message: 'Authentication failed' });
+          }
           socket.disconnect();
         }
       } else {
         logger.warn('No authentication token provided', { socketId: socket.id });
-        socket.emit('authentication_error', { message: 'No authentication token provided' });
+        socket.emit('auth_error', { message: 'No authentication token provided' });
         socket.disconnect();
       }
 
@@ -81,8 +87,13 @@ class WebSocketService {
           
           socket.emit('authenticated', { success: true, userId, role });
         } catch (error) {
-          logger.error('WebSocket authentication error', { error: error.message });
-          socket.emit('authentication_error', { message: 'Authentication failed' });
+          if (error.name === 'TokenExpiredError') {
+            logger.warn('WebSocket authentication error (legacy jwt) - token expired', { error: error.message });
+            socket.emit('auth_error', { message: 'jwt expired' });
+          } else {
+            logger.error('WebSocket authentication error', { error: error.message });
+            socket.emit('auth_error', { message: 'Authentication failed' });
+          }
           socket.disconnect();
         }
       });
