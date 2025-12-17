@@ -143,8 +143,11 @@ router.use('/company-admin', companyAdminRoutes);
 router.use('/hikvision', hikvisionRoutes);
 router.use('/chatbot', chatbotRoutes);
 router.use('/pricing', pricingRoutes);
-router.use('/integrations/weather', weatherRoutes);
+
+// Contract Routes
 router.use('/contracts', contractRoutes);
+// Weather Integration Routes
+router.use('/integrations/weather', weatherRoutes);
 
 /**
  * =====================
