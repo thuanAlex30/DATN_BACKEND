@@ -4,6 +4,7 @@ const EnhancedApiResponse = require('../utils/enhancedResponse');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 const websocketService = require('../services/websocketService');
 const PPEEvents = require('../events/ppeEvents');
+const { uploadImageBuffer } = require('../utils/cloudinaryHelper');
 
 class PPEController {
   // PPE Categories
@@ -33,7 +34,13 @@ class PPEController {
   static createCategory = ErrorMiddleware.asyncHandler(async (req, res) => {
     const categoryData = req.body;
     if (req.file) {
-      categoryData.image_url = `/${req.file.path.replace(/\\/g, '/')}`;
+      try {
+        const folder = process.env.CLOUDINARY_PPE_FOLDER || 'ppe';
+        const uploadRes = await uploadImageBuffer(req.file.buffer, req.file.originalname, folder);
+        categoryData.image_url = uploadRes.secureUrl;
+      } catch (err) {
+        return ApiResponse.error(res, `Upload ảnh lên Cloudinary thất bại: ${err.message}`, 500);
+      }
     }
     const tenantId = req.user.tenant_id;
     const result = await ppeService.createCategory(categoryData, tenantId);
@@ -66,7 +73,13 @@ class PPEController {
     const { id } = req.params;
     const categoryData = req.body;
     if (req.file) {
-      categoryData.image_url = `/${req.file.path.replace(/\\/g, '/')}`;
+      try {
+        const folder = process.env.CLOUDINARY_PPE_FOLDER || 'ppe';
+        const uploadRes = await uploadImageBuffer(req.file.buffer, req.file.originalname, folder);
+        categoryData.image_url = uploadRes.secureUrl;
+      } catch (err) {
+        return ApiResponse.error(res, `Upload ảnh lên Cloudinary thất bại: ${err.message}`, 500);
+      }
     }
     const tenantId = req.user.tenant_id;
     const result = await ppeService.updateCategory(id, categoryData, tenantId);
@@ -151,7 +164,13 @@ class PPEController {
   static createItem = ErrorMiddleware.asyncHandler(async (req, res) => {
     const itemData = req.body;
     if (req.file) {
-      itemData.image_url = `/${req.file.path.replace(/\\/g, '/')}`;
+      try {
+        const folder = process.env.CLOUDINARY_PPE_FOLDER || 'ppe';
+        const uploadRes = await uploadImageBuffer(req.file.buffer, req.file.originalname, folder);
+        itemData.image_url = uploadRes.secureUrl;
+      } catch (err) {
+        return ApiResponse.error(res, `Upload ảnh lên Cloudinary thất bại: ${err.message}`, 500);
+      }
     }
     const tenantId = req.user.tenant_id;
     const result = await ppeService.createItem(itemData, tenantId);
@@ -188,7 +207,13 @@ class PPEController {
     const { id } = req.params;
     const itemData = req.body;
     if (req.file) {
-      itemData.image_url = `/${req.file.path.replace(/\\/g, '/')}`;
+      try {
+        const folder = process.env.CLOUDINARY_PPE_FOLDER || 'ppe';
+        const uploadRes = await uploadImageBuffer(req.file.buffer, req.file.originalname, folder);
+        itemData.image_url = uploadRes.secureUrl;
+      } catch (err) {
+        return ApiResponse.error(res, `Upload ảnh lên Cloudinary thất bại: ${err.message}`, 500);
+      }
     }
     const tenantId = req.user.tenant_id;
     const result = await ppeService.updateItem(id, itemData, tenantId);

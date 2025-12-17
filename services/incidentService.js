@@ -3,6 +3,54 @@ const IncidentUtils = require('../utils/incidentUtils');
 const websocketService = require('./websocketService');
 const IncidentEvents = require('../events/incidentEvents');
 const User = require('../models/user');
+const { uploadImageBuffer, CLOUDINARY_ENABLED } = require('../utils/cloudinaryHelper');
+const path = require('path');
+
+/**
+ * Upload array of images (URL or data URI) to Cloudinary.
+ * - Keeps items that are already URLs.
+ * - Uploads data:image/... base64 to Cloudinary when configured.
+ */
+async function uploadImagesIfNeeded(images = [], folderEnv = 'CLOUDINARY_INCIDENT_FOLDER', defaultFolder = 'incidents') {
+  if (!Array.isArray(images) || images.length === 0) return [];
+
+  const folder = process.env[folderEnv] || defaultFolder;
+  const uploaded = [];
+
+  for (const img of images) {
+    if (typeof img !== 'string') continue;
+
+    // If already a URL, keep as-is
+    if (/^https?:\/\//i.test(img)) {
+      uploaded.push(img);
+      continue;
+    }
+
+    // If data URI and Cloudinary enabled, upload
+    if (img.startsWith('data:image/')) {
+      if (!CLOUDINARY_ENABLED) {
+        throw new Error('Cloudinary chưa được cấu hình để upload ảnh incident');
+      }
+      try {
+        const match = img.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+        if (!match) throw new Error('Định dạng ảnh base64 không hợp lệ');
+        const mime = match[1];
+        const b64 = match[2];
+        const buffer = Buffer.from(b64, 'base64');
+        const ext = mime.split('/')[1] || 'png';
+        const uploadRes = await uploadImageBuffer(buffer, `incident-${Date.now()}.${ext}`, folder);
+        uploaded.push(uploadRes.secureUrl);
+      } catch (err) {
+        throw new Error(`Upload ảnh incident lên Cloudinary thất bại: ${err.message}`);
+      }
+      continue;
+    }
+
+    // Otherwise skip unrecognized string
+  }
+
+  return uploaded;
+}
 
 // Verify repository is loaded correctly
 if (!incidentRepository || typeof incidentRepository !== 'object') {
@@ -37,6 +85,15 @@ class IncidentService {
           message: validation.message,
           statusCode: 400
         };
+      }
+
+      // Upload images to Cloudinary if provided
+      if (incidentData.images && incidentData.images.length > 0) {
+        incidentData.images = await uploadImagesIfNeeded(
+          incidentData.images,
+          'CLOUDINARY_INCIDENT_FOLDER',
+          'incidents'
+        );
       }
 
       // Tạo incidentId tự động
@@ -295,6 +352,24 @@ class IncidentService {
 
       const { investigation, solution, findingsImages, rootCauseImages } = investigationData;
 
+      // Upload investigation images if provided
+      const uploadedFindings = await uploadImagesIfNeeded(
+        findingsImages,
+        'CLOUDINARY_INCIDENT_FOLDER',
+        'incidents'
+      );
+      const uploadedRootCause = await uploadImagesIfNeeded(
+        rootCauseImages,
+        'CLOUDINARY_INCIDENT_FOLDER',
+        'incidents'
+      );
+      const mergedImages = Array.from(
+        new Set([...(incident.images || []), ...uploadedFindings, ...uploadedRootCause])
+      );
+      if (uploadedFindings.length || uploadedRootCause.length) {
+        await incidentRepository.updateById(id, { images: mergedImages }, tenantId);
+      }
+
       // Thêm investigation entry
       await incidentRepository.addHistory(id, {
         action: 'Điều tra',
@@ -358,6 +433,17 @@ class IncidentService {
         };
       }
 
+      // Upload progress images if any
+      const uploadedProgressImages = await uploadImagesIfNeeded(
+        progressData.images,
+        'CLOUDINARY_INCIDENT_FOLDER',
+        'incidents'
+      );
+      if (uploadedProgressImages.length) {
+        const merged = Array.from(new Set([...(incident.images || []), ...uploadedProgressImages]));
+        await incidentRepository.updateById(id, { images: merged }, tenantId);
+      }
+
       // Thêm progress entry
       await incidentRepository.addHistory(id, {
         action: 'Cập nhật tiến độ',
@@ -403,6 +489,17 @@ class IncidentService {
       }
 
       const { note, images } = closeData || {};
+
+      // Upload closing images if any
+      const uploadedCloseImages = await uploadImagesIfNeeded(
+        images,
+        'CLOUDINARY_INCIDENT_FOLDER',
+        'incidents'
+      );
+      if (uploadedCloseImages.length) {
+        const merged = Array.from(new Set([...(incident.images || []), ...uploadedCloseImages]));
+        await incidentRepository.updateById(id, { images: merged }, tenantId);
+      }
 
       // Update status using repository
       const updatedIncident = await incidentRepository.updateById(id, {
