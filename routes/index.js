@@ -35,6 +35,7 @@ const hikvisionRoutes = require('./hikvisionRoutes');
 const chatbotRoutes = require('./chatbotRoutes');
 const pricingRoutes = require('./pricingRoutes');
 const contractRoutes = require('./contractRoutes');
+const weatherRoutes = require('./weatherRoutes');
 
 console.log('Loading kafkaMonitor...');
 const kafkaMonitor = require('../services/kafkaMonitor');
@@ -186,6 +187,8 @@ router.use('/pricing', pricingRoutes);
 
 // Contract Routes
 router.use('/contracts', contractRoutes);
+// Weather Integration Routes
+router.use('/integrations/weather', weatherRoutes);
 
 // Global 404 handler for API routes
 router.use('*', (req, res) => {
