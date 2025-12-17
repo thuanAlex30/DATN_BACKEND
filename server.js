@@ -86,44 +86,14 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
-<<<<<<< HEAD
-
-app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.sendStatus(200);
-});
-=======
 // =====================
 // Security & parsers
 // =====================
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
->>>>>>> 5de98284b1a84878cd89f0f0acbf2ae5dac8431f
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-<<<<<<< HEAD
-// Serve static files from uploads directory with CORS headers
-const path = require('path');
-app.use('/uploads', (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
-  res.header('Access-Control-Expose-Headers', 'Content-Type, Content-Length');
-  
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  next();
-}, express.static(path.join(__dirname, 'uploads'), {
-  setHeaders: (res, path) => {
-    if (path.endsWith('.pdf')) {
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('X-Content-Type-Options', 'nosniff');
-=======
 // =====================
 // Rate limit
 // =====================
@@ -154,35 +124,11 @@ const resolveUploadsDir = () => {
       return dir;
     } catch (err) {
       console.warn(`⚠️ Cannot use uploads dir ${dir}: ${err.message}`);
->>>>>>> 5de98284b1a84878cd89f0f0acbf2ae5dac8431f
     }
   }
 
-<<<<<<< HEAD
-// Express-validator middleware
-// Express-validator middleware - chỉ chạy khi có validation rules được set
-const { validationResult } = require('express-validator');
-app.use((req, res, next) => {
-    // Chỉ kiểm tra validation nếu có validation rules được set (thông qua check)
-    // Skip cho các routes không có validation
-    const errors = validationResult(req);
-    if (errors && !errors.isEmpty() && errors.array().length > 0) {
-        return res.status(400).json({
-            success: false,
-            message: 'Validation failed',
-            errors: errors.array().map(error => ({
-                field: error.path || error.param,
-                message: error.msg || error.message || 'Invalid value',
-                value: error.value
-            }))
-        });
-    }
-    next();
-});
-=======
   throw new Error('No writable uploads directory available');
 };
->>>>>>> 5de98284b1a84878cd89f0f0acbf2ae5dac8431f
 
 const uploadsDir = resolveUploadsDir();
 app.use('/uploads', express.static(uploadsDir));
