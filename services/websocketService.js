@@ -61,18 +61,29 @@ class WebSocketService {
       // Handle legacy authenticate event (for backward compatibility)
       socket.on('authenticate', (data) => {
         try {
-          const { userId, role } = data;
+          // Legacy path now requires JWT token to avoid spoofing
+          if (!data || !data.token) {
+            socket.emit('authentication_error', { message: 'Authentication failed: token required' });
+            socket.disconnect();
+            return;
+          }
+          const jwt = require('jsonwebtoken');
+          const decoded = jwt.verify(data.token, process.env.JWT_SECRET);
+          const userId = decoded.id || decoded.userId;
+          const role = decoded.role || 'user';
+
           this.connectedUsers.set(userId, socket.id);
           this.userRoles.set(userId, role);
           socket.userId = userId;
           socket.role = role;
           
-          logger.info('User authenticated via WebSocket (legacy)', { userId, role, socketId: socket.id });
+          logger.info('User authenticated via WebSocket (legacy jwt)', { userId, role, socketId: socket.id });
           
           socket.emit('authenticated', { success: true, userId, role });
         } catch (error) {
           logger.error('WebSocket authentication error', { error: error.message });
           socket.emit('authentication_error', { message: 'Authentication failed' });
+          socket.disconnect();
         }
       });
 

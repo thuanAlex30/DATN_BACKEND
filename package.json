@@ -44,9 +44,11 @@
     "@google/generative-ai": "^0.24.1",
     "@mhoc/axios-digest-auth": "^0.8.0",
     "@payos/node": "^2.0.3",
+    "@pdf-lib/fontkit": "^1.1.1",
     "axios": "^1.5.0",
     "bcryptjs": "^2.4.3",
     "bull": "^4.11.3",
+    "cloudinary": "^2.8.0",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
@@ -54,6 +56,7 @@
     "express": "^4.18.2",
     "express-rate-limit": "^6.10.0",
     "express-validator": "^7.0.1",
+    "fontkit": "^2.0.4",
     "helmet": "^7.0.0",
     "html2canvas": "^1.4.1",
     "joi": "^17.9.2",
@@ -115,8 +118,8 @@
     ]
   },
   "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=8.0.0"
+    "node": ">=20.18.0",
+    "npm": ">=10.0.0"
   },
   "keywords": [
     "safety",

@@ -45,7 +45,8 @@ class UserService {
       await user.populate(['role_id', 'department_id']);
 
       return createResponse(201, 'Tạo người dùng thành công', {
-        id: user._id,
+        id: user.user_id || user._id, // Use user_id (integer) as primary ID, fallback to _id
+        user_id: user.user_id,
         username: user.username,
         email: user.email,
         full_name: user.full_name,
@@ -74,6 +75,7 @@ class UserService {
 
       return createResponse(200, 'Lấy thông tin người dùng thành công', {
         id: user._id,
+        user_id: user.user_id || null,
         username: user.username,
         email: user.email,
         full_name: user.full_name,
@@ -135,6 +137,7 @@ class UserService {
 
       return createResponse(200, 'Cập nhật người dùng thành công', {
         id: updatedUser._id,
+        user_id: updatedUser.user_id || null,
         username: updatedUser.username,
         email: updatedUser.email,
         full_name: updatedUser.full_name,
@@ -176,6 +179,7 @@ class UserService {
       return createResponse(200, 'Lấy danh sách người dùng thành công', {
         users: result.users.map(user => ({
           id: user._id,
+          user_id: user.user_id || null,
           username: user.username,
           email: user.email,
           full_name: user.full_name,
@@ -194,12 +198,13 @@ class UserService {
     }
   }
 
-  // Get all active users (scoped theo tenant nếu tenantId được truyền vào)
+  // Get all users (scoped theo tenant nếu tenantId được truyền vào)
+  // Includes both active and inactive users
   static async getAllUsers(tenantId = null) {
     try {
       const result = await UserRepository.findAll({ 
         limit: 1000,
-        is_active: true, // Only get active users
+        // Don't filter by is_active - return all users (active and inactive)
         tenant_id: tenantId || undefined
       });
       
@@ -210,9 +215,18 @@ class UserService {
       
       return result.users.map(user => ({
         id: user._id,
+        user_id: user.user_id || null,
         username: user.username,
         email: user.email,
         full_name: user.full_name,
+        phone: user.phone || '',
+        address: user.address || '',
+        tenant_id: user.tenant_id?._id || user.tenant_id || null,
+        tenant: user.tenant_id ? {
+          id: user.tenant_id._id || user.tenant_id.id || user.tenant_id,
+          tenant_name: user.tenant_id.name || user.tenant_id.tenant_name || '',
+          name: user.tenant_id.name || user.tenant_id.tenant_name || ''
+        } : null,
         role: user.role_id,
         department: user.department_id,
         is_active: user.is_active,
@@ -323,25 +337,38 @@ class UserService {
   }
 
   // Import users from Excel
-  static async importUsersFromExcel(file, tenantId = null) {
+  static async importUsersFromExcel(file, tenantId = null, options = {}) {
     try {
+      const { projectId = null, importedBy = null } = options || {};
+
       // Read Excel file
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(file.buffer);
       const worksheet = workbook.getWorksheet(1);
+      
+      if (!worksheet) {
+        return createResponse(400, 'Excel file không có worksheet nào hoặc worksheet không hợp lệ');
+      }
+      
       const data = [];
       worksheet.eachRow((row, rowNumber) => {
         if (rowNumber > 1) { // Skip header row
           const rowData = {};
           row.eachCell((cell, colNumber) => {
-            rowData[worksheet.getRow(1).getCell(colNumber).value] = cell.value;
+            const headerCell = worksheet.getRow(1).getCell(colNumber);
+            if (headerCell && headerCell.value) {
+              rowData[headerCell.value] = cell.value;
+            }
           });
-          data.push(rowData);
+          // Only push if rowData has at least one field
+          if (Object.keys(rowData).length > 0) {
+            data.push(rowData);
+          }
         }
       });
 
-      if (!data || data.length === 0) {
-        return createResponse(400, 'Excel file is empty or invalid');
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        return createResponse(400, 'Excel file is empty or invalid. Please ensure the file has data rows.');
       }
 
       const results = {
@@ -350,50 +377,103 @@ class UserService {
         total: data.length
       };
 
-      // Get all roles and departments for validation
-      const roles = await RoleRepository.findAll();
-      const departmentsResult = await DepartmentRepository.findAll({ limit: 1000 }); // Get all departments
+      // If import gắn vào dự án, kiểm tra dự án tồn tại trước
+      let projectRepository = null;
+      if (projectId) {
+        projectRepository = require('../repository/projectRepository');
+        const project = await projectRepository.getProjectById(projectId);
+        if (!project) {
+          return createResponse(404, `Không tìm thấy dự án với id ${projectId}`);
+        }
+      }
 
-      // Extract arrays from paginated results
-      const departments = departmentsResult.departments || [];
+      // Get all roles and departments for validation
+      const rolesResult = await RoleRepository.findAll();
+      const departmentsResult = await DepartmentRepository.findAll({ limit: 1000 }); // Get all departments
+      
+      // Extract arrays from paginated results - handle both array and object responses
+      let roles = [];
+      if (Array.isArray(rolesResult)) {
+        roles = rolesResult;
+      } else if (rolesResult && Array.isArray(rolesResult.roles)) {
+        roles = rolesResult.roles;
+      } else if (rolesResult && Array.isArray(rolesResult.data)) {
+        roles = rolesResult.data;
+      } else if (rolesResult && rolesResult.data && Array.isArray(rolesResult.data.roles)) {
+        roles = rolesResult.data.roles;
+      }
+
+      let departments = [];
+      if (Array.isArray(departmentsResult)) {
+        departments = departmentsResult;
+      } else if (departmentsResult && Array.isArray(departmentsResult.departments)) {
+        departments = departmentsResult.departments;
+      } else if (departmentsResult && Array.isArray(departmentsResult.data)) {
+        departments = departmentsResult.data;
+      } else if (departmentsResult && departmentsResult.data && Array.isArray(departmentsResult.data.departments)) {
+        departments = departmentsResult.data.departments;
+      }
+
+      // Validate that we have roles
+      if (!roles || roles.length === 0) {
+        return createResponse(500, 'Không tìm thấy role nào trong hệ thống. Vui lòng khởi tạo roles trước khi import users.');
+      }
 
       // Create lookup maps
       const roleMap = new Map(roles.map(role => [role.role_name.toLowerCase(), role._id]));
       const departmentMap = new Map(departments.map(dept => [dept.department_name.toLowerCase(), dept._id]));
+
+      // Helper: normalize gender
+      const normalizeGender = (value) => {
+        if (!value) return undefined;
+        const v = String(value).trim().toLowerCase();
+        if (['nam', 'male', 'm'].includes(v)) return 'male';
+        if (['nữ', 'nu', 'female', 'f'].includes(v)) return 'female';
+        return undefined;
+      };
+
+      // Helper: generate username/email if missing
+      const randomSuffix = () => Math.random().toString(36).slice(2, 6);
+      const makeSlug = (name) => name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '').replace(/^-+|-+$/g, '');
 
       for (let i = 0; i < data.length; i++) {
         const row = data[i];
         const rowNumber = i + 2; // +2 because Excel is 1-indexed and we skip header
 
         try {
-          // Validate required fields
-          const requiredFields = ['username', 'email', 'full_name', 'password'];
-          const missingFields = requiredFields.filter(field => !row[field]);
-          
-          if (missingFields.length > 0) {
+          // Validate required fields (minimal: full_name)
+          if (!row.full_name) {
             results.errors.push({
               row: rowNumber,
-              error: `Missing required fields: ${missingFields.join(', ')}`
+              error: 'Missing required field: full_name'
             });
             continue;
           }
 
+          // Auto-generate username/email/password if not provided
+          const slug = makeSlug(row.username || row.full_name || '');
+          const suffix = randomSuffix();
+          const generatedUsername = row.username ? String(row.username).trim() : `${slug || 'user'}${suffix}`;
+          // Use a valid domain to pass email validation
+          const generatedEmail = row.email ? String(row.email).trim().toLowerCase() : `${generatedUsername}@import.example.com`;
+          const generatedPassword = row.password || 'Password123';
+
           // Check if username already exists
-          const existingUsername = await UserRepository.usernameExists(row.username);
+          const existingUsername = await UserRepository.usernameExists(generatedUsername);
           if (existingUsername) {
             results.errors.push({
               row: rowNumber,
-              error: `Username '${row.username}' already exists`
+              error: `Username '${generatedUsername}' already exists`
             });
             continue;
           }
 
           // Check if email already exists
-          const existingEmail = await UserRepository.emailExists(row.email);
+          const existingEmail = await UserRepository.emailExists(generatedEmail);
           if (existingEmail) {
             results.errors.push({
               row: rowNumber,
-              error: `Email '${row.email}' already exists`
+              error: `Email '${generatedEmail}' already exists`
             });
             continue;
           }
@@ -411,23 +491,77 @@ class UserService {
             }
           }
 
-          // Default to employee role
-          let roleId = roleMap.get('employee');
+          // Validate role_name (if provided), otherwise default to employee
+          let roleId = null;
+          if (row.role_name) {
+            roleId = roleMap.get(row.role_name.toLowerCase());
+            if (!roleId) {
+              results.errors.push({
+                row: rowNumber,
+                error: `Invalid role_name '${row.role_name}'`
+              });
+              continue;
+            }
+          } else {
+            // Default to employee role if not specified
+            roleId = roleMap.get('employee');
+            if (!roleId) {
+              // If employee role doesn't exist, try to get the first available role
+              const firstRole = roles.find(r => (r.role_level ?? 0) < 90);
+              if (firstRole) {
+                roleId = firstRole._id;
+              } else {
+                results.errors.push({
+                  row: rowNumber,
+                  error: 'No valid role found. Please specify role_name in Excel or ensure employee role exists in system'
+                });
+                continue;
+              }
+            }
+          }
+
+          // Parse birth_date properly (handle Excel date format or string)
+          let birthDate = undefined;
+          if (row.birth_date) {
+            if (row.birth_date instanceof Date) {
+              birthDate = row.birth_date;
+            } else if (typeof row.birth_date === 'number') {
+              // Excel date serial number
+              birthDate = new Date((row.birth_date - 25569) * 86400 * 1000);
+            } else if (typeof row.birth_date === 'string') {
+              birthDate = new Date(row.birth_date);
+              if (isNaN(birthDate.getTime())) {
+                results.errors.push({
+                  row: rowNumber,
+                  error: `Invalid birth_date format '${row.birth_date}'. Use YYYY-MM-DD format`
+                });
+                continue;
+              }
+            }
+          }
 
           // Prepare user data - luôn gán tenant_id theo context truyền vào
           const userData = {
-            username: row.username.trim(),
-            email: row.email.trim(),
+            username: generatedUsername,
+            email: generatedEmail,
             full_name: row.full_name.trim(),
-            phone: row.phone ? row.phone.trim() : '',
-            birth_date: row.birth_date ? new Date(row.birth_date) : null,
-            address: row.address ? row.address.trim() : '',
+            phone: row.phone ? String(row.phone).trim() : undefined,
+            birth_date: birthDate,
+            address: row.address ? row.address.trim() : undefined,
             role_id: roleId,
-            department_id: departmentId,
-            password: row.password || 'Password123', // Default password
-            is_active: row.is_active !== undefined ? Boolean(row.is_active) : true,
+            department_id: departmentId || undefined,
+            password: generatedPassword, // Default password (can be overridden by file)
+            gender: normalizeGender(row.gender || row.sex || row['giới tính']),
+            is_active: row.is_active !== undefined ? (row.is_active === true || row.is_active === 1 || row.is_active === 'true' || row.is_active === '1') : true,
             tenant_id: tenantId || undefined
           };
+
+          // Remove undefined, null, or empty string fields to avoid storing them
+          Object.keys(userData).forEach(key => {
+            if (userData[key] === undefined || userData[key] === null || userData[key] === '') {
+              delete userData[key];
+            }
+          });
 
           // Hash password
           const password_hash = await HashUtils.hashPassword(userData.password);
@@ -438,11 +572,42 @@ class UserService {
           const user = await UserRepository.create(userData);
           await user.populate(['role_id', 'department_id']);
 
+          // Nếu có projectId, gán người dùng vào dự án luôn
+          if (projectId && projectRepository) {
+            try {
+              // Tránh duplicate bằng cách kiểm tra trước
+              const existingAssignments = await projectRepository.getProjectAssignments(projectId);
+              const alreadyAssigned = existingAssignments.some(
+                assignment => assignment.user_id && assignment.user_id._id?.toString() === user._id.toString()
+              );
+
+              if (!alreadyAssigned) {
+                const roleInProject = row.role_in_project || row.project_role || 'WORKER';
+                await projectRepository.addProjectAssignment({
+                  project_id: projectId,
+                  user_id: user._id,
+                  role_in_project: roleInProject,
+                  start_date: row.start_date ? new Date(row.start_date) : new Date(),
+                  status: 'active',
+                  responsibilities: row.responsibilities || undefined,
+                  assigned_by: importedBy || undefined
+                });
+              }
+            } catch (assignError) {
+              console.error(`Error assigning user ${user._id} to project ${projectId}:`, assignError);
+              results.errors.push({
+                row: rowNumber,
+                error: `Không thể gán vào dự án: ${assignError.message}`
+              });
+            }
+          }
+
+          // Chỉ trả về thông tin tối thiểu, ẩn username/email/password được sinh tự động
           results.success.push({
             row: rowNumber,
-            username: user.username,
-            email: user.email,
-            full_name: user.full_name
+            full_name: user.full_name,
+            gender: user.gender || undefined,
+            project_id: projectId || null
           });
 
         } catch (error) {

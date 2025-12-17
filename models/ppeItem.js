@@ -34,6 +34,12 @@ const ppeItemSchema = new mongoose.Schema({
     type: String,
     maxlength: 100
   },
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active',
+    index: true
+  },
   reorder_level: {
     type: Number,
     default: 10,
@@ -55,6 +61,9 @@ const ppeItemSchema = new mongoose.Schema({
   version: {
     type: Number,
     default: 0
+  },
+  image_url: {
+    type: String
   },
   // PPE expiry management
   expiry_date: {

@@ -10,7 +10,9 @@ coverage
 .idea
 *.log
 logs
-uploads
+# Keep contract template in image
+!uploads/contracts/CHMS_HopDongThanhToan.pdf
+!uploads/contracts/
 .DS_Store
 Thumbs.db
 tests

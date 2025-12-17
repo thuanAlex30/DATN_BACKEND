@@ -194,18 +194,16 @@ class IncidentController {
       console.log('📊 Request path:', req.path);
       console.log('📊 Request originalUrl:', req.originalUrl);
       
+      const tenantId = req.user?.tenant_id || null;
+      
       const filters = {
-        ...req.query
+        ...req.query,
+        tenant_id: tenantId
       };
-      const tenantId = req.user.tenant_id;
-      const user = req.user;
       
       console.log('📊 getIncidentStats filters:', filters);
-      console.log('📊 getIncidentStats tenantId:', tenantId);
-      console.log('📊 getIncidentStats user role:', user?.role?.role_code);
-      console.log('📊 getIncidentStats user department_id:', user?.department_id);
       
-      const result = await incidentService.getIncidentStats(filters, tenantId, user);
+      const result = await incidentService.getIncidentStats(filters);
       
       console.log('📊 getIncidentStats result:', {
         success: result.success,
@@ -241,8 +239,7 @@ class IncidentController {
   // 11. Lấy incidents theo user
   static getIncidentsByUser = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { userId } = req.params;
-    const tenantId = req.user.tenant_id;
-    const result = await incidentService.getIncidentsByUser(userId, tenantId);
+    const result = await incidentService.getIncidentsByUser(userId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -267,8 +264,7 @@ class IncidentController {
   // 13. Lấy incidents theo status
   static getIncidentsByStatus = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { status } = req.params;
-    const tenantId = req.user.tenant_id;
-    const result = await incidentService.getIncidentsByStatus(status, tenantId);
+    const result = await incidentService.getIncidentsByStatus(status);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -280,8 +276,7 @@ class IncidentController {
   // 14. Lấy incidents theo severity
   static getIncidentsBySeverity = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { severity } = req.params;
-    const tenantId = req.user.tenant_id;
-    const result = await incidentService.getIncidentsBySeverity(severity, tenantId);
+    const result = await incidentService.getIncidentsBySeverity(severity);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -296,6 +291,36 @@ class IncidentController {
     const userId = req.user._id;
     
     const result = await incidentService.deleteIncident(id, userId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // 16. Cập nhật incident
+  static updateIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updateData = req.body;
+    const userId = req.user._id;
+    
+    const result = await incidentService.updateIncident(id, updateData, userId);
+    
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+  });
+
+  // 17. Cập nhật thông tin nhân viên trong incident
+  static updateEmployeeIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updateData = req.body;
+    const userId = req.user._id;
+    
+    const result = await incidentService.updateIncident(id, updateData, userId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

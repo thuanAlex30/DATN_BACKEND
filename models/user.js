@@ -1,8 +1,13 @@
 const mongoose = require('mongoose');
 const HashUtils = require('../utils/hash');
 const { getDefaultTenantObjectId } = require('../utils/tenancy');
-
+const CounterService = require('../services/counterService');
 const userSchema = new mongoose.Schema({
+  user_id: {
+    type: Number,
+    unique: true,
+    sparse: true // Allow null values but ensure uniqueness when present
+  },
   tenant_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Tenant',

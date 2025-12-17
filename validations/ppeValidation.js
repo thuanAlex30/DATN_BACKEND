@@ -190,8 +190,18 @@ const validateCreateIssuance = [
     .withMessage('Người phát không hợp lệ'),
   
   body('notes')
-    .optional()
-    .isLength({ max: 500 })
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      // Allow empty string, null, or undefined
+      if (value === null || value === undefined || value === '') {
+        return true;
+      }
+      // If value exists, check length
+      if (typeof value === 'string' && value.length > 500) {
+        throw new Error('Ghi chú không được quá 500 ký tự');
+      }
+      return true;
+    })
     .withMessage('Ghi chú không được quá 500 ký tự')
 ];
 

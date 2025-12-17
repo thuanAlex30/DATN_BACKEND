@@ -3,13 +3,13 @@ const Joi = require('joi');
 const authValidation = {
   register: Joi.object({
     username: Joi.string()
-      .alphanum()
+      .pattern(/^[a-zA-Z0-9_]+$/)
       .min(3)
       .max(50)
       .required()
       .trim()
       .messages({
-        'string.alphanum': 'Username must only contain alphanumeric characters',
+        'string.pattern.base': 'Username must only contain alphanumeric characters and underscores',
         'string.min': 'Username must be at least 3 characters long',
         'string.max': 'Username must not exceed 50 characters',
         'any.required': 'Username is required'
@@ -93,13 +93,6 @@ const authValidation = {
       .optional()
       .messages({
         'string.pattern.base': 'Invalid department ID format'
-      }),
-
-    position_id: Joi.string()
-      .pattern(/^[0-9a-fA-F]{24}$/)
-      .optional()
-      .messages({
-        'string.pattern.base': 'Invalid position ID format'
       })
   }),
 
