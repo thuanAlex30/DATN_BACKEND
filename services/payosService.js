@@ -9,11 +9,11 @@ class PayOSService {
     
     // Khởi tạo PayOS client
     if (this.clientId && this.apiKey && this.checksumKey) {
-      this.payOS = new PayOS({
-        clientId: this.clientId,
-        apiKey: this.apiKey,
-        checksumKey: this.checksumKey,
-      });
+      this.payOS = new PayOS(
+        this.clientId,
+        this.apiKey,
+        this.checksumKey
+      );      
     }
     
     if (process.env.PAYOS_RETURN_URL && process.env.PAYOS_CANCEL_URL) {
