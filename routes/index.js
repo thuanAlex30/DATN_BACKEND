@@ -41,6 +41,7 @@ const chatbotRoutes = require('./chatbotRoutes');
 const pricingRoutes = require('./pricingRoutes');
 const weatherRoutes = require('./weatherRoutes');
 const contractRoutes = require('./contractRoutes');
+const uploadRoutes = require('./uploadRoutes');
 
 console.log('Loading kafkaMonitor...');
 const kafkaMonitor = require('../services/kafkaMonitor');
@@ -148,6 +149,7 @@ router.use('/pricing', pricingRoutes);
 router.use('/contracts', contractRoutes);
 // Weather Integration Routes
 router.use('/integrations/weather', weatherRoutes);
+router.use('/upload', uploadRoutes);
 
 /**
  * =====================
