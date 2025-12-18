@@ -281,17 +281,10 @@ class ProjectTaskService {
   async updateTaskProgress(taskId, progress, userId) {
     try {
       const progressValue = Number(progress);
-      // Tự động cập nhật trạng thái dựa trên tiến độ
-      let status = 'IN_PROGRESS';
-      if (progressValue >= 100) {
-        status = 'COMPLETED';
-      } else if (progressValue > 0) {
-        status = 'IN_PROGRESS';
-      }
-
+      // Chỉ cập nhật tiến độ, KHÔNG tự động đổi trạng thái sang COMPLETED.
+      // Trạng thái hoàn thành phải được Header Department xác nhận thủ công.
       const task = await projectTaskRepository.updateTask(taskId, {
         progress_percentage: progressValue,
-        status: status,
         updated_by: userId
       });
 
@@ -380,25 +373,18 @@ class ProjectTaskService {
         progress_percentage: progressValue,
         work_description: progressData.work_description || progressData.note || '',
         hours_worked: progressData.hours_worked || 0,
-        log_date: progressData.log_date ? new Date(progressData.log_date) : new Date()
+        log_date: progressData.log_date ? new Date(progressData.log_date) : new Date(),
+        images: progressData.images || [] // Array of Cloudinary image URLs
       };
       
       const progressLog = await projectTaskRepository.createProgressLog(taskId, logData, userId);
-      
-      // Tự động cập nhật trạng thái task dựa trên tiến độ
-      let status = 'IN_PROGRESS';
-      if (progressValue >= 100) {
-        status = 'COMPLETED';
-      } else if (progressValue > 0) {
-        status = 'IN_PROGRESS';
-      }
-      
-      // Cập nhật trạng thái task
+
+      // KHÔNG tự động cập nhật trạng thái task sang COMPLETED khi đạt 100%.
+      // Chỉ cập nhật tiến độ; Header Department sẽ xác nhận hoàn thành riêng.
       await projectTaskRepository.updateTask(taskId, {
-        progress_percentage: progressValue,
-        status: status
+        progress_percentage: progressValue
       });
-      
+
       return createResponse(201, 'Thêm nhật ký tiến độ thành công', progressLog);
     } catch (error) {
       console.error('Error adding progress log:', error);

@@ -460,35 +460,127 @@ class TrainingService {
 
 
     // ========== Dashboard Statistics ==========
-    async getTrainingDashboardStats() {
+    async getTrainingDashboardStats(tenantId = null) {
         try {
-            const [
-                totalCourses,
-                totalSessions,
-                totalEnrollments,
-                totalQuestionBanks
-            ] = await Promise.all([
-                trainingRepository.getAllCourses(),
-                trainingRepository.getAllTrainingSessions(),
-                trainingRepository.getAllTrainingEnrollments(),
-                trainingRepository.getAllQuestionBanks()
-            ]);
+            // Tenant-scoped stats:
+            // - Sessions are tenant-scoped directly (training_sessions.tenant_id)
+            // - Enrollments are scoped via their session_id -> tenant sessions
+            // - Courses/QuestionBanks/Questions are derived via tenant sessions' course_id(s)
+            const sessions = await trainingRepository.getAllTrainingSessions({}, tenantId);
+            const sessionIds = sessions.map(s => s._id);
+            const courseIds = Array.from(new Set(
+                sessions
+                    .map(s => (typeof s.course_id === 'object' ? s.course_id?._id : s.course_id))
+                    .filter(Boolean)
+                    .map(String)
+            ));
 
-            const completedEnrollments = totalEnrollments.filter(e => e.status === 'completed').length;
-            const passedEnrollments = totalEnrollments.filter(e => e.passed === true).length;
+            const enrollments = sessionIds.length > 0
+                ? await trainingRepository.getAllTrainingEnrollments({ sessionId: { $in: sessionIds } })
+                : [];
+
+            const completedEnrollments = enrollments.filter(e => e.status === 'completed').length;
+            const passedEnrollments = enrollments.filter(e => e.passed === true).length;
+
+            // Derive question banks & questions for tenant-used courses
+            const { QuestionBank, Question } = require('../models/questionBank');
+            const Course = require('../models/course');
+            const CourseSet = require('../models/courseSet');
+
+            const courseObjectIds = courseIds.map(id => {
+                const mongoose = require('mongoose');
+                return new mongoose.Types.ObjectId(id);
+            });
+
+            const banks = courseObjectIds.length > 0
+                ? await QuestionBank.find({ course_id: { $in: courseObjectIds } }).select('_id course_id')
+                : [];
+            const bankIds = banks.map(b => b._id);
+
+            const totalQuestions = bankIds.length > 0
+                ? await Question.countDocuments({ bank_id: { $in: bankIds } })
+                : 0;
+
+            // Courses are global; count tenant-used distinct courses (from sessions)
+            const totalCourses = courseIds.length;
+
+            // Course sets derived from tenant-used courses
+            let totalCourseSets = 0;
+            if (courseObjectIds.length > 0) {
+                const courses = await Course.find({ _id: { $in: courseObjectIds } }).select('course_set_id');
+                const courseSetIds = Array.from(new Set(courses.map(c => String(c.course_set_id)).filter(Boolean)));
+                totalCourseSets = courseSetIds.length;
+                // Ensure CourseSet exists for completeness (optional, no extra query needed)
+                if (totalCourseSets > 0) {
+                    await CourseSet.find({ _id: { $in: courseSetIds } }).select('_id').limit(1);
+                }
+            }
 
             const stats = {
-                totalCourses: totalCourses.length,
-                totalSessions: totalSessions.length,
-                totalEnrollments: totalEnrollments.length,
+                totalCourseSets,
+                totalCourses,
+                totalSessions: sessions.length,
+                totalEnrollments: enrollments.length,
+                totalQuestionBanks: banks.length,
+                totalQuestions,
                 completedEnrollments,
                 passedEnrollments,
-                totalQuestionBanks: totalQuestionBanks.length,
-                completionRate: totalEnrollments.length > 0 ? (completedEnrollments / totalEnrollments.length) * 100 : 0,
+                completionRate: enrollments.length > 0 ? (completedEnrollments / enrollments.length) * 100 : 0,
                 passRate: completedEnrollments > 0 ? (passedEnrollments / completedEnrollments) * 100 : 0
             };
 
             return createResponse(200, 'Training dashboard statistics retrieved successfully', stats);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Enrollment stats grouped by status for tenant (scoped via session_id -> tenant sessions)
+     * Returns array like: [{ _id: 'completed', count: 10 }, ...]
+     */
+    async getEnrollmentStats(tenantId = null) {
+        try {
+            const { TrainingSession } = require('../models/trainingSession');
+            const TrainingEnrollment = require('../models/trainingEnrollment');
+            const mongoose = require('mongoose');
+
+            const sessionIds = tenantId
+                ? await TrainingSession.find({ tenant_id: tenantId }).distinct('_id')
+                : await TrainingSession.find({}).distinct('_id');
+
+            if (!sessionIds || sessionIds.length === 0) {
+                return createResponse(200, 'Enrollment stats retrieved successfully', []);
+            }
+
+            const stats = await TrainingEnrollment.aggregate([
+                { $match: { session_id: { $in: sessionIds.map(id => new mongoose.Types.ObjectId(id)) } } },
+                { $group: { _id: '$status', count: { $sum: 1 } } },
+                { $sort: { count: -1 } }
+            ]);
+
+            return createResponse(200, 'Enrollment stats retrieved successfully', stats);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Session stats grouped by status_code for tenant
+     * Returns array like: [{ _id: 'SCHEDULED', count: 3 }, ...]
+     */
+    async getSessionStats(tenantId = null) {
+        try {
+            const { TrainingSession } = require('../models/trainingSession');
+
+            const match = tenantId ? { tenant_id: tenantId } : {};
+            const stats = await TrainingSession.aggregate([
+                { $match: match },
+                { $group: { _id: '$status_code', count: { $sum: 1 } } },
+                { $sort: { count: -1 } }
+            ]);
+
+            return createResponse(200, 'Session stats retrieved successfully', stats);
         } catch (error) {
             throw error;
         }

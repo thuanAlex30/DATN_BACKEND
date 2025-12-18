@@ -570,8 +570,33 @@ class TrainingController {
 
     // ========== Dashboard Statistics ==========
     static getTrainingDashboardStats = ErrorMiddleware.asyncHandler(async (req, res) => {
-        const result = await trainingService.getTrainingDashboardStats();
+        const tenantId = req.user?.tenant_id || null;
+        const result = await trainingService.getTrainingDashboardStats(tenantId);
         
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    // Enrollment stats grouped by status (tenant-scoped via session.tenant_id)
+    static getEnrollmentStats = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const tenantId = req.user?.tenant_id || null;
+        const result = await trainingService.getEnrollmentStats(tenantId);
+
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    // Session stats grouped by status_code (tenant-scoped)
+    static getSessionStats = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const tenantId = req.user?.tenant_id || null;
+        const result = await trainingService.getSessionStats(tenantId);
+
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
         } else {
