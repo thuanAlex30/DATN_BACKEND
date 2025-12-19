@@ -33,6 +33,11 @@ class PayOSService {
       }
     } else {
       console.warn('⚠️ PayOS credentials missing. Please set PAYOS_CLIENT_ID, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY');
+      this.payOS = new PayOS(
+        this.clientId,
+        this.apiKey,
+        this.checksumKey
+      );     
     }
     
     if (process.env.PAYOS_RETURN_URL && process.env.PAYOS_CANCEL_URL) {
