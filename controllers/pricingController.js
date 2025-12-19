@@ -562,8 +562,17 @@ class PricingController {
       }
       
       // Nếu là lỗi từ PayOS, trả về message chi tiết hơn
-      if (error.message && error.message.includes('Thông tin truyền lên không đúng')) {
-        return res.status(400).json(createResponse(400, error.message));
+      if (error.message && (error.message.includes('Thông tin truyền lên không đúng') || 
+                            error.message.includes('PayOS') || 
+                            error.message.includes('payment link'))) {
+        // Trả về message ngắn gọn cho frontend, chi tiết đã log ở server
+        const shortMessage = error.message.includes('404') 
+          ? 'Không thể kết nối đến PayOS. Vui lòng kiểm tra cấu hình PayOS trên server.'
+          : error.message.includes('Connection error')
+          ? 'Lỗi kết nối đến PayOS. Vui lòng thử lại sau.'
+          : 'Lỗi khi tạo payment link từ PayOS. Vui lòng kiểm tra cấu hình PayOS.';
+        
+        return res.status(500).json(createResponse(500, shortMessage));
       }
       
       // Nếu là lỗi validation hoặc lỗi khác
