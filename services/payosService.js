@@ -17,13 +17,41 @@ class PayOSService {
     }
     
     if (process.env.PAYOS_RETURN_URL && process.env.PAYOS_CANCEL_URL) {
-      this.returnUrl = process.env.PAYOS_RETURN_URL;
-      this.cancelUrl = process.env.PAYOS_CANCEL_URL;
+      // Normalize URLs (remove double slashes)
+      this.returnUrl = process.env.PAYOS_RETURN_URL.replace(/([^:]\/)\/+/g, '$1');
+      this.cancelUrl = process.env.PAYOS_CANCEL_URL.replace(/([^:]\/)\/+/g, '$1');
     } else {
       // Mặc định: trỏ trực tiếp về frontend (localhost được chấp nhận)
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       this.returnUrl = `${frontendUrl}/pricing/payment-success`;
       this.cancelUrl = `${frontendUrl}/pricing/payment-cancelled`;
+    }
+  }
+
+  /**
+   * Helper: Gọi PayOS API với retry logic
+   * @param {Function} apiCall - Function gọi PayOS API
+   * @param {number} maxRetries - Số lần retry tối đa
+   * @param {number} retryCount - Số lần đã retry
+   * @returns {Promise<any>} - Response từ PayOS API
+   */
+  async _callPayOSWithRetry(apiCall, maxRetries = 3, retryCount = 0) {
+    try {
+      return await apiCall();
+    } catch (error) {
+      const isConnectionError = error.message?.includes('Connection error') || 
+                                error.message?.includes('ECONNREFUSED') ||
+                                error.message?.includes('ETIMEDOUT') ||
+                                error.message?.includes('ENOTFOUND') ||
+                                error.constructor?.name === 'ConnectionError';
+      
+      if (isConnectionError && retryCount < maxRetries) {
+        const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+        console.warn(`⚠️ PayOS connection error (attempt ${retryCount + 1}/${maxRetries + 1}). Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return await this._callPayOSWithRetry(apiCall, maxRetries, retryCount + 1);
+      }
+      throw error;
     }
   }
 
@@ -101,14 +129,27 @@ class PayOSService {
     try {
       // Log để debug
       console.log('PayOS Request Payload:', JSON.stringify(paymentDataPayload, null, 2));
+      console.log('PayOS Config Check:', {
+        hasPayOS: !!this.payOS,
+        hasClientId: !!this.clientId,
+        hasApiKey: !!this.apiKey,
+        hasChecksumKey: !!this.checksumKey,
+        clientIdPrefix: this.clientId ? `${this.clientId.substring(0, 4)}...` : 'NOT SET',
+        returnUrl: this.returnUrl,
+        cancelUrl: this.cancelUrl
+      });
 
       // Sử dụng PayOS SDK
       if (!this.payOS) {
         throw new Error('PayOS chưa được khởi tạo. Vui lòng kiểm tra PAYOS_CLIENT_ID, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY');
       }
 
-      // Gọi PayOS API qua SDK
-      const paymentLinkResponse = await this.payOS.paymentRequests.create(paymentDataPayload);
+      // Gọi PayOS API qua SDK với retry logic
+      console.log('Calling PayOS API: paymentRequests.create()');
+      const paymentLinkResponse = await this._callPayOSWithRetry(
+        () => this.payOS.paymentRequests.create(paymentDataPayload),
+        3 // max retries
+      );
 
       // Log response để debug
       console.log('PayOS Response:', JSON.stringify(paymentLinkResponse, null, 2));
@@ -126,10 +167,91 @@ class PayOSService {
       }
     } catch (error) {
       console.error('PayOS createPaymentLink error:', error.message || error);
-      console.error('Error details:', error);
+      console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      console.error('Error type:', error.constructor?.name);
+      console.error('Error code:', error.code);
+      console.error('Error status:', error.status);
+      console.error('Error statusCode:', error.statusCode);
+      console.error('Error response:', error.response);
       
       // Thông báo lỗi chi tiết hơn
       const errorDesc = error.message || error.toString();
+      const errorCode = error.code || error.statusCode || error.status;
+      const isConnectionError = errorDesc?.includes('Connection error') || 
+                                errorDesc?.includes('ECONNREFUSED') ||
+                                errorDesc?.includes('ETIMEDOUT') ||
+                                errorDesc?.includes('ENOTFOUND') ||
+                                error.constructor?.name === 'ConnectionError';
+      
+      // Xử lý lỗi Connection Error
+      if (isConnectionError) {
+        let errorMsg = '❌ PayOS Connection Error - Không thể kết nối đến PayOS API.\n';
+        errorMsg += '\n📋 Nguyên nhân có thể:\n';
+        errorMsg += '\n1. ✅ Kiểm tra Network/Firewall trên Render:\n';
+        errorMsg += '   - Render service có thể bị chặn kết nối ra ngoài\n';
+        errorMsg += '   - PayOS API endpoint: https://api-merchant.payos.vn\n';
+        errorMsg += '   - Kiểm tra Render logs để xem chi tiết lỗi network\n';
+        errorMsg += '\n2. ✅ Kiểm tra PayOS API Status:\n';
+        errorMsg += '   - PayOS API có thể đang bảo trì hoặc gặp sự cố\n';
+        errorMsg += '   - Kiểm tra: https://status.payos.vn/ (nếu có)\n';
+        errorMsg += '   - Thử lại sau vài phút\n';
+        errorMsg += '\n3. ✅ Kiểm tra Timeout Settings:\n';
+        errorMsg += '   - Render có thể timeout khi gọi PayOS API\n';
+        errorMsg += '   - PayOS API có thể mất thời gian để phản hồi\n';
+        errorMsg += '   - Đã thử retry 3 lần nhưng vẫn thất bại\n';
+        errorMsg += '\n4. ✅ Giải pháp tạm thời:\n';
+        errorMsg += '   - Thử lại sau vài phút\n';
+        errorMsg += '   - Kiểm tra Render service logs để xem chi tiết\n';
+        errorMsg += '   - Liên hệ PayOS support nếu vấn đề kéo dài\n';
+        errorMsg += '\n5. ✅ Kiểm tra PayOS Credentials:\n';
+        errorMsg += '   - Đảm bảo PAYOS_CLIENT_ID, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY đúng\n';
+        errorMsg += '   - Copy lại từ PayOS Dashboard: https://pay.payos.vn/web4s/\n';
+        
+        console.error('\n📋 Connection Error Details:');
+        console.error('  Error:', error.message);
+        console.error('  Error Type:', error.constructor?.name);
+        console.error('  Error Code:', error.code);
+        console.error('  PayOS API Endpoint: https://api-merchant.payos.vn');
+        console.error('  Request Payload:', JSON.stringify(paymentDataPayload, null, 2));
+        
+        throw new Error(errorMsg);
+      }
+      
+      // Xử lý lỗi HTTP 404
+      if (errorDesc?.includes('404') || errorCode === 404 || error.statusCode === 404 || error.status === 404) {
+        let errorMsg = '❌ PayOS API trả về lỗi 404 (Not Found).\n';
+        errorMsg += '\n📋 Nguyên nhân có thể:\n';
+        errorMsg += '\n1. ✅ Kiểm tra PayOS Credentials trên Render:\n';
+        errorMsg += '   - Đăng nhập Render Dashboard\n';
+        errorMsg += '   - Vào Environment Variables của service\n';
+        errorMsg += '   - Kiểm tra các biến:\n';
+        errorMsg += '     * PAYOS_CLIENT_ID (phải có giá trị)\n';
+        errorMsg += '     * PAYOS_API_KEY (phải có giá trị)\n';
+        errorMsg += '     * PAYOS_CHECKSUM_KEY (phải có giá trị)\n';
+        errorMsg += '   - Nếu thiếu hoặc sai, copy từ PayOS Dashboard:\n';
+        errorMsg += '     → https://pay.payos.vn/web4s/\n';
+        errorMsg += '     → Vào "Kênh kết nối" → Chọn kênh của bạn\n';
+        errorMsg += '     → Copy Client ID, API Key, Checksum Key\n';
+        errorMsg += '   - Sau khi cập nhật, restart service trên Render\n';
+        errorMsg += '\n2. ✅ Kiểm tra PayOS Channel:\n';
+        errorMsg += '   - Đăng nhập PayOS Dashboard: https://pay.payos.vn/web4s/\n';
+        errorMsg += '   - Vào "Kênh kết nối" → Kiểm tra kênh đang "Hoạt động"\n';
+        errorMsg += '   - Nếu kênh bị "Tạm dừng" hoặc không tồn tại, tạo kênh mới\n';
+        errorMsg += '\n3. ✅ Kiểm tra Request Payload:\n';
+        errorMsg += '   - OrderCode: ' + paymentDataPayload.orderCode + ' (phải là số nguyên 8 chữ số) ✓\n';
+        errorMsg += '   - Amount: ' + paymentDataPayload.amount + ' VND (phải từ 1,000 - 500,000,000) ✓\n';
+        errorMsg += '   - ReturnUrl: ' + paymentDataPayload.returnUrl + '\n';
+        errorMsg += '   - CancelUrl: ' + paymentDataPayload.cancelUrl + '\n';
+        errorMsg += '\n4. ✅ Kiểm tra PayOS SDK:\n';
+        errorMsg += '   - Version: @payos/node@^2.0.3\n';
+        errorMsg += '   - Xem docs: https://docs.payos.vn/\n';
+        
+        console.error('\n📋 Full Error Object:', error);
+        console.error('\n📋 Request Payload:', JSON.stringify(paymentDataPayload, null, 2));
+        
+        throw new Error(errorMsg);
+      }
+      
       if (errorDesc === 'Thông tin truyền lên không đúng' || errorDesc?.includes('không đúng')) {
         // Kiểm tra nếu returnUrl/cancelUrl là localhost
         const hasLocalhost = paymentDataPayload.returnUrl.includes('localhost') || 
