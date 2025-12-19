@@ -7,9 +7,16 @@ class DepartmentRepository {
     return await department.save();
   }
 
-  static async findById(id) {
-    return await Department.findById(id)
-      .populate('manager_id', 'username full_name email');
+  static async findById(id, tenantId = null) {
+    const filter = { _id: id };
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+
+    return await Department.findOne(filter)
+      .populate('manager_id', 'username full_name email')
+      .populate('manager_ids', 'username full_name email')
+      .populate('employees_count');
   }
 
   static async findAll(options = {}) {
@@ -20,10 +27,17 @@ class DepartmentRepository {
       is_active,
       manager_id,
       sort_by = 'created_at',
-      sort_order = 'desc'
+      sort_order = 'desc',
+      // ⭐ Thêm tenant_id để filter theo tenant
+      tenant_id
     } = options;
 
     const filter = {};
+
+    // Chỉ lấy department trong cùng tenant nếu có tenant_id
+    if (tenant_id) {
+      filter.tenant_id = tenant_id;
+    }
     
     if (search) {
       filter.$or = [
@@ -48,6 +62,8 @@ class DepartmentRepository {
     const [departments, total] = await Promise.all([
       Department.find(filter)
         .populate('manager_id', 'username full_name email')
+        .populate('manager_ids', 'username full_name email')
+        .populate('employees_count')
         .sort(sortObj)
         .skip(skip)
         .limit(limit),
@@ -73,15 +89,14 @@ class DepartmentRepository {
       { ...updateData, updated_at: new Date() },
       { new: true, runValidators: true }
     )
-      .populate('manager_id', 'username full_name email');
+      .populate('manager_id', 'username full_name email')
+      .populate('manager_ids', 'username full_name email')
+      .populate('employees_count');
   }
 
   static async deleteById(id) {
-    return await Department.findByIdAndUpdate(
-      id,
-      { is_active: false, updated_at: new Date() },
-      { new: true }
-    );
+    // Hard delete - actually remove from database
+    return await Department.findByIdAndDelete(id);
   }
 
   static async hardDeleteById(id) {
@@ -97,11 +112,15 @@ class DepartmentRepository {
     return count > 0;
   }
 
-  static async existsByName(name, excludeId = null) {
+  static async existsByName(name, excludeId = null, tenantId = null) {
     const filter = { 
       department_name: { $regex: new RegExp(`^${name}$`, 'i') },
       is_active: true 
     };
+
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
     
     if (excludeId) {
       filter._id = { $ne: excludeId };
@@ -111,20 +130,35 @@ class DepartmentRepository {
     return count > 0;
   }
 
-  static async getStats() {
+  static async getStats(tenantId = null) {
+    const baseFilter = tenantId ? { tenant_id: tenantId } : {};
+
     const [
       total,
       active,
-      inactive,
-      withManager,
-      withoutManager
+      inactive
     ] = await Promise.all([
-      Department.countDocuments({}),
-      Department.countDocuments({ is_active: true }),
-      Department.countDocuments({ is_active: false }),
-      Department.countDocuments({ manager_id: { $ne: null }, is_active: true }),
-      Department.countDocuments({ manager_id: null, is_active: true })
+      Department.countDocuments({ ...baseFilter }),
+      Department.countDocuments({ ...baseFilter, is_active: true }),
+      Department.countDocuments({ ...baseFilter, is_active: false })
     ]);
+
+    // Count departments with managers (either manager_id or manager_ids)
+    const activeDepartments = await Department.find({ ...baseFilter, is_active: true });
+    let withManager = 0;
+    let withoutManager = 0;
+    
+    for (const dept of activeDepartments) {
+      const hasManagers = 
+        (dept.manager_ids && Array.isArray(dept.manager_ids) && dept.manager_ids.length > 0) ||
+        dept.manager_id;
+      
+      if (hasManagers) {
+        withManager++;
+      } else {
+        withoutManager++;
+      }
+    }
 
     return {
       total,
@@ -157,13 +191,19 @@ class DepartmentRepository {
     );
   }
 
-  static async getAllActive() {
-    return await Department.find({ is_active: true })
+  static async getAllActive(tenantId = null) {
+    const filter = { is_active: true };
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+
+    return await Department.find(filter)
       .populate('manager_id', 'username full_name email')
+      .populate('employees_count')
       .sort({ department_name: 1 });
   }
 
-  static async searchDepartments(searchTerm, limit = 20) {
+  static async searchDepartments(searchTerm, limit = 20, tenantId = null) {
     const filter = {
       is_active: true,
       $or: [
@@ -172,8 +212,13 @@ class DepartmentRepository {
       ]
     };
 
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+
     return await Department.find(filter)
       .populate('manager_id', 'username full_name email')
+      .populate('employees_count')
       .limit(limit)
       .sort({ department_name: 1 });
   }

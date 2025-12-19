@@ -1,50 +1,76 @@
 const DepartmentRepository = require('../repository/DepartmentRepository');
 const UserRepository = require('../repository/UserRepository');
-<<<<<<< HEAD
-const ApiResponse = require('../utils/response');
-const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
-=======
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 const DepartmentEvents = require('../events/departmentEvents');
->>>>>>> origin/main
 
 class DepartmentController {
   
   static getAllDepartments = ErrorMiddleware.asyncHandler(async (req, res) => {
-<<<<<<< HEAD
-=======
     const tenantId = req.user?.tenant_id || null;
->>>>>>> origin/main
     const options = {
       page: req.query.page || 1,
       limit: req.query.limit || 10,
       search: req.query.search || '',
       is_active: req.query.is_active,
       sort_by: req.query.sort_by || 'created_at',
-<<<<<<< HEAD
-      sort_order: req.query.sort_order || 'desc'
-=======
       sort_order: req.query.sort_order || 'desc',
       tenant_id: tenantId || undefined
->>>>>>> origin/main
     };
 
     const result = await DepartmentRepository.findAll(options);
 
-    return ApiResponse.success(res, result, 'Departments retrieved successfully');
+    // Calculate employees_count for each department
+
+    const User = require('../models/user');
+    const departmentsWithCounts = await Promise.all(
+      result.departments.map(async (dept) => {
+        const deptJson = dept.toJSON ? dept.toJSON({ virtuals: true }) : dept;
+        
+
+        const allUsers = await User.find({ 
+          department_id: dept._id,
+          is_active: true
+        }).populate('role_id', 'role_name role_code role_level');
+        
+        // Count from Department Head (role_level 80) down to all lower roles
+        // Exclude only System Admin (100) and Company Admin (90)
+        const employees = allUsers.filter(user => {
+          const roleLevel = user.role_id?.role_level || 0;
+          const roleCode = user.role_id?.role_code?.toLowerCase() || '';
+          const roleName = user.role_id?.role_name?.toLowerCase() || '';
+          
+          // Exclude only System Admin and Company Admin
+          const isSystemOrCompanyAdmin = roleLevel >= 90 || 
+                                         roleCode === 'company_admin' ||
+                                         roleCode === 'system_admin' ||
+                                         roleName === 'company admin' ||
+                                         roleName === 'system admin';
+          
+          return !isSystemOrCompanyAdmin;
+        });
+        
+        const employeeCount = employees.length;
+        
+        return {
+          ...deptJson,
+          id: deptJson._id || deptJson.id || dept._id?.toString(),
+          employees_count: employeeCount
+        };
+      })
+    );
+
+    return ApiResponse.success(res, {
+      departments: departmentsWithCounts,
+      pagination: result.pagination
+    }, 'Departments retrieved successfully');
   });
 
   static getDepartmentById = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-<<<<<<< HEAD
-    
-    const department = await DepartmentRepository.findById(id);
-=======
     const tenantId = req.user?.tenant_id || null;
     
     const department = await DepartmentRepository.findById(id, tenantId);
->>>>>>> origin/main
     
     if (!department) {
       return ApiResponse.notFound(res, 'Department not found');
@@ -54,12 +80,6 @@ class DepartmentController {
   });
 
   static createDepartment = ErrorMiddleware.asyncHandler(async (req, res) => {
-<<<<<<< HEAD
-    const departmentData = req.body;
-
-    // Check if department name already exists
-    const nameExists = await DepartmentRepository.existsByName(departmentData.department_name);
-=======
     const tenantId = req.user?.tenant_id || null;
     const departmentData = {
       ...req.body,
@@ -72,12 +92,33 @@ class DepartmentController {
       null,
       tenantId || null
     );
->>>>>>> origin/main
     if (nameExists) {
       return ApiResponse.error(res, 'Department name already exists', 409);
     }
 
-    // Validate manager if provided
+    // Validate manager_ids if provided
+    if (departmentData.manager_ids && Array.isArray(departmentData.manager_ids)) {
+      // Remove duplicates
+      departmentData.manager_ids = [...new Set(departmentData.manager_ids)];
+      
+      // Validate max 5 managers
+      if (departmentData.manager_ids.length > 5) {
+        return ApiResponse.error(res, 'Một phòng ban chỉ có thể có tối đa 5 quản lý', 400);
+      }
+
+      // Validate each manager
+      for (const managerId of departmentData.manager_ids) {
+        const manager = await UserRepository.findById(managerId);
+        if (!manager) {
+          return ApiResponse.error(res, `Manager với ID ${managerId} không tồn tại`, 404);
+        }
+        if (!manager.is_active) {
+          return ApiResponse.error(res, `Tài khoản manager ${manager.full_name || manager.username} không hoạt động`, 400);
+        }
+      }
+    }
+
+    // Validate manager_id (legacy support) if provided
     if (departmentData.manager_id) {
       const manager = await UserRepository.findById(departmentData.manager_id);
       if (!manager) {
@@ -87,22 +128,21 @@ class DepartmentController {
         return ApiResponse.error(res, 'Manager account is not active', 400);
       }
 
-      // Check if manager is already managing another department
-      const existingManagement = await DepartmentRepository.findAll({
-        manager_id: departmentData.manager_id,
-        is_active: true,
-        limit: 1
-      });
-      
-      if (existingManagement.departments.length > 0) {
-        return ApiResponse.error(res, 'User is already managing another department', 409);
+      // If manager_ids is not provided, convert manager_id to manager_ids array
+      if (!departmentData.manager_ids || !Array.isArray(departmentData.manager_ids)) {
+        departmentData.manager_ids = [departmentData.manager_id];
+      } else if (!departmentData.manager_ids.includes(departmentData.manager_id)) {
+        // Add manager_id to manager_ids if not already present
+        departmentData.manager_ids.push(departmentData.manager_id);
+        departmentData.manager_ids = [...new Set(departmentData.manager_ids)];
+        if (departmentData.manager_ids.length > 5) {
+          return ApiResponse.error(res, 'Một phòng ban chỉ có thể có tối đa 5 quản lý', 400);
+        }
       }
     }
 
     const department = await DepartmentRepository.create(departmentData);
 
-<<<<<<< HEAD
-=======
     // Emit department created event
     try {
       const metadata = {
@@ -118,17 +158,11 @@ class DepartmentController {
       // Don't fail the request if event emission fails
     }
 
->>>>>>> origin/main
     return ApiResponse.success(res, department, 'Department created successfully', 201);
   });
 
   static updateDepartment = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-<<<<<<< HEAD
-    const updateData = req.body;
-
-    const existingDepartment = await DepartmentRepository.findById(id);
-=======
     const tenantId = req.user?.tenant_id || null;
     const updateData = { ...req.body };
     // Không cho phép đổi tenant_id qua API
@@ -137,13 +171,10 @@ class DepartmentController {
     }
 
     const existingDepartment = await DepartmentRepository.findById(id, tenantId);
->>>>>>> origin/main
     if (!existingDepartment) {
       return ApiResponse.notFound(res, 'Department not found');
     }
 
-<<<<<<< HEAD
-=======
     // Check department scope: Department Header can only update their own department
     const userRoleCode = req.user?.role?.role_code || req.user?.role_code;
     if (userRoleCode === 'department_header' || userRoleCode === 'DEPARTMENT_HEADER') {
@@ -153,24 +184,41 @@ class DepartmentController {
       }
     }
 
->>>>>>> origin/main
     // Check if new department name already exists (excluding current department)
     if (updateData.department_name) {
       const nameExists = await DepartmentRepository.existsByName(
         updateData.department_name,
-<<<<<<< HEAD
-        id
-=======
         id,
         tenantId || null
->>>>>>> origin/main
       );
       if (nameExists) {
         return ApiResponse.error(res, 'Department name already exists', 409);
       }
     }
 
-    // Validate manager if being updated
+    // Validate manager_ids if being updated
+    if (updateData.manager_ids && Array.isArray(updateData.manager_ids)) {
+      // Remove duplicates
+      updateData.manager_ids = [...new Set(updateData.manager_ids)];
+      
+      // Validate max 5 managers
+      if (updateData.manager_ids.length > 5) {
+        return ApiResponse.error(res, 'Một phòng ban chỉ có thể có tối đa 5 quản lý', 400);
+      }
+
+      // Validate each manager
+      for (const managerId of updateData.manager_ids) {
+        const manager = await UserRepository.findById(managerId);
+        if (!manager) {
+          return ApiResponse.error(res, `Manager với ID ${managerId} không tồn tại`, 404);
+        }
+        if (!manager.is_active) {
+          return ApiResponse.error(res, `Tài khoản manager ${manager.full_name || manager.username} không hoạt động`, 400);
+        }
+      }
+    }
+
+    // Validate manager_id (legacy support) if being updated
     if (updateData.manager_id) {
       const manager = await UserRepository.findById(updateData.manager_id);
       if (!manager) {
@@ -180,31 +228,21 @@ class DepartmentController {
         return ApiResponse.error(res, 'Manager account is not active', 400);
       }
 
-      // Check if manager is already managing another department (excluding current)
-      const existingManagement = await DepartmentRepository.findAll({
-        manager_id: updateData.manager_id,
-        is_active: true,
-<<<<<<< HEAD
-        limit: 10
-=======
-        limit: 10,
-        tenant_id: tenantId || undefined
->>>>>>> origin/main
-      });
-      
-      const otherManagement = existingManagement.departments.filter(
-        dept => dept._id.toString() !== id
-      );
-      
-      if (otherManagement.length > 0) {
-        return ApiResponse.error(res, 'User is already managing another department', 409);
+      // If manager_ids is not provided, convert manager_id to manager_ids array
+      if (!updateData.manager_ids || !Array.isArray(updateData.manager_ids)) {
+        updateData.manager_ids = [updateData.manager_id];
+      } else if (!updateData.manager_ids.includes(updateData.manager_id)) {
+        // Add manager_id to manager_ids if not already present
+        updateData.manager_ids.push(updateData.manager_id);
+        updateData.manager_ids = [...new Set(updateData.manager_ids)];
+        if (updateData.manager_ids.length > 5) {
+          return ApiResponse.error(res, 'Một phòng ban chỉ có thể có tối đa 5 quản lý', 400);
+        }
       }
     }
 
     const department = await DepartmentRepository.updateById(id, updateData);
 
-<<<<<<< HEAD
-=======
     // Emit department updated event
     try {
       const metadata = {
@@ -220,37 +258,74 @@ class DepartmentController {
       // Don't fail the request if event emission fails
     }
 
->>>>>>> origin/main
     return ApiResponse.success(res, department, 'Department updated successfully');
   });
 
   static deleteDepartment = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-<<<<<<< HEAD
-
-    const department = await DepartmentRepository.findById(id);
-=======
+    const { password } = req.body; // Password for verification when department has employees
     const tenantId = req.user?.tenant_id || null;
+    const currentUser = req.user;
 
     const department = await DepartmentRepository.findById(id, tenantId);
->>>>>>> origin/main
     if (!department) {
       return ApiResponse.notFound(res, 'Department not found');
     }
 
-    // Check if department has active employees
-    const employeeCount = department.employees_count || 0;
-    if (employeeCount > 0) {
+    const User = require('../models/user');
+    
+    // Check if department has any employees (active or inactive)
+    const totalEmployeeCount = await User.countDocuments({ 
+      department_id: department._id
+    });
+
+    // For active departments, check if there are active employees
+    if (department.is_active) {
+      const activeEmployeeCount = await User.countDocuments({ 
+        department_id: department._id,
+        is_active: true 
+      });
+      
+      if (activeEmployeeCount > 0) {
+        return ApiResponse.error(res, 
+          `Không thể xóa phòng ban đang hoạt động có ${activeEmployeeCount} nhân viên đang hoạt động. Vui lòng chuyển nhân viên sang phòng ban khác trước.`, 
+          400
+        );
+      }
+    }
+
+    // For inactive departments with employees, require password verification
+    if (!department.is_active && totalEmployeeCount > 0) {
+      if (!password) {
       return ApiResponse.error(res, 
-        `Cannot delete department with ${employeeCount} active employees`, 
-        400
+          `Phòng ban này còn ${totalEmployeeCount} nhân viên. Vui lòng nhập mật khẩu để xác nhận xóa.`, 
+          400
+        );
+      }
+
+      // Verify password of current user
+      const user = await UserRepository.findById(currentUser.id || currentUser._id);
+      if (!user) {
+        return ApiResponse.unauthorized(res, 'User not found');
+      }
+
+      const isPasswordValid = await user.comparePassword(password);
+      if (!isPasswordValid) {
+        return ApiResponse.error(res, 'Mật khẩu không đúng. Vui lòng thử lại.', 401);
+      }
+    }
+
+    // If department had employees, remove department_id from all users BEFORE deleting
+    if (totalEmployeeCount > 0) {
+      await User.updateMany(
+        { department_id: department._id },
+        { $unset: { department_id: 1 } }
       );
     }
 
+    // Hard delete - actually remove from database
     await DepartmentRepository.deleteById(id);
 
-<<<<<<< HEAD
-=======
     // Emit department deleted event
     try {
       const metadata = {
@@ -266,18 +341,13 @@ class DepartmentController {
       // Don't fail the request if event emission fails
     }
 
->>>>>>> origin/main
     return ApiResponse.success(res, null, 'Department deleted successfully');
   });
 
   // Get department statistics
   static getDepartmentStats = ErrorMiddleware.asyncHandler(async (req, res) => {
-<<<<<<< HEAD
-    const stats = await DepartmentRepository.getStats();
-=======
     const tenantId = req.user?.tenant_id || null;
     const stats = await DepartmentRepository.getStats(tenantId || null);
->>>>>>> origin/main
 
     return ApiResponse.success(res, stats, 'Department statistics retrieved successfully');
   });
@@ -335,20 +405,13 @@ class DepartmentController {
   });
 
   static getDepartmentOptions = ErrorMiddleware.asyncHandler(async (req, res) => {
-<<<<<<< HEAD
-=======
     const tenantId = req.user?.tenant_id || null;
->>>>>>> origin/main
     const departments = await DepartmentRepository.findAll({
       is_active: true,
       limit: 1000,
       sort_by: 'department_name',
-<<<<<<< HEAD
-      sort_order: 'asc'
-=======
       sort_order: 'asc',
       tenant_id: tenantId || undefined
->>>>>>> origin/main
     });
 
     const options = departments.departments.map(dept => ({
@@ -371,21 +434,14 @@ class DepartmentController {
       limit = 20
     } = req.query;
 
-<<<<<<< HEAD
-=======
     const tenantId = req.user?.tenant_id || null;
->>>>>>> origin/main
     const options = {
       search,
       is_active: true,
       limit: parseInt(limit),
       sort_by: 'department_name',
-<<<<<<< HEAD
-      sort_order: 'asc'
-=======
       sort_order: 'asc',
       tenant_id: tenantId || undefined
->>>>>>> origin/main
     };
 
     const result = await DepartmentRepository.findAll(options);
@@ -419,12 +475,8 @@ class DepartmentController {
 
   // Get all active departments (simple list)
   static getActiveDepartments = ErrorMiddleware.asyncHandler(async (req, res) => {
-<<<<<<< HEAD
-    const departments = await DepartmentRepository.getAllActive();
-=======
     const tenantId = req.user?.tenant_id || null;
     const departments = await DepartmentRepository.getAllActive(tenantId || null);
->>>>>>> origin/main
 
     return ApiResponse.success(res, departments, 'Active departments retrieved successfully');
   });
@@ -474,37 +526,64 @@ class DepartmentController {
   // Get department summary
   static getDepartmentSummary = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-<<<<<<< HEAD
-    
-    const department = await DepartmentRepository.findById(id);
-=======
     const tenantId = req.user?.tenant_id || null;
     
     const department = await DepartmentRepository.findById(id, tenantId);
->>>>>>> origin/main
     if (!department) {
       return ApiResponse.notFound(res, 'Department not found');
     }
 
-    // Get employee count using aggregation
+    // Get employee count - count from Department Head (role_level 80) down
+    // Exclude only System Admin (100) and Company Admin (90)
     const User = require('../models/user');
-    const employeeCount = await User.countDocuments({ 
+    const allUsers = await User.find({ 
       department_id: department._id,
       is_active: true 
+    }).populate('role_id', 'role_name role_code role_level');
+    
+    // Filter: Include Department Head (80) and below, exclude System Admin (100) and Company Admin (90)
+    const employees = allUsers.filter(user => {
+      const roleLevel = user.role_id?.role_level || 0;
+      const roleCode = user.role_id?.role_code?.toLowerCase() || '';
+      const roleName = user.role_id?.role_name?.toLowerCase() || '';
+      
+      // Exclude only System Admin and Company Admin
+      const isSystemOrCompanyAdmin = roleLevel >= 90 || 
+                                     roleCode === 'company_admin' ||
+                                     roleCode === 'system_admin' ||
+                                     roleName === 'company admin' ||
+                                     roleName === 'system admin';
+      
+      return !isSystemOrCompanyAdmin;
     });
+    
+    const employeeCount = employees.length;
 
     // Convert to JSON to include virtual fields
     const departmentJson = department.toJSON();
+
+    // Get managers from manager_ids array or fallback to manager_id
+    let managers = [];
+    if (departmentJson.manager_ids && Array.isArray(departmentJson.manager_ids) && departmentJson.manager_ids.length > 0) {
+      managers = departmentJson.manager_ids.map((m) => ({
+        id: m.id || m._id,
+        name: m.full_name || m.username,
+        email: m.email
+      })).filter((m) => m.id);
+    } else if (departmentJson.manager_id) {
+      managers = [{
+        id: departmentJson.manager_id.id || departmentJson.manager_id._id,
+        name: departmentJson.manager_id.full_name || departmentJson.manager_id.username,
+        email: departmentJson.manager_id.email
+      }];
+    }
 
     const summary = {
       id: departmentJson.id,
       name: departmentJson.department_name,
       description: departmentJson.description,
-      manager: departmentJson.manager_id ? {
-        id: departmentJson.manager_id.id || departmentJson.manager_id._id,
-        name: departmentJson.manager_id.full_name || departmentJson.manager_id.username,
-        email: departmentJson.manager_id.email
-      } : null,
+      manager: managers.length > 0 ? managers[0] : null, // Keep for backward compatibility
+      managers: managers.length > 0 ? managers : [], // New field for multiple managers
       employee_count: employeeCount,
       is_active: departmentJson.is_active,
       created_at: departmentJson.created_at,
@@ -526,6 +605,9 @@ class DepartmentController {
 
     console.log('getDepartmentEmployees called with:', { id, is_active, sort_by, sort_order, include_inactive });
 
+    const currentUser = req.user;
+    const isManager = currentUser?.role?.role_level >= 70;
+    
     // Check if department exists
     const department = await DepartmentRepository.findById(id);
     if (!department) {
@@ -533,74 +615,121 @@ class DepartmentController {
       return ApiResponse.notFound(res, 'Department not found');
     }
 
+    // For Manager, ensure they can only access their own department
+    if (isManager && currentUser.department_id) {
+      const currentDeptId = currentUser.department_id?.toString() || currentUser.department_id;
+      const targetDeptId = department._id?.toString() || department.id?.toString() || id;
+      
+      console.log('🔍 getDepartmentEmployees - Manager department check:', {
+        currentDeptId,
+        targetDeptId,
+        isManager
+      });
+      
+      if (currentDeptId !== targetDeptId) {
+        console.log('❌ getDepartmentEmployees - Department mismatch');
+        return ApiResponse.forbidden(
+          res,
+          'Bạn chỉ có thể xem nhân viên trong phòng ban của mình'
+        );
+      }
+    }
+
     console.log('Department found:', department.department_name);
 
     // Prepare options for UserRepository
+    // Nếu include_inactive là 'true' hoặc true, thì lấy tất cả (is_active = undefined)
+    // Nếu không, chỉ lấy nhân viên đang hoạt động (is_active = true)
+    const shouldIncludeInactive = include_inactive === 'true' || include_inactive === true;
     const options = {
-      is_active: include_inactive === 'true' ? undefined : (is_active === 'true'),
+      is_active: shouldIncludeInactive ? undefined : true, // Lấy tất cả nếu include inactive
       sort_by,
       sort_order
     };
 
     console.log('UserRepository options:', options);
+    console.log('include_inactive value:', include_inactive, 'type:', typeof include_inactive);
 
-<<<<<<< HEAD
-    // Get employees from the department
-    const employees = await UserRepository.findByDepartment(id, options);
-    console.log('Found employees:', employees.length);
-=======
     // Get all users from the department
     const allUsers = await UserRepository.findByDepartment(id, options);
     console.log('Found all users:', allUsers.length);
 
-    // Filter out managers, only keep employees
+    // Count from Department Head (role_level 80) down to all lower roles
+    // Exclude only System Admin (100) and Company Admin (90)
+    // Không filter theo is_active ở đây, để hiển thị cả nhân viên đã ngừng hoạt động
     const employees = allUsers.filter(user => {
-      const roleName = user.role_id?.role_name;
-      const roleCode = user.role_id?.role_code;
-      const isEmployee = (roleCode || roleName)?.toLowerCase() === 'employee';
+      const roleName = user.role_id?.role_name?.toLowerCase() || '';
+      const roleCode = user.role_id?.role_code?.toLowerCase() || '';
+      const roleLevel = user.role_id?.role_level || 0;
       
-      if (!isEmployee) {
-        console.log('Filtered out non-employee:', {
+      // Exclude only System Admin and Company Admin
+      const isSystemOrCompanyAdmin = roleLevel >= 90 || 
+                                     roleCode === 'company_admin' ||
+                                     roleCode === 'system_admin' ||
+                                     roleName === 'company admin' ||
+                                     roleName === 'system admin';
+      
+      if (isSystemOrCompanyAdmin) {
+        console.log('Filtered out system/company admin:', {
           name: user.full_name,
-          role_name: roleName,
-          role_code: roleCode
+          role_name: user.role_id?.role_name,
+          role_code: user.role_id?.role_code,
+          role_level: roleLevel
         });
+        return false;
       }
       
-      return isEmployee;
+      // Keep all users from Department Head (80) down (including Department Header, Manager, Employee, Trainer, Safety Officer, Warehouse Staff, Maintenance Staff)
+      return true;
     });
     
     console.log('Found employees after filtering:', employees.length);
->>>>>>> origin/main
 
     // Format employee data
-    const formattedEmployees = employees.map(employee => ({
-      id: employee._id,
-      username: employee.username,
-      full_name: employee.full_name,
-      email: employee.email,
-      phone: employee.phone,
-      position: employee.position_id ? {
-        id: employee.position_id._id,
-        name: employee.position_id.position_name,
-        level: employee.position_id.level
-      } : null,
-      role: employee.role_id ? {
-        id: employee.role_id._id,
-        name: employee.role_id.role_name
-      } : null,
-<<<<<<< HEAD
-=======
-      department: employee.department_id ? {
-        id: employee.department_id._id,
-        name: employee.department_id.department_name,
-        department_name: employee.department_id.department_name
-      } : null,
->>>>>>> origin/main
-      is_active: employee.is_active,
-      created_at: employee.created_at,
-      updated_at: employee.updated_at
-    }));
+    const formattedEmployees = employees.map(employee => {
+      // Handle department - use populated department_id or fallback to department from request
+      let departmentData = null;
+      if (employee.department_id) {
+        // If department_id is populated (object)
+        if (typeof employee.department_id === 'object' && employee.department_id.department_name) {
+          departmentData = {
+            id: employee.department_id._id || employee.department_id.id,
+            name: employee.department_id.department_name,
+            department_name: employee.department_id.department_name
+          };
+        } else {
+          // If department_id is just an ObjectId, use department from request
+          departmentData = {
+            id: department._id,
+            name: department.department_name,
+            department_name: department.department_name
+          };
+        }
+      } else {
+        // Fallback: use department from request if employee has no department_id
+        departmentData = {
+          id: department._id,
+          name: department.department_name,
+          department_name: department.department_name
+        };
+      }
+      
+      return {
+        id: employee._id,
+        username: employee.username,
+        full_name: employee.full_name,
+        email: employee.email,
+        phone: employee.phone,
+        role: employee.role_id ? {
+          id: employee.role_id._id,
+          name: employee.role_id.role_name
+        } : null,
+        department: departmentData,
+        is_active: employee.is_active,
+        created_at: employee.created_at,
+        updated_at: employee.updated_at
+      };
+    });
 
     return ApiResponse.success(res, {
       department: {

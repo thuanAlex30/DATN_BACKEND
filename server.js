@@ -1,7 +1,24 @@
-// Load .env with fallback values
+// =====================
+// Load environment
+// =====================
 require('dotenv').config();
 
+if (!process.env.JWT_SECRET) {
+  console.error('❌ JWT_SECRET is missing. Please set it in .env');
+  process.exit(1);
+}
+
+// Kafka warning suppression
+process.env.KAFKAJS_NO_PARTITIONER_WARNING ||= '1';
+
+// =====================
+// Imports
+// =====================
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -10,128 +27,127 @@ const connectDB = require('./config/database');
 const routes = require('./routes');
 const ErrorMiddleware = require('./middlewares/ErrorMiddleware');
 const LoggingMiddleware = require('./middlewares/LoggingMiddleware');
+const initializeTrainingData = require('./database/initializeTrainingData');
+const websocketService = require('./services/websocketService');
+const kafkaProducer = require('./services/kafkaProducer');
+const kafkaConsumer = require('./services/kafkaConsumer');
+const kafkaMonitor = require('./services/kafkaMonitor');
+const expiryCheckJob = require('./jobs/expiryCheckJob');
+const ppeOverdueJob = require('./jobs/ppeOverdueJob');
 
+// =====================
+// App & Server
+// =====================
 const app = express();
-const PORT = process.env.PORT || 5000;
+const server = createServer(app);
+const PORT = process.env.PORT || 3000;
 
-// Debugging startup environment
-console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
-console.log('🌍 MONGODB_URI:', process.env.MONGODB_URI ? '[loaded]' : '[missing]');
+// =====================
+// Allowed origins helper
+// =====================
+const parseAllowedOrigins = () => {
+  const base = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:5173',
+    'https://safe-n814.onrender.com'
+  ];
 
-// Security
-app.use(helmet());
+  if (process.env.FRONTEND_URL) base.push(process.env.FRONTEND_URL);
 
-// CORS - 更宽松的配置用于开发环境
+  if (process.env.ALLOWED_ORIGINS) {
+    base.push(
+      ...process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
+    );
+  }
+
+  return Array.from(new Set(base));
+};
+
+const allowedOrigins = parseAllowedOrigins();
+
+// =====================
+// CORS (FIXED)
+// =====================
 const corsOptions = {
-  origin: function (origin, callback) {
-    // 允许所有本地开发端口
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:3001', 
-      'http://localhost:5173',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:3001',
-      'http://127.0.0.1:5173'
-    ];
-    
-    // 在生产环境中添加生产域名
-    if (process.env.NODE_ENV === 'production') {
-      allowedOrigins.push('https://yourdomain.com');
-    }
-    
-    // 允许没有 origin 的请求（如移动应用）
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log('CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // Postman / server-side
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(null, false); // ❗ NEVER throw error
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
-    'X-Requested-With', 
-    'Accept', 
-    'Origin',
-    'Access-Control-Request-Method',
-    'Access-Control-Request-Headers'
-  ],
-  exposedHeaders: ['Authorization'],
-  optionsSuccessStatus: 200,
-  preflightContinue: false
+  allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
-// 明确处理预检请求
-app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.sendStatus(200);
-});
+// =====================
+// Security & parsers
+// =====================
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
-// Rate limiting - More flexible configuration
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 200 : 5000, // Increased limits
-  message: {
-    success: false,
-    message: 'Too many requests. Try again later.',
-    timestamp: new Date().toISOString()
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  // Skip successful requests
-  skipSuccessfulRequests: true,
-  // Skip failed requests
-  skipFailedRequests: false,
-  // Custom key generator to group by user
-  keyGenerator: (req) => {
-    // Use user ID if available, otherwise use IP
-    return req.user?.id || req.ip;
-  }
-});
-app.use(limiter);
-
-// Body parsers
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Express-validator middleware
-const { validationResult } = require('express-validator');
-app.use((req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({
-            success: false,
-            message: 'Validation failed',
-            errors: errors.array().map(error => ({
-                field: error.path || error.param,
-                message: error.msg,
-                value: error.value
-            }))
-        });
-    }
-    next();
+// =====================
+// Rate limit
+// =====================
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'production' ? 200 : 10000,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
+app.use(limiter);
 
-// Request logger
+// =====================
+// Static uploads (writable path with fallback)
+// =====================
+const resolveUploadsDir = () => {
+  const preferred = process.env.UPLOADS_DIR
+    ? path.resolve(process.env.UPLOADS_DIR)
+    : path.join(process.cwd(), 'uploads');
+  const fallback = path.resolve('/tmp/uploads');
+
+  for (const dir of [preferred, fallback]) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.accessSync(dir, fs.constants.W_OK);
+      if (dir !== preferred) {
+        console.warn(`⚠️ uploads dir not writable (${preferred}), using fallback ${dir}`);
+      }
+      return dir;
+    } catch (err) {
+      console.warn(`⚠️ Cannot use uploads dir ${dir}: ${err.message}`);
+    }
+  }
+
+  throw new Error('No writable uploads directory available');
+};
+
+const uploadsDir = resolveUploadsDir();
+app.use('/uploads', express.static(uploadsDir));
+
+// =====================
+// Logging
+// =====================
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl} - IP: ${req.ip}`);
+  console.log(
+    `${new Date().toISOString()} - ${req.method} ${req.originalUrl} - IP: ${req.ip}`
+  );
   next();
 });
-
-// System logging middleware - ghi log tất cả các hoạt động
 app.use(LoggingMiddleware.logAllRequests);
 
+// =====================
 // Routes
-app.use('/api/v1', routes);
+// =====================
+app.use('/api', routes);
 
 app.get('/', (req, res) => {
   res.json({
@@ -139,69 +155,68 @@ app.get('/', (req, res) => {
     message: 'Welcome to Safety Management System API',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
-    endpoints: {
-      health: '/api/v1/health',
-      auth: '/api/v1/auth',
-      users: '/api/v1/users',
-      roles: '/api/v1/roles'
-    }
   });
 });
 
-// Error handling
+// =====================
+// Errors
+// =====================
 app.use(ErrorMiddleware.notFound);
 app.use(ErrorMiddleware.handle);
 
-// Start server only after DB connects
+// =====================
+// Socket.IO
+// =====================
+const io = new Server(server, {
+  cors: {
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      return cb(null, false);
+    },
+    credentials: true,
+  },
+});
+
+// =====================
+// Bootstrap
+// =====================
 (async () => {
   try {
     await connectDB();
+    await initializeTrainingData();
 
-    const server = app.listen(PORT, () => {
-      console.log(`
-🚀 Safety Management System API is running!
-📍 Environment: ${process.env.NODE_ENV || 'development'}
-🌐 Server: http://localhost:${PORT}
-📊 Health Check: http://localhost:${PORT}/api/v1/health
-📚 API Base URL: http://localhost:${PORT}/api/v1
-⏰ Started at: ${new Date().toLocaleString()}
-      `);
+    server.listen(PORT, () => {
+      console.log(`🚀 API running on port ${PORT}`);
     });
 
-    // Set server timeout to 2 minutes for better performance
-    server.timeout = 120000; // 2 minutes
-    server.keepAliveTimeout = 65000; // 65 seconds
-    server.headersTimeout = 66000; // 66 seconds
+    websocketService.initialize(io);
+    expiryCheckJob.start();
+    ppeOverdueJob.start();
 
-    // Graceful shutdown
-    process.on('SIGTERM', () => {
-      console.log('SIGTERM received. Shutting down gracefully...');
-      server.close(() => {
-        console.log('✅ Server shutdown complete.');
-        process.exit(0);
-      });
-    });
+    // Kafka (optional)
+    try {
+      await kafkaProducer.initialize();
+      await kafkaConsumer.initialize();
+      await kafkaMonitor.startMonitoring();
 
-    process.on('SIGINT', () => {
-      console.log('SIGINT received. Shutting down gracefully...');
-      server.close(() => {
-        console.log('✅ Server shutdown complete.');
-        process.exit(0);
-      });
-    });
+      console.log('✅ Kafka initialized');
+    } catch (e) {
+      console.log('⚠️ Kafka disabled:', e.message);
+    }
 
-    process.on('unhandledRejection', (err, promise) => {
-      console.error('🚨 Unhandled Rejection:', err);
-      server.close(() => process.exit(1));
-    });
+    const shutdown = () => {
+      console.log('🛑 Shutting down...');
 
-    process.on('uncaughtException', (err) => {
-      console.error('🚨 Uncaught Exception:', err);
-      process.exit(1);
-    });
+      expiryCheckJob.stop();
+      kafkaMonitor.stopMonitoring();
+      server.close(() => process.exit(0));
+    };
 
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
   } catch (err) {
-    console.error('❌ Failed to start server:', err);
+    console.error('❌ Startup failed', err);
     process.exit(1);
   }
 })();

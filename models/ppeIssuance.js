@@ -1,72 +1,45 @@
 const mongoose = require('mongoose');
 
 const ppeIssuanceSchema = new mongoose.Schema({
-<<<<<<< HEAD
-=======
   tenant_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Tenant',
     required: false
   },
   // Người nhận PPE (có thể là Manager hoặc Employee)
->>>>>>> origin/main
   user_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-<<<<<<< HEAD
-=======
   // Thiết bị PPE
->>>>>>> origin/main
   item_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'PPEItem',
     required: true
   },
-<<<<<<< HEAD
-=======
   // Số lượng phát
->>>>>>> origin/main
   quantity: {
     type: Number,
     required: true,
     min: 1
   },
-<<<<<<< HEAD
-=======
   // Ngày phát
->>>>>>> origin/main
   issued_date: {
     type: Date,
     required: true
   },
-<<<<<<< HEAD
-=======
   // Ngày trả dự kiến
->>>>>>> origin/main
   expected_return_date: {
     type: Date,
     required: true
   },
-<<<<<<< HEAD
-=======
   // Người phát PPE (Admin phát cho Manager, Manager phát cho Employee)
->>>>>>> origin/main
   issued_by: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-<<<<<<< HEAD
-  status: {
-    type: String,
-    enum: ['issued', 'returned', 'overdue'],
-    default: 'issued'
-  },
-  actual_return_date: {
-    type: Date
-=======
   // Cấp độ phát: 'admin_to_manager' hoặc 'manager_to_employee'
   issuance_level: {
     type: String,
@@ -141,15 +114,11 @@ const ppeIssuanceSchema = new mongoose.Schema({
   confirmation_notes: {
     type: String,
     maxlength: 500
->>>>>>> origin/main
   }
 }, {
   timestamps: true
 });
 
-<<<<<<< HEAD
-const PPEIssuance = mongoose.model('PPEIssuance', ppeIssuanceSchema);
-=======
 // Add indexes for better performance
 ppeIssuanceSchema.index({ user_id: 1, status: 1 });
 ppeIssuanceSchema.index({ item_id: 1, status: 1 });
@@ -160,6 +129,5 @@ ppeIssuanceSchema.index({ manager_id: 1, status: 1 });
 ppeIssuanceSchema.index({ issued_by: 1, issuance_level: 1 });
 
 const PPEIssuance = mongoose.models.PPEIssuance || mongoose.model('PPEIssuance', ppeIssuanceSchema);
->>>>>>> origin/main
 
 module.exports = PPEIssuance;

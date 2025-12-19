@@ -5,6 +5,7 @@ const TenantRepository = require('../repository/TenantRepository');
 const userService = require('../services/userService');
 const emailService = require('../services/emailService');
 const notificationService = require('../services/notificationService');
+const contractService = require('../services/contractService');
 const { createResponse } = require('../utils/response');
 
 class PricingController {
@@ -173,7 +174,7 @@ class PricingController {
         password: password
       });
 
-      console.log(`🔍 [ProcessPaidOrder] userResult from createUserWithRole:`, {
+      console.log(` [ProcessPaidOrder] userResult from createUserWithRole:`, {
         success: userResult.success,
         message: userResult.message,
         hasData: !!userResult.data,
@@ -181,24 +182,24 @@ class PricingController {
       });
 
       if (!userResult.success) {
-        console.error(`❌ [ProcessPaidOrder] User creation failed: ${userResult.message}`);
+        console.error(` [ProcessPaidOrder] User creation failed: ${userResult.message}`);
         throw new Error(userResult.message || 'Failed to create user');
       }
 
       // Query lại từ database để lấy user object đầy đủ
       const userId = userResult.data?.id || userResult.data?._id;
-      console.log(`🔍 [ProcessPaidOrder] Extracted userId: ${userId}`);
+      console.log(` [ProcessPaidOrder] Extracted userId: ${userId}`);
       if (!userId) {
-        console.error(`❌ [ProcessPaidOrder] No userId found in userResult.data:`, userResult.data);
+        console.error(` [ProcessPaidOrder] No userId found in userResult.data:`, userResult.data);
         throw new Error('Failed to extract user ID from creation result');
       }
       
       user = await User.findById(userId);
       if (!user) {
-        console.error(`❌ [ProcessPaidOrder] User not found in database with id: ${userId}`);
+        console.error(` [ProcessPaidOrder] User not found in database with id: ${userId}`);
         throw new Error('Failed to retrieve created user');
       }
-      console.log(`✅ [ProcessPaidOrder] User retrieved successfully: ${user._id}, email: ${user.email}`);
+      console.log(`[ProcessPaidOrder] User retrieved successfully: ${user._id}, email: ${user.email}`);
     }
 
     // Cập nhật order với tenant và user
@@ -208,6 +209,47 @@ class PricingController {
       tenantId: tenant._id,
       userId: userIdToSave
     });
+
+    // Tạo hợp đồng sau khi đã có tenant và user
+    let contract = null;
+    try {
+      const updatedTenant = await TenantRepository.findById(tenant._id);
+      const startDate = new Date();
+      const endDate = updatedTenant?.subscription?.expires_at || tenant.subscription?.expires_at;
+
+      if (!endDate) {
+        console.warn(` [ProcessPaidOrder] Tenant ${tenant._id} không có ngày hết hạn subscription`);
+      }
+
+      contract = await contractService.createContract({
+        tenantId: tenant._id,
+        userId: user._id,
+        orderId: order._id,
+        planType: order.planType,
+        amount: order.amount,
+        startDate: startDate,
+        endDate: endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        companyInfo: order.companyInfo,
+        contactPerson: order.contactPerson
+      });
+
+      console.log(` [ProcessPaidOrder] Contract created: ${contract.contractId}`);
+
+      // Option: Generate PDF hợp đồng (có thể bỏ qua nếu lỗi)
+      try {
+        const pdfUrl = await contractService.generatePdf(contract);
+        await contractService.update(contract.contractId, { pdfFileUrl: pdfUrl });
+        console.log(`✅ [ProcessPaidOrder] PDF generated for contract: ${contract.contractId}`);
+      } catch (pdfError) {
+        console.error(`⚠️ [ProcessPaidOrder] Failed to generate PDF for contract ${contract.contractId}:`, pdfError.message);
+        // Không throw error để không làm gián đoạn quá trình xử lý
+      }
+    } catch (contractError) {
+      console.error(`❌ [ProcessPaidOrder] Failed to create contract:`, contractError.message);
+      console.error(`   Error stack:`, contractError.stack);
+      // Không throw error để không làm gián đoạn quá trình xử lý
+      // Hợp đồng có thể được tạo lại sau bằng endpoint riêng
+    }
 
     // Gửi thông báo cho system admin
     try {
@@ -520,8 +562,17 @@ class PricingController {
       }
       
       // Nếu là lỗi từ PayOS, trả về message chi tiết hơn
-      if (error.message && error.message.includes('Thông tin truyền lên không đúng')) {
-        return res.status(400).json(createResponse(400, error.message));
+      if (error.message && (error.message.includes('Thông tin truyền lên không đúng') || 
+                            error.message.includes('PayOS') || 
+                            error.message.includes('payment link'))) {
+        // Trả về message ngắn gọn cho frontend, chi tiết đã log ở server
+        const shortMessage = error.message.includes('404') 
+          ? 'Không thể kết nối đến PayOS. Vui lòng kiểm tra cấu hình PayOS trên server.'
+          : error.message.includes('Connection error')
+          ? 'Lỗi kết nối đến PayOS. Vui lòng thử lại sau.'
+          : 'Lỗi khi tạo payment link từ PayOS. Vui lòng kiểm tra cấu hình PayOS.';
+        
+        return res.status(500).json(createResponse(500, shortMessage));
       }
       
       // Nếu là lỗi validation hoặc lỗi khác
@@ -640,7 +691,16 @@ class PricingController {
         return res.status(404).json(createResponse(404, 'Không tìm thấy đơn hàng'));
       }
 
-      res.json(createResponse(200, 'Lấy thông tin đơn hàng thành công', {
+      let contract = null;
+      if (order.status === 'paid' && order._id) {
+        try {
+          contract = await contractService.findByOrderId(order._id);
+        } catch (error) {
+          console.error('Error finding contract for order:', error);
+        }
+      }
+
+      const responseData = {
         orderId: order.orderId,
         planType: order.planType,
         amount: order.amount,
@@ -649,7 +709,14 @@ class PricingController {
         contactPerson: order.contactPerson,
         paymentDate: order.paymentDate,
         createdAt: order.createdAt
-      }));
+      };
+
+      if (contract) {
+        responseData.contractId = contract.contractId;
+        responseData.contractPdfUrl = contract.pdfFileUrl;
+      }
+
+      res.json(createResponse(200, 'Lấy thông tin đơn hàng thành công', responseData));
     } catch (error) {
       console.error('Get order error:', error);
       res.status(500).json(createResponse(500, 'Lỗi khi lấy thông tin đơn hàng', null, error.message));
@@ -888,6 +955,75 @@ class PricingController {
       console.error('Payment cancel error:', error);
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       return res.redirect(`${frontendUrl}/pricing/payment-cancelled?error=${encodeURIComponent('Lỗi khi xử lý hủy thanh toán')}`);
+    }
+  }
+
+  /**
+   * Generate contract preview PDF từ thông tin form (trước khi tạo order)
+   * POST /api/pricing/contract-preview
+   */
+  static async generateContractPreview(req, res) {
+    try {
+      console.log('📄 [ContractPreview] Request received:', {
+        method: req.method,
+        path: req.path,
+        body: {
+          planType: req.body?.planType,
+          hasCompanyInfo: !!req.body?.companyInfo,
+          hasContactPerson: !!req.body?.contactPerson
+        }
+      });
+
+      const { planType, companyInfo, contactPerson } = req.body;
+
+      if (!planType || !companyInfo || !contactPerson) {
+        console.error('❌ [ContractPreview] Missing required fields:', {
+          planType: !!planType,
+          companyInfo: !!companyInfo,
+          contactPerson: !!contactPerson
+        });
+        return res.status(400).json(createResponse(400, 'Thiếu thông tin bắt buộc'));
+      }
+
+      if (!companyInfo.name || !companyInfo.email || !companyInfo.phone || !companyInfo.address) {
+        console.error('❌ [ContractPreview] Missing required company info fields');
+        return res.status(400).json(createResponse(400, 'Thiếu thông tin công ty bắt buộc (tên, email, số điện thoại, địa chỉ)'));
+      }
+
+      if (!contactPerson.name || !contactPerson.email || !contactPerson.phone) {
+        console.error('❌ [ContractPreview] Missing required contact person fields');
+        return res.status(400).json(createResponse(400, 'Thiếu thông tin người liên hệ bắt buộc (tên, email, số điện thoại)'));
+      }
+
+      const planPrices = {
+        monthly: 5000,
+        quarterly: 12000,
+        yearly: 55000
+      };
+
+      const amount = planPrices[planType];
+      if (!amount) {
+        console.error('❌ [ContractPreview] Invalid plan type:', planType);
+        return res.status(400).json(createResponse(400, 'Gói dịch vụ không hợp lệ'));
+      }
+
+      console.log('🔄 [ContractPreview] Generating PDF preview...');
+      const previewPdfUrl = await contractService.generatePreviewPdf({
+        planType,
+        amount,
+        companyInfo,
+        contactPerson
+      });
+
+      console.log('✅ [ContractPreview] PDF preview generated successfully:', previewPdfUrl);
+
+      return res.json(createResponse(200, 'Tạo preview hợp đồng thành công', {
+        previewPdfUrl
+      }));
+    } catch (error) {
+      console.error('❌ [ContractPreview] Error generating preview:', error);
+      console.error('Error stack:', error.stack);
+      return res.status(500).json(createResponse(500, 'Lỗi khi tạo preview hợp đồng', null, error.message));
     }
   }
 }

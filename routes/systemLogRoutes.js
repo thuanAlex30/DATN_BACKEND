@@ -68,7 +68,7 @@ const frontendLogsValidation = [
  */
 router.get('/', 
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     getLogsValidation,
     SystemLogController.getLogs
 );
@@ -80,7 +80,7 @@ router.get('/',
  */
 router.get('/stats',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     SystemLogController.getStats
 );
 
@@ -91,7 +91,7 @@ router.get('/stats',
  */
 router.get('/detailed-stats',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     SystemLogController.getDetailedStats
 );
 
@@ -102,7 +102,7 @@ router.get('/detailed-stats',
  */
 router.get('/modules',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     SystemLogController.getModules
 );
 
@@ -113,8 +113,19 @@ router.get('/modules',
  */
 router.get('/severity-levels',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     SystemLogController.getSeverityLevels
+);
+
+/**
+ * @route GET /api/v1/system-logs/recent
+ * @desc Get recent system logs
+ * @access Private (Admin only)
+ */
+router.get('/recent',
+    AuthMiddleware.authenticate,
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
+    SystemLogController.getLogs
 );
 
 /**
@@ -124,7 +135,7 @@ router.get('/severity-levels',
  */
 router.get('/analytics',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     SystemLogController.getAnalytics
 );
 
@@ -135,7 +146,7 @@ router.get('/analytics',
  */
 router.get('/export',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     exportLogsValidation,
     SystemLogController.exportLogs
 );
@@ -147,7 +158,7 @@ router.get('/export',
  */
 router.get('/:id',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     getLogByIdValidation,
     SystemLogController.getLogById
 );
@@ -159,7 +170,7 @@ router.get('/:id',
  */
 router.post('/',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     createLogValidation,
     SystemLogController.createLog
 );
@@ -171,7 +182,7 @@ router.post('/',
  */
 router.delete('/cleanup',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     deleteOldLogsValidation,
     SystemLogController.deleteOldLogs
 );
@@ -183,7 +194,7 @@ router.delete('/cleanup',
  */
 router.delete('/bulk',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     bulkDeleteValidation,
     SystemLogController.bulkDeleteLogs
 );
@@ -195,7 +206,7 @@ router.delete('/bulk',
  */
 router.get('/analytics',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     SystemLogController.getAnalytics
 );
 
@@ -206,7 +217,7 @@ router.get('/analytics',
  */
 router.get('/notifications',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     SystemLogController.getNotifications
 );
 
@@ -228,7 +239,7 @@ router.post('/frontend',
  */
 router.delete('/bulk-delete',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     bulkDeleteValidation,
     SystemLogController.bulkDeleteLogs
 );
@@ -240,7 +251,7 @@ router.delete('/bulk-delete',
  */
 router.post('/cleanup-old',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     deleteOldLogsValidation,
     SystemLogController.deleteOldLogs
 );
@@ -252,7 +263,7 @@ router.post('/cleanup-old',
  */
 router.post('/export-selected',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'super_admin']),
+    AuthMiddleware.authorizeScope({ minRoleLevel: 90, tenantScope: 'tenant' }),
     exportSelectedValidation,
     ValidationMiddleware.validate,
     SystemLogController.exportSelectedLogs

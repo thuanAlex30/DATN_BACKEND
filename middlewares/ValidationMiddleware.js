@@ -1,21 +1,9 @@
-<<<<<<< HEAD
-const ApiResponse = require('../utils/response');
-=======
 const { ApiResponse } = require('../utils/response');
->>>>>>> origin/main
 
 class ValidationMiddleware {
   // Validate request body
   static validateBody(schema) {
     return (req, res, next) => {
-<<<<<<< HEAD
-      const { error, value } = schema.validate(req.body, {
-        abortEarly: false,
-        stripUnknown: true
-      });
-
-      if (error) {
-=======
       console.log('🔍 ValidationMiddleware - req.body BEFORE validation:', req.body);
       
       const { error, value } = schema.validate(req.body, {
@@ -25,7 +13,6 @@ class ValidationMiddleware {
 
       if (error) {
         console.log('❌ ValidationMiddleware - Validation error:', error.details);
->>>>>>> origin/main
         const errors = error.details.map(detail => ({
           field: detail.path.join('.'),
           message: detail.message
@@ -34,10 +21,7 @@ class ValidationMiddleware {
         return ApiResponse.validationError(res, errors);
       }
 
-<<<<<<< HEAD
-=======
       console.log('✅ ValidationMiddleware - req.body AFTER validation:', value);
->>>>>>> origin/main
       req.body = value;
       next();
     };
@@ -90,6 +74,10 @@ class ValidationMiddleware {
   // Validate multiple parts of request
   static validate(schemas) {
     return (req, res, next) => {
+      console.log(`🔍 ValidationMiddleware.validate - Starting validation for ${req.method} ${req.path}`);
+      console.log(`🔍 ValidationMiddleware.validate - Request body:`, req.body);
+      console.log(`🔍 ValidationMiddleware.validate - Request params:`, req.params);
+      
       const errors = [];
 
       // Validate body
@@ -100,11 +88,13 @@ class ValidationMiddleware {
         });
 
         if (error) {
+          console.log(`❌ ValidationMiddleware.validate - Body validation errors:`, error.details);
           errors.push(...error.details.map(detail => ({
             field: `body.${detail.path.join('.')}`,
             message: detail.message
           })));
         } else {
+          console.log(`✅ ValidationMiddleware.validate - Body validation passed`);
           req.body = value;
         }
       }
@@ -117,11 +107,13 @@ class ValidationMiddleware {
         });
 
         if (error) {
+          console.log(`❌ ValidationMiddleware.validate - Params validation errors:`, error.details);
           errors.push(...error.details.map(detail => ({
             field: `params.${detail.path.join('.')}`,
             message: detail.message
           })));
         } else {
+          console.log(`✅ ValidationMiddleware.validate - Params validation passed`);
           req.params = value;
         }
       }
@@ -134,20 +126,24 @@ class ValidationMiddleware {
         });
 
         if (error) {
+          console.log(`❌ ValidationMiddleware.validate - Query validation errors:`, error.details);
           errors.push(...error.details.map(detail => ({
             field: `query.${detail.path.join('.')}`,
             message: detail.message
           })));
         } else {
+          console.log(`✅ ValidationMiddleware.validate - Query validation passed`);
           req.query = value;
         }
       }
 
       if (errors.length > 0) {
+        console.log(`❌ ValidationMiddleware.validate - Returning validation error with ${errors.length} errors`);
         return ApiResponse.validationError(res, errors);
       }
 
-      next();
+      console.log(`✅ ValidationMiddleware.validate - All validations passed, calling next()`);
+      return next();
     };
   }
 }

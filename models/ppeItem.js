@@ -1,8 +1,4 @@
 const mongoose = require('mongoose');
-<<<<<<< HEAD
-
-const ppeItemSchema = new mongoose.Schema({
-=======
 const { getDefaultTenantObjectId } = require('../utils/tenancy');
 
 const ppeItemSchema = new mongoose.Schema({
@@ -12,7 +8,6 @@ const ppeItemSchema = new mongoose.Schema({
     required: true,
     default: getDefaultTenantObjectId
   },
->>>>>>> origin/main
   category_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'PPECategory',
@@ -39,6 +34,12 @@ const ppeItemSchema = new mongoose.Schema({
     type: String,
     maxlength: 100
   },
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active',
+    index: true
+  },
   reorder_level: {
     type: Number,
     default: 10,
@@ -55,13 +56,14 @@ const ppeItemSchema = new mongoose.Schema({
     required: true,
     default: 0,
     min: 0
-<<<<<<< HEAD
-=======
   },
   // Optimistic locking version field
   version: {
     type: Number,
     default: 0
+  },
+  image_url: {
+    type: String
   },
   // PPE expiry management
   expiry_date: {
@@ -100,14 +102,11 @@ const ppeItemSchema = new mongoose.Schema({
     type: Number,
     default: 30,
     min: 1
->>>>>>> origin/main
   }
 }, {
   timestamps: true
 });
 
-<<<<<<< HEAD
-=======
 // Add indexes for better performance
 ppeItemSchema.index({ tenant_id: 1 });
 ppeItemSchema.index({ item_code: 1 }, { unique: true });
@@ -189,7 +188,6 @@ ppeItemSchema.statics.updateWithOptimisticLock = async function(filter, update, 
   }
 };
 
->>>>>>> origin/main
 const PPEItem = mongoose.model('PPEItem', ppeItemSchema);
 
 module.exports = PPEItem;

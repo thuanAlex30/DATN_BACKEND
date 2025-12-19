@@ -50,6 +50,10 @@ const taskProgressLogSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
+  images: [{
+    type: String, // Cloudinary URL
+    required: false
+  }],
   created_at: {
     type: Date,
     default: Date.now

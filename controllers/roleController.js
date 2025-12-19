@@ -1,13 +1,3 @@
-<<<<<<< HEAD
-const RoleService = require('../services/roleService ');
-const ApiResponse = require('../utils/response');
-const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
-
-class RoleController {
-  // Create new role
-  static createRole = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await RoleService.createRole(req.body);
-=======
 const RoleService = require('../services/roleService');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
@@ -50,7 +40,6 @@ class RoleController {
       // Don't fail the request if event emission fails
     }
     
->>>>>>> origin/main
     return ApiResponse.success(res, result, 'Role created successfully', 201);
   });
 
@@ -64,9 +53,6 @@ class RoleController {
   // Update role
   static updateRole = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-<<<<<<< HEAD
-    const result = await RoleService.updateRole(id, req.body);
-=======
     
     // Get old role data for comparison
     const oldRole = await RoleService.getRoleById(id);
@@ -90,16 +76,12 @@ class RoleController {
       // Don't fail the request if event emission fails
     }
     
->>>>>>> origin/main
     return ApiResponse.success(res, result, 'Role updated successfully');
   });
 
   // Delete role
   static deleteRole = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-<<<<<<< HEAD
-    const result = await RoleService.deleteRole(id);
-=======
     
     // Get role data before deletion
     const roleData = await RoleService.getRoleById(id);
@@ -123,15 +105,11 @@ class RoleController {
       // Don't fail the request if event emission fails
     }
     
->>>>>>> origin/main
     return ApiResponse.success(res, result, 'Role deleted successfully');
   });
 
   // Get roles with pagination and filters
   static getRoles = ErrorMiddleware.asyncHandler(async (req, res) => {
-<<<<<<< HEAD
-    const result = await RoleService.getRoles(req.query);
-=======
     // Multi-tenant: System Admin có thể xem tất cả role, Company Admin chỉ xem trong tenant của mình
     const userRole = req.user?.role || {};
     const isSystemAdminUser =
@@ -150,7 +128,6 @@ class RoleController {
     }
 
     const result = await RoleService.getRoles(options);
->>>>>>> origin/main
     return ApiResponse.success(res, result, 'Roles retrieved successfully');
   });
 
@@ -169,9 +146,6 @@ class RoleController {
   // Toggle role status
   static toggleRoleStatus = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-<<<<<<< HEAD
-    const result = await RoleService.toggleRoleStatus(id);
-=======
     
     // Get old role data for comparison
     const oldRole = await RoleService.getRoleById(id);
@@ -194,7 +168,6 @@ class RoleController {
       // Don't fail the request if event emission fails
     }
     
->>>>>>> origin/main
     return ApiResponse.success(res, result, result.message);
   });
 
@@ -214,9 +187,6 @@ class RoleController {
   static updateRolePermissions = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { permissions } = req.body;
-<<<<<<< HEAD
-    const result = await RoleService.updateRolePermissions(id, permissions);
-=======
     
     // Get old role data for comparison
     const oldRole = await RoleService.getRoleById(id);
@@ -239,7 +209,6 @@ class RoleController {
       // Don't fail the request if event emission fails
     }
     
->>>>>>> origin/main
     return ApiResponse.success(res, result, 'Role permissions updated successfully');
   });
 }

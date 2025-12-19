@@ -1,19 +1,5 @@
 const mongoose = require('mongoose');
 
-<<<<<<< HEAD
-const roleSchema = new mongoose.Schema({
-  role_name: { 
-    type: String, 
-    required: true, 
-    unique: true, 
-    trim: true, 
-    maxlength: 100 
-  },
-  description: { 
-    type: String, 
-    trim: true 
-  },
-=======
 const scopeRulesSchema = new mongoose.Schema({
   tenant_scope: {
     type: String,
@@ -73,18 +59,14 @@ const roleSchema = new mongoose.Schema({
     type: scopeRulesSchema,
     default: () => ({})
   },
->>>>>>> origin/main
   permissions: { 
     type: mongoose.Schema.Types.Mixed, 
     default: {} 
   },
-<<<<<<< HEAD
-=======
   is_default: {
     type: Boolean,
     default: false
   },
->>>>>>> origin/main
   is_active: { 
     type: Boolean, 
     default: true 
@@ -98,13 +80,9 @@ const roleSchema = new mongoose.Schema({
 });
 
 // Add indexes
-<<<<<<< HEAD
-roleSchema.index({ role_name: 1 });
-=======
 roleSchema.index({ role_code: 1 }, { unique: true });
 roleSchema.index({ role_name: 1 });
 roleSchema.index({ role_level: -1 });
->>>>>>> origin/main
 roleSchema.index({ is_active: 1 });
 
 // Transform output

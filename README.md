@@ -1,6 +1,4 @@
 "# DATN_BACKEND" 
-<<<<<<< HEAD
-=======
 
 ## Multi-tenant bootstrap (Priority 1)
 
@@ -36,4 +34,3 @@ Both accounts use the bootstrap password `ChangeMe123!` unless `DEFAULT_TENANT_B
 ## Process Flow Diagram
 
 The end-to-end flow from tenant creation → role assignment → task workflows → reporting → warehouse/maintenance feedback loops is documented (with a Mermaid diagram) in `docs/MULTITENANT_OPERATION_FLOW.md`.
->>>>>>> origin/main

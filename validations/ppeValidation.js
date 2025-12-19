@@ -187,7 +187,22 @@ const validateCreateIssuance = [
   
   body('issued_by')
     .custom(isValidObjectId)
-    .withMessage('Người phát là bắt buộc')
+    .withMessage('Người phát không hợp lệ'),
+  
+  body('notes')
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      // Allow empty string, null, or undefined
+      if (value === null || value === undefined || value === '') {
+        return true;
+      }
+      // If value exists, check length
+      if (typeof value === 'string' && value.length > 500) {
+        throw new Error('Ghi chú không được quá 500 ký tự');
+      }
+      return true;
+    })
+    .withMessage('Ghi chú không được quá 500 ký tự')
 ];
 
 const validateUpdateIssuance = [
@@ -197,7 +212,7 @@ const validateUpdateIssuance = [
   
   body('status')
     .optional()
-    .isIn(['issued', 'returned', 'overdue'])
+    .isIn(['issued', 'returned', 'overdue', 'damaged', 'replacement_needed', 'pending_manager_return'])
     .withMessage('Trạng thái không hợp lệ'),
   
   body('actual_return_date')

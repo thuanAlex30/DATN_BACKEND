@@ -1,8 +1,4 @@
 const mongoose = require('mongoose');
-<<<<<<< HEAD
-require('./employee');
-const departmentSchema = new mongoose.Schema({
-=======
 const { getDefaultTenantObjectId } = require('../utils/tenancy');
 require('./employee');
 const departmentSchema = new mongoose.Schema({
@@ -12,7 +8,6 @@ const departmentSchema = new mongoose.Schema({
     required: true,
     default: getDefaultTenantObjectId
   },
->>>>>>> origin/main
   department_name: {
     type: String,
     required: true,
@@ -29,6 +24,17 @@ const departmentSchema = new mongoose.Schema({
     ref: 'User',
     default: null
   },
+  manager_ids: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: 'User',
+    default: [],
+    validate: {
+      validator: function(v) {
+        return v.length <= 5;
+      },
+      message: 'Một phòng ban chỉ có thể có tối đa 5 quản lý'
+    }
+  },
   is_active: {
     type: Boolean,
     default: true
@@ -38,10 +44,7 @@ const departmentSchema = new mongoose.Schema({
 });
 
 // Indexes
-<<<<<<< HEAD
-=======
 departmentSchema.index({ tenant_id: 1 });
->>>>>>> origin/main
 departmentSchema.index({ department_name: 1 });
 departmentSchema.index({ is_active: 1 });
 

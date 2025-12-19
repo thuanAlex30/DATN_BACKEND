@@ -2,11 +2,17 @@ const Project = require('../models/project');
 const Site = require('../models/site');
 const ProjectAssignment = require('../models/projectAssignment');
 const User = require('../models/user');
+const { transformDocumentId, transformDocumentsId, POPULATED_FIELDS } = require('../utils/transformId');
 
 class ProjectRepository {
   // ========== PROJECT CRUD ==========
-  async getAllProjects(filters = {}) {
+  async getAllProjects(filters = {}, tenantId = null) {
     const query = {};
+
+    // ⭐ Tenant filter
+    if (tenantId) {
+      query.tenant_id = tenantId;
+    }
     
     if (filters.status) {
       query.status = filters.status;
@@ -32,67 +38,80 @@ class ProjectRepository {
       .populate('site_id', 'site_name address')
       .sort({ created_at: -1 });
 
-    // Transform _id to id for frontend compatibility
-    return projects.map(project => {
-      const projectObj = project.toObject();
-      projectObj.id = projectObj._id;
-      delete projectObj._id;
-      return projectObj;
-    });
+    return projects;
   }
 
-  async getProjectById(id) {
-    const project = await Project.findById(id)
+  async getProjectById(id, tenantId = null) {
+    const filter = { _id: id };
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+
+    const project = await Project.findOne(filter)
       .populate('leader_id', 'full_name email phone')
       .populate('site_id', 'site_name address coordinates contact_person contact_phone contact_email');
     
     if (!project) return null;
     
-    // Transform _id to id for frontend compatibility
-    const projectObj = project.toObject();
-    projectObj.id = projectObj._id;
-    delete projectObj._id;
-    return projectObj;
+    return project;
   }
 
-  async createProject(projectData) {
-    const project = new Project(projectData);
+  async createProject(projectData, tenantId = null) {
+    const project = new Project({
+      ...projectData,
+      // ⭐ Always set tenant_id from scope if provided
+      ...(tenantId ? { tenant_id: tenantId } : {})
+    });
     await project.save();
     
-    return await this.getProjectById(project._id);
+    return await this.getProjectById(project._id, tenantId);
   }
 
-  async updateProject(id, updateData) {
-    const project = await Project.findByIdAndUpdate(
-      id,
+  async updateProject(id, updateData, tenantId = null) {
+    const filter = { _id: id };
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+
+    const project = await Project.findOneAndUpdate(
+      filter,
       { ...updateData, updated_at: new Date() },
       { new: true }
     );
     
     if (!project) return null;
     
-    // Transform _id to id for frontend compatibility
-    const projectObj = project.toObject();
-    projectObj.id = projectObj._id;
-    delete projectObj._id;
-    return projectObj;
+    return project;
   }
 
-  async deleteProject(id) {
-    const result = await Project.findByIdAndDelete(id);
+  async deleteProject(id, tenantId = null) {
+    const filter = { _id: id };
+    if (tenantId) {
+      filter.tenant_id = tenantId;
+    }
+
+    const result = await Project.findOneAndDelete(filter);
     return !!result;
   }
 
   // ========== PROJECT STATISTICS ==========
-  async getProjectStats() {
-    const stats = await Project.aggregate([
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 }
-        }
+  async getProjectStats(tenantId = null) {
+    const pipeline = [];
+
+    if (tenantId) {
+      pipeline.push({
+        $match: { tenant_id: tenantId }
+      });
+    }
+
+    pipeline.push({
+      $group: {
+        _id: '$status',
+        count: { $sum: 1 }
       }
-    ]);
+    });
+
+    const stats = await Project.aggregate(pipeline);
 
     const result = {
       total: 0,
@@ -113,16 +132,18 @@ class ProjectRepository {
   // ========== PROJECT ASSIGNMENTS ==========
   async getProjectAssignments(projectId) {
     const assignments = await ProjectAssignment.find({ project_id: projectId })
-      .populate('user_id', 'full_name email phone')
+      .populate({
+        path: 'user_id',
+        // cần cả user_id (số nguyên) để export đúng
+        select: 'user_id full_name email phone gender tenant_id',
+        populate: {
+          path: 'tenant_id',
+          select: 'name tenant_name tenant_code company_name'
+        }
+      })
       .sort({ created_at: -1 });
 
-    // Transform _id to id for frontend compatibility
-    return assignments.map(assignment => {
-      const assignmentObj = assignment.toObject();
-      assignmentObj.id = assignmentObj._id;
-      delete assignmentObj._id;
-      return assignmentObj;
-    });
+    return assignments;
   }
 
   async addProjectAssignment(assignmentData) {
@@ -261,11 +282,7 @@ class ProjectRepository {
     
     if (!project) return null;
     
-    // Transform _id to id for frontend compatibility
-    const projectObj = project.toObject();
-    projectObj.id = projectObj._id;
-    delete projectObj._id;
-    return projectObj;
+    return project;
   }
 
   // ========== PROJECT SEARCH ==========
@@ -290,13 +307,7 @@ class ProjectRepository {
       .populate('site_id', 'site_name address')
       .sort({ created_at: -1 });
 
-    // Transform _id to id for frontend compatibility
-    return projects.map(project => {
-      const projectObj = project.toObject();
-      projectObj.id = projectObj._id;
-      delete projectObj._id;
-      return projectObj;
-    });
+    return projects;
   }
 
   // ========== PROJECT TIMELINE ==========
