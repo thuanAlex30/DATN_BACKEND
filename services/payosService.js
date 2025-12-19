@@ -9,11 +9,30 @@ class PayOSService {
     
     // Khởi tạo PayOS client
     if (this.clientId && this.apiKey && this.checksumKey) {
-      this.payOS = new PayOS(
-        this.clientId,
-        this.apiKey,
-        this.checksumKey
-      );      
+      try {
+        // Thử khởi tạo với object format (theo PayOS SDK v2.0.3)
+        this.payOS = new PayOS({
+          clientId: this.clientId,
+          apiKey: this.apiKey,
+          checksumKey: this.checksumKey,
+        });
+        console.log('✅ PayOS SDK initialized with object format');
+      } catch (error) {
+        // Fallback: thử positional arguments nếu object format không work
+        try {
+          this.payOS = new PayOS(
+            this.clientId,
+            this.apiKey,
+            this.checksumKey
+          );
+          console.log('✅ PayOS SDK initialized with positional arguments');
+        } catch (fallbackError) {
+          console.error('❌ Failed to initialize PayOS SDK:', fallbackError);
+          this.payOS = null;
+        }
+      }
+    } else {
+      console.warn('⚠️ PayOS credentials missing. Please set PAYOS_CLIENT_ID, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY');
     }
     
     if (process.env.PAYOS_RETURN_URL && process.env.PAYOS_CANCEL_URL) {
