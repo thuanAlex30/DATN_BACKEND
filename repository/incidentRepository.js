@@ -226,6 +226,13 @@ class IncidentRepository {
         filter.tenant_id = tenantId;
       }
 
+      console.log('📋 Adding history entry:', {
+        id,
+        action: historyData.action,
+        findingsImages: historyData.findingsImages,
+        findingsImagesCount: historyData.findingsImages?.length
+      });
+
       const incident = await Incident.findOneAndUpdate(
         filter,
         { $push: { histories: historyData } },
@@ -237,6 +244,16 @@ class IncidentRepository {
       if (!incident) {
         throw new Error('Không tìm thấy sự cố');
       }
+      
+      // Log để kiểm tra history entry vừa thêm
+      const lastHistory = incident.histories[incident.histories.length - 1];
+      console.log('✅ History entry added:', {
+        action: lastHistory.action,
+        findingsImages: lastHistory.findingsImages,
+        findingsImagesCount: lastHistory.findingsImages?.length,
+        hasFindingsImages: !!lastHistory.findingsImages
+      });
+      
       return incident;
     } catch (error) {
       throw new Error(`Lỗi thêm lịch sử sự cố: ${error.message}`);

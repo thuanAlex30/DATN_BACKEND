@@ -1,9 +1,16 @@
 const mongoose = require('mongoose');
+const { getDefaultTenantObjectId } = require('../utils/tenancy');
 
 const trainingEnrollmentSchema = new mongoose.Schema({
-    session_id: {
+    tenant_id: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'TrainingSession',
+        ref: 'Tenant',
+        required: true,
+        default: getDefaultTenantObjectId
+    },
+    course_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Course',
         required: true
     },
     user_id: {
@@ -11,13 +18,18 @@ const trainingEnrollmentSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    assigned_by: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: false // Optional - can be self-enrolled or manager-assigned
+    },
     enrolled_at: {
         type: Date,
         default: Date.now
     },
     status: {
         type: String,
-        enum: ['enrolled', 'completed', 'failed', 'cancelled'],
+        enum: ['enrolled', 'in_progress', 'completed', 'failed', 'cancelled'],
         default: 'enrolled'
     },
     score: {
@@ -30,6 +42,12 @@ const trainingEnrollmentSchema = new mongoose.Schema({
     },
     completion_date: {
         type: Date
+    },
+    started_at: {
+        type: Date
+    },
+    submitted_at: {
+        type: Date
     }
 }, {
     timestamps: {
@@ -39,14 +57,18 @@ const trainingEnrollmentSchema = new mongoose.Schema({
     collection: 'training_enrollments'
 });
 
-// Add unique compound index
-trainingEnrollmentSchema.index({ session_id: 1, user_id: 1 }, { unique: true });
+// Add unique compound index - one enrollment per course per user
+trainingEnrollmentSchema.index({ course_id: 1, user_id: 1, tenant_id: 1 }, { unique: true });
 
 // Add other indexes
-trainingEnrollmentSchema.index({ session_id: 1 });
+trainingEnrollmentSchema.index({ tenant_id: 1 });
+trainingEnrollmentSchema.index({ course_id: 1 });
 trainingEnrollmentSchema.index({ user_id: 1 });
 trainingEnrollmentSchema.index({ status: 1 });
 trainingEnrollmentSchema.index({ enrolled_at: 1 });
+trainingEnrollmentSchema.index({ tenant_id: 1, course_id: 1 });
+trainingEnrollmentSchema.index({ assigned_by: 1 });
+trainingEnrollmentSchema.index({ tenant_id: 1, user_id: 1 });
 
 const TrainingEnrollment = mongoose.model('TrainingEnrollment', trainingEnrollmentSchema);
 
