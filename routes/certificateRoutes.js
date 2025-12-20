@@ -160,10 +160,10 @@ const searchValidation = [
 ];
 
 // Routes
-// Tạo chứng chỉ mới (chỉ admin và manager)
+// Tạo chứng chỉ mới (chỉ department_header và manager)
 router.post('/', 
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'manager']),
+    AuthMiddleware.authorizeRole(['department_header', 'manager']),
     createCertificateValidation,
     CertificateController.createCertificate
 );
@@ -182,18 +182,18 @@ router.get('/:id',
     CertificateController.getCertificateById
 );
 
-// Cập nhật chứng chỉ (chỉ admin và manager)
+// Cập nhật chứng chỉ (chỉ department_header và manager)
 router.put('/:id', 
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'manager']),
+    AuthMiddleware.authorizeRole(['department_header', 'manager']),
     updateCertificateValidation,
     CertificateController.updateCertificate
 );
 
-// Xóa chứng chỉ (chỉ admin)
+// Xóa chứng chỉ (chỉ department_header)
 router.delete('/:id', 
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin']),
+    AuthMiddleware.authorizeRole(['department_header']),
     idValidation,
     CertificateController.deleteCertificate
 );
@@ -212,10 +212,10 @@ router.get('/expiring/soon',
     CertificateController.getExpiringCertificates
 );
 
-// Lấy thống kê chứng chỉ (chỉ admin và manager)
+// Lấy thống kê chứng chỉ (chỉ department_header và manager)
 router.get('/stats/overview', 
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'manager']),
+    AuthMiddleware.authorizeRole(['department_header', 'manager']),
     CertificateController.getCertificateStats
 );
 
@@ -226,10 +226,10 @@ router.get('/search/query',
     CertificateController.searchCertificates
 );
 
-// Cập nhật cài đặt nhắc nhở (chỉ admin và manager)
+// Cập nhật cài đặt nhắc nhở (chỉ department_header và manager)
 router.put('/:id/reminder-settings', 
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'manager']),
+    AuthMiddleware.authorizeRole(['department_header', 'manager']),
     [
         ...idValidation,
         body('reminderSettings.enabled')
@@ -270,10 +270,10 @@ router.put('/:id/reminder-settings',
     CertificateController.updateReminderSettings
 );
 
-// Gia hạn chứng chỉ (chỉ admin và manager)
+// Gia hạn chứng chỉ (chỉ department_header và manager)
 router.post('/:id/renew', 
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['admin', 'manager']),
+    AuthMiddleware.authorizeRole(['department_header', 'manager']),
     [
         ...idValidation,
         body('renewalDate')
@@ -287,6 +287,44 @@ router.post('/:id/renew',
             .withMessage('Ghi chú không được vượt quá 2000 ký tự')
     ],
     CertificateController.renewCertificate
+);
+
+// Kiểm tra trùng lặp chứng chỉ
+router.get('/check/duplicate',
+    AuthMiddleware.authenticate,
+    [
+        query('certificateName')
+            .optional()
+            .isLength({ max: 200 })
+            .withMessage('Tên chứng chỉ không được vượt quá 200 ký tự'),
+        query('certificateCode')
+            .optional()
+            .isLength({ max: 50 })
+            .withMessage('Mã chứng chỉ không được vượt quá 50 ký tự')
+    ],
+    CertificateController.checkDuplicate
+);
+
+// Tạo báo cáo chứng chỉ
+router.get('/reports/generate',
+    AuthMiddleware.authenticate,
+    AuthMiddleware.authorizeRole(['department_header', 'manager']),
+    searchValidation,
+    CertificateController.generateReport
+);
+
+// Xuất dữ liệu chứng chỉ
+router.get('/export/data',
+    AuthMiddleware.authenticate,
+    AuthMiddleware.authorizeRole(['department_header', 'manager']),
+    CertificateController.exportCertificates
+);
+
+// Lấy tóm tắt chứng chỉ
+router.get('/:id/summary',
+    AuthMiddleware.authenticate,
+    idValidation,
+    CertificateController.getCertificateSummary
 );
 
 module.exports = router;

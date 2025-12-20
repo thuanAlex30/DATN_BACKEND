@@ -295,13 +295,28 @@ class IncidentService {
 
       const { investigation, solution, findingsImages, rootCauseImages } = investigationData;
 
+      console.log('🔍 Investigation data received:', {
+        investigation: investigation?.substring(0, 50) + '...',
+        solution: solution?.substring(0, 50) + '...',
+        findingsImages: findingsImages,
+        findingsImagesLength: findingsImages?.length
+      });
+
       // Thêm investigation entry
-      await incidentRepository.addHistory(id, {
+      const investigationHistoryData = {
         action: 'Điều tra',
         performedBy: userId,
         note: investigation,
-        timestamp: new Date()
-      }, tenantId);
+        timestamp: new Date(),
+        findingsImages: findingsImages || []
+      };
+      
+      console.log('📝 Adding investigation history:', {
+        action: investigationHistoryData.action,
+        findingsImagesCount: investigationHistoryData.findingsImages?.length
+      });
+      
+      await incidentRepository.addHistory(id, investigationHistoryData, tenantId);
 
       // Thêm solution entry
       await incidentRepository.addHistory(id, {

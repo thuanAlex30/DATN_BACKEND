@@ -495,10 +495,23 @@ class TrainingService {
 
     async importQuestionsFromExcel(bankId, file) {
         try {
-            const questions = await trainingRepository.importQuestionsFromExcel(bankId, file);
-            return createResponse(201, 'Questions imported successfully', questions);
+            // Validate bankId exists
+            const questionBank = await trainingRepository.getQuestionBankById(bankId);
+            if (!questionBank) {
+                return createResponse(404, 'Question bank not found');
+            }
+
+            const result = await trainingRepository.importQuestionsFromExcel(bankId, file);
+            
+            let message = `Đã import thành công ${result.importedRows} câu hỏi`;
+            if (result.errors && result.errors.length > 0) {
+                message += `. Có ${result.failedRows} dòng bị lỗi.`;
+            }
+            
+            return createResponse(201, message, result);
         } catch (error) {
-            throw error;
+            console.error('Error in importQuestionsFromExcel service:', error);
+            return createResponse(500, error.message || 'Failed to import questions from Excel');
         }
     }
 

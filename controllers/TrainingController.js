@@ -606,13 +606,17 @@ class TrainingController {
     });
 
     static importQuestionsFromExcel = ErrorMiddleware.asyncHandler(async (req, res) => {
-        const { bankId } = req.params;
+        const { bank_id } = req.body;
         
         if (!req.file) {
             return ApiResponse.error(res, 'No file uploaded', 400);
         }
 
-        const result = await trainingService.importQuestionsFromExcel(bankId, req.file);
+        if (!bank_id) {
+            return ApiResponse.error(res, 'Question bank ID is required', 400);
+        }
+
+        const result = await trainingService.importQuestionsFromExcel(bank_id, req.file);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);

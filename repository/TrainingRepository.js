@@ -637,6 +637,11 @@ class TrainingRepository {
         try {
             const XLSX = require('xlsx');
             
+            // Validate file exists
+            if (!file || !file.path) {
+                throw new Error('File not found or invalid');
+            }
+
             console.log('File info:', {
                 path: file.path,
                 originalname: file.originalname,
@@ -644,56 +649,118 @@ class TrainingRepository {
                 size: file.size
             });
             
+            // Validate file extension
+            const allowedExtensions = ['.xlsx', '.xls'];
+            const fileExtension = file.originalname.toLowerCase().substring(file.originalname.lastIndexOf('.'));
+            if (!allowedExtensions.includes(fileExtension)) {
+                throw new Error(`Invalid file type. Only ${allowedExtensions.join(', ')} files are allowed.`);
+            }
+            
             // Read Excel file
-            const workbook = XLSX.readFile(file.path);
+            let workbook;
+            try {
+                workbook = XLSX.readFile(file.path);
+            } catch (error) {
+                throw new Error(`Failed to read Excel file: ${error.message}`);
+            }
+
+            if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+                throw new Error('Excel file has no sheets');
+            }
+
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
             const data = XLSX.utils.sheet_to_json(worksheet);
 
-            console.log('Excel data:', data);
+            if (!data || data.length === 0) {
+                throw new Error('Excel file is empty or has no data');
+            }
+
+            console.log(`Found ${data.length} rows in Excel file`);
 
             const questions = [];
+            const errors = [];
+            let rowNumber = 2; // Start from row 2 (row 1 is header)
             
             for (const row of data) {
-                // Expected columns: question_text, question_type, options, correct_answer, explanation, difficulty_level, points
-                if (!row.question_text || !row.options || !row.correct_answer) {
-                    console.log('Skipping invalid row:', row);
-                    continue; // Skip invalid rows
+                try {
+                    // Expected columns: question_text, question_type, options, correct_answer, explanation, difficulty_level, points
+                    if (!row.question_text || !row.options || !row.correct_answer) {
+                        errors.push(`Dòng ${rowNumber}: Thiếu thông tin bắt buộc (question_text, options, correct_answer)`);
+                        rowNumber++;
+                        continue;
+                    }
+
+                    // Parse options from pipe-separated string
+                    const optionsString = String(row.options).trim();
+                    const options = optionsString.split('|').map(option => option.trim()).filter(option => option !== '');
+                    
+                    if (options.length < 2) {
+                        errors.push(`Dòng ${rowNumber}: Cần ít nhất 2 lựa chọn (options)`);
+                        rowNumber++;
+                        continue;
+                    }
+
+                    // Validate correct_answer is one of the options
+                    const correctAnswer = String(row.correct_answer).trim();
+                    if (!options.includes(correctAnswer)) {
+                        errors.push(`Dòng ${rowNumber}: Đáp án đúng "${correctAnswer}" không khớp với bất kỳ lựa chọn nào`);
+                        rowNumber++;
+                        continue;
+                    }
+
+                    // Validate difficulty_level
+                    const difficultyLevel = row.difficulty_level ? String(row.difficulty_level).toUpperCase() : 'MEDIUM';
+                    if (!['EASY', 'MEDIUM', 'HARD'].includes(difficultyLevel)) {
+                        errors.push(`Dòng ${rowNumber}: Mức độ khó không hợp lệ (phải là EASY, MEDIUM, hoặc HARD)`);
+                        rowNumber++;
+                        continue;
+                    }
+
+                    // Validate points
+                    const points = parseInt(row.points) || 1;
+                    if (points < 1 || points > 10) {
+                        errors.push(`Dòng ${rowNumber}: Điểm số phải từ 1 đến 10`);
+                        rowNumber++;
+                        continue;
+                    }
+
+                    const questionData = {
+                        bank_id: bankId,
+                        content: String(row.question_text).trim(),
+                        question_type: row.question_type || 'MULTIPLE_CHOICE',
+                        options: options,
+                        correct_answer: correctAnswer,
+                        explanation: row.explanation ? String(row.explanation).trim() : '',
+                        difficulty_level: difficultyLevel,
+                        points: points
+                    };
+
+                    const question = new Question(questionData);
+                    await question.save();
+                    questions.push(question);
+                } catch (rowError) {
+                    errors.push(`Dòng ${rowNumber}: ${rowError.message || 'Lỗi không xác định'}`);
                 }
+                rowNumber++;
+            }
 
-                // Parse options from pipe-separated string
-                const options = row.options.split('|').map(option => option.trim()).filter(option => option !== '');
-                
-                if (options.length < 2) {
-                    console.log('Skipping row with less than 2 options:', row);
-                    continue; // Skip if less than 2 options
-                }
+            if (questions.length === 0 && errors.length > 0) {
+                throw new Error(`Không thể import câu hỏi nào. Lỗi:\n${errors.join('\n')}`);
+            }
 
-                // Validate correct_answer is one of the options
-                const correctAnswer = row.correct_answer.trim();
-                if (!options.includes(correctAnswer)) {
-                    console.warn(`Correct answer "${correctAnswer}" not found in options for question: ${row.question_text}`);
-                    continue; // Skip if correct answer doesn't match any option
-                }
-
-                const questionData = {
-                    bank_id: bankId,
-                    content: row.question_text,
-                    question_type: row.question_type || 'MULTIPLE_CHOICE',
-                    options: options,
-                    correct_answer: correctAnswer,
-                    explanation: row.explanation || '',
-                    difficulty_level: row.difficulty_level || 'MEDIUM',
-                    points: parseInt(row.points) || 1
-                };
-
-                const question = new Question(questionData);
-                await question.save();
-                questions.push(question);
+            if (errors.length > 0) {
+                console.warn(`Import completed with ${errors.length} errors:\n${errors.join('\n')}`);
             }
 
             console.log(`Successfully imported ${questions.length} questions`);
-            return questions;
+            return {
+                questions,
+                errors: errors.length > 0 ? errors : undefined,
+                totalRows: data.length,
+                importedRows: questions.length,
+                failedRows: errors.length
+            };
         } catch (error) {
             console.error('Error in importQuestionsFromExcel:', error);
             throw error;
