@@ -8,6 +8,15 @@ class ProjectTaskRepository {
   async getAllTasks(filters = {}) {
     try {
       const query = {};
+
+      // Allow querying tasks by user (either responsible_user_id OR assigned_to)
+      // This supports dashboards like "tasks assigned to me" without requiring projectId.
+      if (filters.user_id) {
+        query.$or = [
+          { responsible_user_id: filters.user_id },
+          { assigned_to: filters.user_id }
+        ];
+      }
       
       if (filters.project_id) {
         query.project_id = filters.project_id;
@@ -26,6 +35,9 @@ class ProjectTaskRepository {
       }
       if (filters.responsible_user_id) {
         query.responsible_user_id = filters.responsible_user_id;
+      }
+      if (filters.assigned_to) {
+        query.assigned_to = filters.assigned_to;
       }
 
       const tasks = await ProjectTask.find(query)

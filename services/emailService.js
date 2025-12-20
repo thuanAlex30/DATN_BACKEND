@@ -1,29 +1,39 @@
-const nodemailer = require('nodemailer');
-const fs = require('fs');
-const path = require('path');
+const { Resend } = require('resend');
 
 class EmailService {
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: process.env.SMTP_PORT || 587,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD
-      }
-    });
+    const apiKey = process.env.RESEND_API_KEY;
+    const fromEmail = process.env.RESEND_FROM;
+
+    this.resend = new Resend(apiKey);
+    this.from = fromEmail || 'Hệ Thống An Toàn <no-reply@huynhthuan30.id.vn>';
+  }
+
+  /**
+   * Helper: Gửi email qua Resend
+   */
+  async _sendEmail({ to, subject, html, emailType = 'Email' }) {
+    try {
+      const result = await this.resend.emails.send({
+        from: this.from,
+        to,
+        subject,
+        html
+      });
+
+      return result;
+    } catch (error) {
+      throw error;
+    }
   }
 
   /**
    * Gửi email tài khoản/mật khẩu
    */
   async sendAccountCredentials({ to, username, password, companyName, loginUrl }) {
-    const mailOptions = {
-      from: `"Hệ Thống An Toàn" <${process.env.SMTP_USER}>`,
-      to: to,
-      subject: 'Thông tin tài khoản đăng nhập - Hệ Thống Quản Lý An Toàn Lao Động',
-      html: `
+    const subject = 'Thông tin tài khoản đăng nhập - Hệ Thống Quản Lý An Toàn Lao Động';
+
+    const html = `
         <!DOCTYPE html>
         <html>
         <head>
@@ -66,17 +76,14 @@ class EmailService {
           </div>
         </body>
         </html>
-      `
-    };
+      `;
 
-    try {
-      const info = await this.transporter.sendMail(mailOptions);
-      console.log('Email sent:', info.messageId);
-      return info;
-    } catch (error) {
-      console.error('Email send error:', error);
-      throw error;
-    }
+    return this._sendEmail({
+      to,
+      subject,
+      html,
+      emailType: 'Account credentials'
+    });
   }
 
   /**
@@ -84,11 +91,9 @@ class EmailService {
    * Dùng khi đã tạo tài khoản nhưng cần gửi lại email
    */
   async sendAccountCredentialsResend({ to, username, companyName, loginUrl, forgotPasswordUrl }) {
-    const mailOptions = {
-      from: `"Hệ Thống An Toàn" <${process.env.SMTP_USER}>`,
-      to: to,
-      subject: 'Thông tin tài khoản đăng nhập - Hệ Thống Quản Lý An Toàn Lao Động',
-      html: `
+    const subject = 'Thông tin tài khoản đăng nhập - Hệ Thống Quản Lý An Toàn Lao Động';
+
+    const html = `
         <!DOCTYPE html>
         <html>
         <head>
@@ -135,17 +140,14 @@ class EmailService {
           </div>
         </body>
         </html>
-      `
-    };
+      `;
 
-    try {
-      const info = await this.transporter.sendMail(mailOptions);
-      console.log('Resend email sent:', info.messageId);
-      return info;
-    } catch (error) {
-      console.error('Resend email send error:', error);
-      throw error;
-    }
+    return this._sendEmail({
+      to,
+      subject,
+      html,
+      emailType: 'Account credentials resend'
+    });
   }
 
   /**
@@ -172,11 +174,9 @@ class EmailService {
       ? '<p>Tài khoản của bạn đã được tạo thành công. Vui lòng sử dụng thông tin đăng nhập bên dưới để truy cập hệ thống.</p>'
       : '<p>Đơn hàng của bạn đang được xử lý. Bạn sẽ nhận được email thông tin tài khoản trong vài phút tới.</p>';
 
-    const mailOptions = {
-      from: `"Hệ Thống An Toàn" <${process.env.SMTP_USER}>`,
-      to: to,
-      subject: 'Xác nhận thanh toán thành công - Hệ Thống Quản Lý An Toàn Lao Động',
-      html: `
+    const subject = 'Xác nhận thanh toán thành công - Hệ Thống Quản Lý An Toàn Lao Động';
+
+    const html = `
         <!DOCTYPE html>
         <html>
         <head>
@@ -223,17 +223,14 @@ class EmailService {
           </div>
         </body>
         </html>
-      `
-    };
+      `;
 
-    try {
-      const info = await this.transporter.sendMail(mailOptions);
-      console.log('Payment confirmation email sent:', info.messageId);
-      return info;
-    } catch (error) {
-      console.error('Payment confirmation email send error:', error);
-      throw error;
-    }
+    return this._sendEmail({
+      to,
+      subject,
+      html,
+      emailType: 'Payment confirmation'
+    });
   }
 
   /**
@@ -246,11 +243,9 @@ class EmailService {
       yearly: 'Gói Năm'
     };
 
-    const mailOptions = {
-      from: `"Hệ Thống An Toàn" <${process.env.SMTP_USER}>`,
-      to: to,
-      subject: 'Xác nhận gia hạn gói dịch vụ - Hệ Thống Quản Lý An Toàn Lao Động',
-      html: `
+    const subject = 'Xác nhận gia hạn gói dịch vụ - Hệ Thống Quản Lý An Toàn Lao Động';
+
+    const html = `
         <!DOCTYPE html>
         <html>
         <head>
@@ -292,17 +287,14 @@ class EmailService {
           </div>
         </body>
         </html>
-      `
-    };
+      `;
 
-    try {
-      const info = await this.transporter.sendMail(mailOptions);
-      console.log('Renewal confirmation email sent:', info.messageId);
-      return info;
-    } catch (error) {
-      console.error('Renewal confirmation email send error:', error);
-      throw error;
-    }
+    return this._sendEmail({
+      to,
+      subject,
+      html,
+      emailType: 'Renewal confirmation'
+    });
   }
 }
 

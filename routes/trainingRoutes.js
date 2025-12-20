@@ -351,8 +351,25 @@ router.post('/questions/import-excel',
 // ========== Dashboard Routes ==========
 // Admin, Header Department and Manager can view dashboard
 router.get('/dashboard/stats', 
+<<<<<<< HEAD
     RoleMiddleware.requireAnyRole(['company_admin', 'manager', 'header_department']),
+=======
+    // Use scope-based auth so company_admin can access too
+    AuthMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant' }),
+>>>>>>> 79f10cf9fd437fb03a4f17dc26d120e8e747cb93
     trainingController.getTrainingDashboardStats
+);
+
+// Aggregate stats for enrollments (used by frontend admin dashboard)
+router.get('/enrollments/stats',
+    AuthMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant' }),
+    trainingController.getEnrollmentStats
+);
+
+// Aggregate stats for sessions (used by frontend admin dashboard)
+router.get('/sessions/stats',
+    AuthMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant' }),
+    trainingController.getSessionStats
 );
 
 // ========== Training Assignment Routes ==========

@@ -323,6 +323,9 @@ class ProjectRiskService {
       if (filters.project_id) {
         query.project_id = filters.project_id;
       }
+      if (filters.owner_id) {
+        query.owner_id = filters.owner_id;
+      }
       if (filters.risk_level) {
         query.risk_level = filters.risk_level;
       }
@@ -373,19 +376,12 @@ class ProjectRiskService {
         return createResponse(400, 'Tiến độ phải từ 0 đến 100');
       }
 
-      // Tự động cập nhật trạng thái dựa trên tiến độ
-      let status = 'IN_PROGRESS';
-      if (progressValue >= 100) {
-        status = 'RESOLVED'; // Hoặc 'CLOSED' tùy vào logic nghiệp vụ
-      } else if (progressValue > 0) {
-        status = 'IN_PROGRESS';
-      }
-
       const risk = await ProjectRisk.findByIdAndUpdate(
         riskId,
         { 
+          // Chỉ cập nhật tiến độ, KHÔNG tự động đổi trạng thái sang RESOLVED.
+          // Trạng thái hoàn thành phải được Header Department xác nhận thủ công.
           progress: progressValue,
-          status: status,
           updated_at: new Date()
         },
         { new: true }
@@ -452,30 +448,22 @@ class ProjectRiskService {
         progress_percentage: progressValue,
         work_description: progressData.work_description || progressData.note || '',
         hours_worked: progressData.hours_worked || 0,
-        log_date: progressData.log_date ? new Date(progressData.log_date) : new Date()
+        log_date: progressData.log_date ? new Date(progressData.log_date) : new Date(),
+        images: progressData.images || [] // Array of Cloudinary image URLs
       };
       
       console.log('addRiskProgressLog - Creating progress log:', logData);
       const progressLog = await projectRiskRepository.createProgressLog(riskId, logData, userId);
       console.log('addRiskProgressLog - Progress log created:', progressLog?._id);
       
-      // Tự động cập nhật trạng thái risk dựa trên tiến độ
-      let status = 'IN_PROGRESS';
-      if (progressValue >= 100) {
-        status = 'RESOLVED';
-      } else if (progressValue > 0) {
-        status = 'IN_PROGRESS';
-      }
-      
-      // Cập nhật trạng thái và tiến độ risk và lấy lại dữ liệu đã cập nhật
-      console.log('addRiskProgressLog - Updating risk:', { riskId, progressValue, status });
+      // Cập nhật TIẾN ĐỘ rủi ro, không tự động đổi trạng thái sang RESOLVED.
+      console.log('addRiskProgressLog - Updating risk progress only:', { riskId, progressValue });
       
       const updateResult = await ProjectRisk.findByIdAndUpdate(
         riskId,
         { 
           $set: {
             progress: progressValue,
-            status: status,
             updated_at: new Date()
           }
         },
