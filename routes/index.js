@@ -41,11 +41,8 @@ const chatbotRoutes = require('./chatbotRoutes');
 const pricingRoutes = require('./pricingRoutes');
 const weatherRoutes = require('./weatherRoutes');
 const contractRoutes = require('./contractRoutes');
-<<<<<<< HEAD
 const certificateRoutes = require('./certificateRoutes');
-=======
 const uploadRoutes = require('./uploadRoutes');
->>>>>>> 79f10cf9fd437fb03a4f17dc26d120e8e747cb93
 
 console.log('Loading kafkaMonitor...');
 const kafkaMonitor = require('../services/kafkaMonitor');

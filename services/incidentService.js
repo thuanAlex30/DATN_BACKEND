@@ -352,7 +352,6 @@ class IncidentService {
 
       const { investigation, solution, findingsImages, rootCauseImages } = investigationData;
 
-<<<<<<< HEAD
       // Upload investigation images if provided
       const uploadedFindings = await uploadImagesIfNeeded(
         findingsImages,
@@ -370,14 +369,14 @@ class IncidentService {
       if (uploadedFindings.length || uploadedRootCause.length) {
         await incidentRepository.updateById(id, { images: mergedImages }, tenantId);
       }
-=======
+
       console.log('🔍 Investigation data received:', {
         investigation: investigation?.substring(0, 50) + '...',
         solution: solution?.substring(0, 50) + '...',
         findingsImages: findingsImages,
         findingsImagesLength: findingsImages?.length
       });
->>>>>>> 2b39889157977de77134ebd5aeca13fa287f517f
+
 
       // Thêm investigation entry
       const investigationHistoryData = {
