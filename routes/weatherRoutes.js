@@ -26,5 +26,17 @@ router.get(
   WeatherController.getForecast
 );
 
+// Get hourly weather forecast - available to all authenticated users
+router.get(
+  '/hourly',
+  WeatherController.getHourly
+);
+
+// Get air quality data - available to all authenticated users
+router.get(
+  '/air-quality',
+  WeatherController.getAirQuality
+);
+
 module.exports = router;
 
