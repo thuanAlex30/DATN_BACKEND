@@ -162,32 +162,39 @@ class ProjectController {
     
     const result = await projectService.addProjectAssignment(assignmentData, userId);
     
-    // Emit WebSocket event for project assignment
-    if (result.success && result.data) {
-      // Get assignee info for WebSocket notification
-      const User = require('../models/user');
-      const assignee = await User.findById(assignmentData.user_id);
-      
-      if (assignee) {
-        websocketService.emitProjectAssigned(result.data, assignee, req.user);
-      }
-    }
-    
-    // Emit Kafka event for project assigned
+    // Send realtime notification (WebSocket + Database) for project assignment
     if (result.success && result.data) {
       try {
+        const ProjectNotificationService = require('../services/projectNotificationService');
         const User = require('../models/user');
-        const assignee = await User.findById(assignmentData.user_id);
+        const assignee = await User.findById(assignmentData.user_id).select('_id full_name tenant_id').lean();
         const project = await projectService.getProjectById(assignmentData.project_id);
+        const tenantId = assignee?.tenant_id || req.user.tenant_id;
         
         if (assignee && project.success) {
-          await ProjectEvents.emitProjectAssigned(project.data, assignee, req.user, {
-            ipAddress: req.ip,
-            userAgent: req.get('User-Agent')
+          await ProjectNotificationService.notifyProjectAssigned({
+            project: project.data,
+            assignee,
+            assigner: {
+              _id: req.user._id || req.user.id,
+              full_name: req.user.full_name || req.user.name
+            },
+            tenantId
           });
         }
-      } catch (eventError) {
-        console.error('Failed to emit project assigned event:', eventError);
+        
+        // Also emit WebSocket for backward compatibility
+        if (assignee) {
+          websocketService.emitProjectAssigned(result.data, assignee, req.user);
+        }
+        
+        // Emit Kafka event
+        await ProjectEvents.emitProjectAssigned(project.data, assignee, req.user, {
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+      } catch (notifError) {
+        console.error('Failed to send project assigned notification:', notifError);
       }
     }
     

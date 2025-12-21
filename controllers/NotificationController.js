@@ -33,14 +33,28 @@ class NotificationController {
                 limit = 10,
                 type,
                 is_read,
-                search
+                search,
+                tenant_id
             } = req.query;
 
-            console.log('Query params:', { page, limit, type, is_read, search });
+            console.log('Query params:', { page, limit, type, is_read, search, tenant_id });
 
-            // Simple timeout wrapper - reduced to 5 seconds
+            // Get current user's role level
+            const currentUserRoleLevel = req.user?.role?.role_level || req.user?.role_level || 0;
+            const isSystemAdmin = currentUserRoleLevel >= 100;
+
+            // Tenant filtering logic:
+            // - System Admin (level 100): Can filter by tenant_id from query or see all
+            // - Other users: Automatically filter by their own tenant_id
+            let finalTenantId = tenant_id;
+            if (!isSystemAdmin) {
+                // Non-System Admin: Always filter by their own tenant
+                finalTenantId = req.user?.tenant_id || null;
+            }
+
+            // Timeout wrapper - increased to 8 seconds to allow for database query
             const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Request timeout')), 5000);
+                setTimeout(() => reject(new Error('Request timeout')), 8000);
             });
 
             const resultPromise = Notification.getNotifications(userId, {
@@ -48,7 +62,8 @@ class NotificationController {
                 limit: parseInt(limit),
                 type,
                 is_read,
-                search
+                search,
+                tenant_id: finalTenantId
             });
 
             const result = await Promise.race([resultPromise, timeoutPromise]);
@@ -82,14 +97,33 @@ class NotificationController {
                 limit = 10,
                 type,
                 is_read,
-                search
+                search,
+                tenant_id
             } = req.query;
+
+            // Get current user's role level
+            const currentUserRoleLevel = req.user?.role?.role_level || req.user?.role_level || 0;
+            const isSystemAdmin = currentUserRoleLevel >= 100;
 
             const filters = {};
             
             if (type) filters.type = type;
             if (is_read !== undefined) filters.is_read = is_read === 'true';
             if (search) filters.search = search;
+            
+            // Tenant filtering logic:
+            // - System Admin (level 100): Can filter by tenant_id from query, or filter by their own tenant_id if they have one
+            // - Other users: Always filter by their own tenant_id
+            // - If user has tenant_id, always filter by it (security: users only see their tenant's notifications)
+            if (isSystemAdmin && tenant_id) {
+                // System Admin can filter by specific tenant from query parameter
+                filters.tenant_id = tenant_id;
+            } else if (req.user?.tenant_id) {
+                // All users (including System Admin) filter by their own tenant_id
+                filters.tenant_id = req.user.tenant_id;
+            }
+            // Note: If user doesn't have tenant_id and is not System Admin with query param, 
+            // no tenant_id filter is set, which means they won't see notifications (security)
 
             // Add timeout wrapper
             const timeoutPromise = new Promise((_, reject) => {
@@ -170,7 +204,8 @@ class NotificationController {
                 priority: priority || 'medium',
                 category: category || 'system',
                 action_url: action_url || null,
-                expires_at: expires_at || null
+                expires_at: expires_at || null,
+                tenant_id: req.user?.tenant_id || null // Set tenant_id from current user
             };
 
             console.log('Creating notification with data:', notificationData);
@@ -307,7 +342,8 @@ class NotificationController {
                     user_id,
                     title,
                     message,
-                    type: type || 'info'
+                    type: type || 'info',
+                    tenant_id: req.user?.tenant_id || null // Set tenant_id from current user
                 });
 
                 createdNotifications.push(notification);

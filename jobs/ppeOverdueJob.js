@@ -76,24 +76,71 @@ class PPEOverdueJob {
         { $set: { status: 'overdue' } }
       );
 
-      // Notify involved users (issuer, user, manager if present)
-      issuances.forEach((issuance) => {
-        const payload = {
-          type: 'ppe_overdue',
-          title: 'PPE quá hạn trả',
-          message: `PPE ${issuance.item_id?.item_name || issuance.item_id} đã quá hạn trả.`,
-          issuance_id: issuance._id,
-          expected_return_date: issuance.expected_return_date,
-          status: 'overdue',
-          timestamp: new Date(),
-        };
-        const userId = issuance.user_id?.toString?.() || issuance.user_id;
-        const issuerId = issuance.issued_by?.toString?.() || issuance.issued_by;
-        const managerId = issuance.manager_id?.toString?.() || issuance.manager_id;
-        [userId, issuerId, managerId].filter(Boolean).forEach((uid) => {
-          websocketService.emitToUser(uid.toString(), 'ppe_notification', payload);
-        });
-      });
+      // Notify involved users (issuer, user, manager if present) using PPENotificationService
+      const PPENotificationService = require('../services/ppeNotificationService');
+      const User = require('../models/user');
+      
+      for (const issuance of issuances) {
+        try {
+          const userId = issuance.user_id?.toString?.() || issuance.user_id;
+          const issuerId = issuance.issued_by?.toString?.() || issuance.issued_by;
+          const managerId = issuance.manager_id?.toString?.() || issuance.manager_id;
+          const tenantId = issuance.tenant_id?.toString?.() || issuance.tenant_id;
+          
+          // Get user, issuer, and manager info
+          const [user, issuer, manager] = await Promise.all([
+            userId ? User.findById(userId).select('_id full_name').lean() : null,
+            issuerId ? User.findById(issuerId).select('_id full_name').lean() : null,
+            managerId ? User.findById(managerId).select('_id full_name').lean() : null
+          ]);
+          
+          // Send notification to user
+          if (user) {
+            await PPENotificationService.notifyPPEOverdue({
+              tracking: issuance,
+              user,
+              issuer: issuer || null,
+              tenantId
+            });
+          }
+          
+          // Send notification to issuer
+          if (issuer && issuer._id.toString() !== user?._id?.toString()) {
+            await PPENotificationService.notifyPPEOverdue({
+              tracking: issuance,
+              user: user || null,
+              issuer,
+              tenantId
+            });
+          }
+          
+          // Send notification to manager
+          if (manager && manager._id.toString() !== user?._id?.toString() && manager._id.toString() !== issuer?._id?.toString()) {
+            await PPENotificationService.notifyPPEOverdue({
+              tracking: issuance,
+              user: user || null,
+              issuer: manager,
+              tenantId
+            });
+          }
+          
+          // Also emit WebSocket for backward compatibility
+          const payload = {
+            type: 'ppe_overdue',
+            title: 'PPE quá hạn trả',
+            message: `PPE ${issuance.item_id?.item_name || issuance.item_id} đã quá hạn trả.`,
+            issuance_id: issuance._id,
+            expected_return_date: issuance.expected_return_date,
+            status: 'overdue',
+            timestamp: new Date(),
+          };
+          [userId, issuerId, managerId].filter(Boolean).forEach((uid) => {
+            websocketService.emitToUser(uid.toString(), 'ppe_notification', payload);
+          });
+        } catch (error) {
+          logger.error('Error sending PPE overdue notification:', error);
+        }
+      }
 
       const endTime = new Date();
       logger.info('PPE overdue check completed', {

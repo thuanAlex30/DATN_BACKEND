@@ -58,27 +58,27 @@ class TrainingService {
     }
 
     // ========== Course Services ==========
-    async getAllCourses(filters = {}) {
+    async getAllCourses(filters = {}, tenantId = null) {
         try {
-            const courses = await trainingRepository.getAllCourses(filters);
+            const courses = await trainingRepository.getAllCourses(filters, tenantId);
             return createResponse(200, 'Courses retrieved successfully', courses);
         } catch (error) {
             throw error;
         }
     }
 
-    async getAvailableCoursesForEmployee(userId, filters = {}) {
+    async getAvailableCoursesForEmployee(userId, filters = {}, tenantId = null) {
         try {
-            const courses = await trainingRepository.getAvailableCoursesForEmployee(userId, filters);
+            const courses = await trainingRepository.getAvailableCoursesForEmployee(userId, filters, tenantId);
             return createResponse(200, 'Available courses for employee retrieved successfully', courses);
         } catch (error) {
             throw error;
         }
     }
 
-    async getCourseById(courseId) {
+    async getCourseById(courseId, tenantId = null) {
         try {
-            const course = await trainingRepository.getCourseById(courseId);
+            const course = await trainingRepository.getCourseById(courseId, tenantId);
             if (!course) {
                 return createResponse(404, 'Course not found');
             }
@@ -88,18 +88,18 @@ class TrainingService {
         }
     }
 
-    async createCourse(courseData) {
+    async createCourse(courseData, tenantId = null) {
         try {
-            const course = await trainingRepository.createCourse(courseData);
+            const course = await trainingRepository.createCourse(courseData, tenantId);
             return createResponse(201, 'Course created successfully', course);
         } catch (error) {
             throw error;
         }
     }
 
-    async updateCourse(courseId, courseData) {
+    async updateCourse(courseId, courseData, tenantId = null) {
         try {
-            const course = await trainingRepository.updateCourse(courseId, courseData);
+            const course = await trainingRepository.updateCourse(courseId, courseData, tenantId);
             return createResponse(200, 'Course updated successfully', course);
         } catch (error) {
             if (error.message === 'Course not found') {
@@ -109,9 +109,9 @@ class TrainingService {
         }
     }
 
-    async deleteCourse(courseId) {
+    async deleteCourse(courseId, tenantId = null) {
         try {
-            await trainingRepository.deleteCourse(courseId);
+            await trainingRepository.deleteCourse(courseId, tenantId);
             return createResponse(200, 'Course deleted successfully');
         } catch (error) {
             if (error.message === 'Course not found') {
@@ -256,9 +256,9 @@ class TrainingService {
     }
 
     // ========== Training Enrollment Services ==========
-    async getAllTrainingEnrollments(filters = {}) {
+    async getAllTrainingEnrollments(filters = {}, tenantId = null) {
         try {
-            const enrollments = await trainingRepository.getAllTrainingEnrollments(filters);
+            const enrollments = await trainingRepository.getAllTrainingEnrollments(filters, tenantId);
             return createResponse(200, 'Training enrollments retrieved successfully', enrollments);
         } catch (error) {
             throw error;
@@ -643,8 +643,8 @@ class TrainingService {
                 return createResponse(400, `Cannot start training. Current status: ${enrollment.status}`);
             }
 
-            // Get course information and question bank
-            const course = await trainingRepository.getCourseById(session.course_id);
+            // Get course information and question bank (ensure tenant scoping)
+            const course = await trainingRepository.getCourseById(session.course_id, session.tenant_id || null);
             if (!course) {
                 return createResponse(404, 'Course not found');
             }
@@ -830,9 +830,9 @@ class TrainingService {
     }
 
     // ========== Training Assignment Services ==========
-    async getAllTrainingAssignments(filters = {}) {
+    async getAllTrainingAssignments(filters = {}, tenantId = null) {
         try {
-            const assignments = await trainingRepository.getAllTrainingAssignments(filters);
+            const assignments = await trainingRepository.getAllTrainingAssignments(filters, tenantId);
             return createResponse(200, 'Training assignments retrieved successfully', assignments);
         } catch (error) {
             throw error;
@@ -887,27 +887,27 @@ class TrainingService {
         }
     }
 
-    async getTrainingAssignmentsByDepartment(departmentId) {
+    async getTrainingAssignmentsByDepartment(departmentId, tenantId = null) {
         try {
-            const assignments = await trainingRepository.getTrainingAssignmentsByDepartment(departmentId);
+            const assignments = await trainingRepository.getTrainingAssignmentsByDepartment(departmentId, tenantId);
             return createResponse(200, 'Department training assignments retrieved successfully', assignments);
         } catch (error) {
             throw error;
         }
     }
 
-    async getTrainingAssignmentsByCourse(courseId) {
+    async getTrainingAssignmentsByCourse(courseId, tenantId = null) {
         try {
-            const assignments = await trainingRepository.getTrainingAssignmentsByCourse(courseId);
+            const assignments = await trainingRepository.getTrainingAssignmentsByCourse(courseId, tenantId);
             return createResponse(200, 'Course training assignments retrieved successfully', assignments);
         } catch (error) {
             throw error;
         }
     }
 
-    async getCoursesByDepartment(departmentId) {
+    async getCoursesByDepartment(departmentId, tenantId = null) {
         try {
-            const courses = await trainingRepository.getCoursesByDepartment(departmentId);
+            const courses = await trainingRepository.getCoursesByDepartment(departmentId, tenantId);
             return createResponse(200, 'Department courses retrieved successfully', courses);
         } catch (error) {
             throw error;
@@ -1026,9 +1026,9 @@ class TrainingService {
     }
 
     // ========== Employee Training Methods ==========
-    async getEmployeeTrainingSessions(userId) {
+    async getEmployeeTrainingSessions(userId, tenantId = null) {
         try {
-            const sessions = await trainingRepository.getEmployeeTrainingSessions(userId);
+            const sessions = await trainingRepository.getEmployeeTrainingSessions(userId, tenantId);
             return createResponse(200, 'Employee training sessions retrieved successfully', sessions);
         } catch (error) {
             throw error;

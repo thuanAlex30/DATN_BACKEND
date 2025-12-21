@@ -76,10 +76,50 @@ class ProjectCommunicationController {
 
   static createNotification = ErrorMiddleware.asyncHandler(async (req, res) => {
     const notificationData = req.body;
+    const userId = req.user._id || req.user.id;
+    const tenantId = req.user.tenant_id;
     
     const result = await projectCommunicationService.createNotification(notificationData);
     
     if (result.success) {
+      // Send realtime notification (WebSocket + Database) for project communication
+      try {
+        const ProjectNotificationService = require('../services/projectNotificationService');
+        const Project = require('../models/project');
+        const User = require('../models/user');
+        const ProjectAssignment = require('../models/projectAssignment');
+        
+        // Get project info
+        const project = await Project.findById(notificationData.project_id).select('_id project_name name title tenant_id').lean();
+        
+        if (project) {
+          // Get all users assigned to project
+          const assignments = await ProjectAssignment.find({
+            project_id: notificationData.project_id,
+            is_active: true
+          }).select('user_id').lean();
+          
+          const userIds = assignments.map(a => a.user_id).filter(Boolean);
+          const projectUsers = await User.find({
+            _id: { $in: userIds },
+            is_active: true
+          }).select('_id full_name').lean();
+          
+          // Get creator info
+          const creator = await User.findById(userId).select('_id full_name').lean();
+          
+          await ProjectNotificationService.notifyProjectCommunication({
+            project,
+            notification: result.data,
+            creator: creator || { _id: userId, full_name: req.user.full_name || req.user.name },
+            projectUsers,
+            tenantId: tenantId || project.tenant_id
+          });
+        }
+      } catch (notifError) {
+        console.error('Failed to send project communication notification:', notifError);
+      }
+      
       return ApiResponse.success(res, result.data, result.message, 201);
     } else {
       return ApiResponse.error(res, result.message, 400, result.data);

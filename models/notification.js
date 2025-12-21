@@ -12,6 +12,12 @@ const notificationSchema = new mongoose.Schema({
         required: true,
         index: true
     },
+    tenant_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tenant',
+        required: false,
+        index: true
+    },
     title: {
         type: String,
         required: true,
@@ -72,6 +78,11 @@ notificationSchema.index({ user_id: 1, created_at: -1 });
 notificationSchema.index({ user_id: 1, is_read: 1 });
 notificationSchema.index({ user_id: 1, type: 1 });
 notificationSchema.index({ user_id: 1, type: 1, is_read: 1 }); // Compound index
+notificationSchema.index({ tenant_id: 1 });
+notificationSchema.index({ tenant_id: 1, created_at: -1 });
+// Compound index for user_id + tenant_id queries (most common case)
+notificationSchema.index({ user_id: 1, tenant_id: 1, created_at: -1 });
+notificationSchema.index({ user_id: 1, tenant_id: 1, is_read: 1 });
 notificationSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
 notificationSchema.index({ created_at: -1 }); // For sorting
 
@@ -138,32 +149,72 @@ notificationSchema.statics.getNotifications = async function(userId, filters = {
             limit = 10,
             type,
             is_read,
-            search
+            search,
+            tenant_id
         } = filters;
 
-        // Build query - simplified for better performance
-        const query = { user_id: mongoose.isValidObjectId(userId) ? new mongoose.Types.ObjectId(userId) : userId };
+        // Build query - optimized for compound index: { user_id: 1, tenant_id: 1, created_at: -1 }
+        const userIdObj = mongoose.isValidObjectId(userId) ? new mongoose.Types.ObjectId(userId) : userId;
+        const query = { user_id: userIdObj };
+
+        // Always include tenant_id in query if provided (for better index usage)
+        if (tenant_id) {
+            query.tenant_id = mongoose.isValidObjectId(tenant_id) ? new mongoose.Types.ObjectId(tenant_id) : tenant_id;
+        }
 
         if (type) query.type = type;
         if (is_read !== undefined) query.is_read = is_read;
-        if (search) {
+        
+        // Search is expensive - only use if necessary
+        if (search && search.trim()) {
             query.$or = [
-                { title: { $regex: search, $options: 'i' } },
-                { message: { $regex: search, $options: 'i' } }
+                { title: { $regex: search.trim(), $options: 'i' } },
+                { message: { $regex: search.trim(), $options: 'i' } }
             ];
         }
 
         console.log('🔍 Final query:', JSON.stringify(query, null, 2));
 
-        // Optimize query - use lean() and reduce timeout
-        const notifications = await this.find(query)
+        // Optimize query - use lean() and proper indexes
+        // Sort order matches compound index: { user_id: 1, tenant_id: 1, created_at: -1 }
+        const queryBuilder = this.find(query)
             .sort({ created_at: -1 })
             .skip((page - 1) * limit)
             .limit(parseInt(limit))
             .lean()
-            .maxTimeMS(3000); // Reduced to 3 seconds
+            .maxTimeMS(5000); // Increased to 5 seconds
+        
+        // Force use of compound index if tenant_id is in query
+        if (tenant_id) {
+            queryBuilder.hint({ user_id: 1, tenant_id: 1, created_at: -1 });
+        }
+        
+        const notifications = await queryBuilder;
 
-        const total = await this.countDocuments(query).maxTimeMS(2000); // Reduced to 2 seconds
+        // Optimize countDocuments - skip if not needed or use estimated count
+        let total = 0;
+        if (page === 1 || notifications.length > 0) {
+            // Only count on first page or if we have results
+            try {
+                // Use countDocuments with same query but without expensive operations
+                const countQuery = { user_id: userIdObj };
+                if (tenant_id) {
+                    countQuery.tenant_id = mongoose.isValidObjectId(tenant_id) ? new mongoose.Types.ObjectId(tenant_id) : tenant_id;
+                }
+                if (type) countQuery.type = type;
+                if (is_read !== undefined) countQuery.is_read = is_read;
+                // Skip search in count for performance
+                
+                total = await this.countDocuments(countQuery).maxTimeMS(3000);
+            } catch (countError) {
+                console.warn('CountDocuments timeout or error, using estimated count:', countError.message);
+                // If count fails, estimate based on current results
+                total = notifications.length >= limit ? (page * limit) + 1 : (page - 1) * limit + notifications.length;
+            }
+        } else {
+            // For pages beyond first, if no results, total is likely 0
+            total = (page - 1) * limit;
+        }
 
         console.log('✅ Found notifications:', notifications.length, 'Total:', total);
 
@@ -201,7 +252,8 @@ notificationSchema.statics.getPublicNotifications = async function(filters = {})
             limit = 10,
             type,
             is_read,
-            search
+            search,
+            tenant_id
         } = filters;
 
         const query = {};
@@ -209,6 +261,7 @@ notificationSchema.statics.getPublicNotifications = async function(filters = {})
         // Apply filters
         if (type) query.type = type;
         if (is_read !== undefined) query.is_read = is_read;
+        if (tenant_id) query.tenant_id = mongoose.isValidObjectId(tenant_id) ? new mongoose.Types.ObjectId(tenant_id) : tenant_id;
         if (search) {
             query.$or = [
                 { title: { $regex: search, $options: 'i' } },

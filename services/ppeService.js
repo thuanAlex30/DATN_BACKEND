@@ -863,11 +863,15 @@ class PPEService {
         const stats = await ppeRepository.getManagerPPEStats(managerId, itemId);
         console.log(`[DEBUG] getManagerPPEStats for item ${itemId}:`, JSON.stringify(stats, null, 2));
         
-        ppeSummary[itemId].total_received = stats.total_received;  // ✅ Lấy từ DB để chính xác
-        ppeSummary[itemId].total_returned = stats.total_returned;
-        ppeSummary[itemId].remaining_in_hand = stats.remaining_in_hand;  // ✅ Số còn giữ sau khi trả Admin
-        ppeSummary[itemId].total_issued_to_employees = stats.total_issued_to_employees;
-        ppeSummary[itemId].remaining = stats.remaining_in_hand - stats.total_issued_to_employees;  // ✅ Số còn lại thực tế
+        ppeSummary[itemId].total_received = stats.total_received || 0;  // ✅ Lấy từ DB để chính xác
+        ppeSummary[itemId].total_returned = stats.total_returned || 0;
+        ppeSummary[itemId].remaining_in_hand = stats.remaining_in_hand || 0;  // ✅ Số còn giữ sau khi trả Admin
+        ppeSummary[itemId].total_issued_to_employees = stats.total_issued_to_employees || 0;  // ✅ TỔNG số đã phát (kể cả đã trả)
+        ppeSummary[itemId].total_returned_by_employees = stats.total_returned_by_employees || 0;  // ✅ Tổng số employees đã trả lại
+        // ✅ Số còn lại = remaining_in_hand - (số đang giữ bởi employees)
+        // Số đang giữ bởi employees = total_issued_to_employees - total_returned_by_employees
+        const currentlyHeldByEmployees = (stats.total_issued_to_employees || 0) - (stats.total_returned_by_employees || 0);
+        ppeSummary[itemId].remaining = Math.max(0, (stats.remaining_in_hand || 0) - currentlyHeldByEmployees);
         
         // Transform issuances IDs from _id to id
         ppeSummary[itemId].issuances = transformDocumentsId(ppeSummary[itemId].issuances, POPULATED_FIELDS.PPE_ISSUANCE);
@@ -1057,7 +1061,19 @@ class PPEService {
       // Create issuance (stock was already updated atomically above)
       const issuance = await ppeRepository.createIssuance(issuanceData);
       
-      return { issuance, issuer, recipient };
+      // Populate item_id before returning for notification
+      const PPEIssuance = require('../models/ppeIssuance');
+      const populatedIssuance = await PPEIssuance.findById(issuance._id)
+        .populate('item_id', 'item_name item_code')
+        .populate('user_id', 'full_name')
+        .populate('issued_by', 'full_name')
+        .lean();
+      
+      return { 
+        issuance: populatedIssuance || issuance, 
+        issuer, 
+        recipient 
+      };
     };
 
     // Try to use transaction, fallback to non-transaction if not supported

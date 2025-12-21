@@ -52,8 +52,13 @@ class TrainingRepository {
     }
 
     // ========== Course Operations ==========
-    async getAllCourses(filters = {}) {
+    async getAllCourses(filters = {}, tenantId = null) {
         const query = {};
+        
+        // ✅ Tenant filter cho courses
+        if (tenantId) {
+            query.tenant_id = tenantId;
+        }
         
         if (filters.courseSetId) {
             query.course_set_id = filters.courseSetId;
@@ -73,7 +78,7 @@ class TrainingRepository {
             .sort({ course_name: 1 });
     }
 
-    async getAvailableCoursesForEmployee(userId, filters = {}) {
+    async getAvailableCoursesForEmployee(userId, filters = {}, tenantId = null) {
         try {
             // Get user's department
             const user = await User.findById(userId).populate('department_id');
@@ -84,16 +89,28 @@ class TrainingRepository {
             const departmentId = user.department_id._id;
 
             // Get training assignments for user's department
-            const assignments = await TrainingAssignment.find({ 
+            const assignmentQuery = { 
                 department_id: departmentId,
                 status: 'active'
-            }).populate('course_id');
+            };
+            // ✅ Tenant filter
+            if (tenantId) {
+                assignmentQuery.tenant_id = tenantId;
+            }
+            const assignments = await TrainingAssignment.find(assignmentQuery).populate('course_id');
 
-            // Filter courses that are deployed
+            // Filter courses that are deployed and belong to tenant
             const availableCourses = [];
             
             for (const assignment of assignments) {
                 if (assignment.course_id && assignment.course_id.is_deployed) {
+                    // ✅ Tenant filter: chỉ lấy courses của tenant
+                    if (tenantId && assignment.course_id.tenant_id) {
+                        if (assignment.course_id.tenant_id.toString() !== tenantId.toString()) {
+                            continue;
+                        }
+                    }
+                    
                     // Apply additional filters
                     if (filters.isMandatory !== undefined && 
                         assignment.course_id.is_mandatory !== filters.isMandatory) {
@@ -114,24 +131,42 @@ class TrainingRepository {
         }
     }
 
-    async getCourseById(courseId) {
+    async getCourseById(courseId, tenantId = null) {
         if (!mongoose.Types.ObjectId.isValid(courseId)) {
             return null;
         }
-        return await Course.findById(courseId).populate('course_set_id', 'name');
+        const query = { _id: courseId };
+        // ✅ Tenant filter
+        if (tenantId) {
+            query.tenant_id = tenantId;
+        }
+        return await Course.findOne(query).populate('course_set_id', 'name');
     }
 
-    async createCourse(courseData) {
-        const course = new Course(courseData);
+    async createCourse(courseData, tenantId = null) {
+        // ✅ Tự động set tenant_id nếu có
+        const course = new Course({
+            ...courseData,
+            ...(tenantId ? { tenant_id: tenantId } : {})
+        });
         return await course.save();
     }
 
-    async updateCourse(courseId, courseData) {
+    async updateCourse(courseId, courseData, tenantId = null) {
         if (!mongoose.Types.ObjectId.isValid(courseId)) {
             throw new Error('Course not found');
         }
-        const course = await Course.findByIdAndUpdate(
-            courseId, 
+        const query = { _id: courseId };
+        // ✅ Tenant filter
+        if (tenantId) {
+            query.tenant_id = tenantId;
+        }
+        // Không cho phép đổi tenant_id qua API
+        if (courseData.tenant_id) {
+            delete courseData.tenant_id;
+        }
+        const course = await Course.findOneAndUpdate(
+            query, 
             courseData, 
             { new: true, runValidators: true }
         ).populate('course_set_id', 'name');
@@ -141,11 +176,16 @@ class TrainingRepository {
         return course;
     }
 
-    async deleteCourse(courseId) {
+    async deleteCourse(courseId, tenantId = null) {
         if (!mongoose.Types.ObjectId.isValid(courseId)) {
             throw new Error('Course not found');
         }
-        const course = await Course.findByIdAndDelete(courseId);
+        const query = { _id: courseId };
+        // ✅ Tenant filter
+        if (tenantId) {
+            query.tenant_id = tenantId;
+        }
+        const course = await Course.findOneAndDelete(query);
         if (!course) {
             throw new Error('Course not found');
         }
@@ -322,7 +362,7 @@ class TrainingRepository {
     }
 
     // ========== Training Enrollment Operations ==========
-    async getAllEnrollments(filters = {}) {
+    async getAllEnrollments(filters = {}, tenantId = null) {
         const query = {};
         
         if (filters.sessionId) {
@@ -337,10 +377,27 @@ class TrainingRepository {
             query.status = filters.status;
         }
 
-        return await TrainingEnrollment.find(query)
+        // ✅ Tenant filter cho enrollment qua session.tenant_id
+        let enrollmentQuery = TrainingEnrollment.find(query);
+        
+        if (tenantId) {
+            // Filter enrollments by sessions that belong to the tenant
+            const sessionIds = await TrainingSession.find({ tenant_id: tenantId }).distinct('_id');
+            if (sessionIds.length > 0) {
+                enrollmentQuery = TrainingEnrollment.find({
+                    ...query,
+                    session_id: { $in: sessionIds }
+                });
+            } else {
+                // No sessions for this tenant, return empty array
+                return [];
+            }
+        }
+
+        return await enrollmentQuery
             .populate({
                 path: 'session_id',
-                select: 'session_name start_time end_time course_id',
+                select: 'session_name start_time end_time course_id tenant_id',
                 populate: {
                     path: 'course_id',
                     select: 'course_name description duration_hours is_mandatory validity_months course_set_id'
@@ -350,8 +407,8 @@ class TrainingRepository {
             .sort({ enrolled_at: -1 });
     }
 
-    async getAllTrainingEnrollments(filters = {}) {
-        return await this.getAllEnrollments(filters);
+    async getAllTrainingEnrollments(filters = {}, tenantId = null) {
+        return await this.getAllEnrollments(filters, tenantId);
     }
 
     async getEnrollmentById(enrollmentId) {
@@ -741,8 +798,13 @@ class TrainingRepository {
     }
 
     // ========== Training Assignment Operations ==========
-    async getAllTrainingAssignments(filters = {}) {
+    async getAllTrainingAssignments(filters = {}, tenantId = null) {
         let query = {};
+        
+        // ✅ Tenant filter cho assignment
+        if (tenantId) {
+            query.tenant_id = tenantId;
+        }
         
         if (filters.department_id) {
             query.department_id = filters.department_id;
@@ -817,11 +879,16 @@ class TrainingRepository {
         return assignment;
     }
 
-    async getTrainingAssignmentsByDepartment(departmentId) {
-        return await TrainingAssignment.find({ 
+    async getTrainingAssignmentsByDepartment(departmentId, tenantId = null) {
+        const query = { 
             department_id: departmentId,
             status: 'active'
-        })
+        };
+        // ✅ Tenant filter
+        if (tenantId) {
+            query.tenant_id = tenantId;
+        }
+        return await TrainingAssignment.find(query)
         .populate({
             path: 'course_id',
             select: 'course_name description duration_hours is_mandatory validity_months is_deployed deployed_at deployed_by',
@@ -834,24 +901,34 @@ class TrainingRepository {
         .sort({ created_at: -1 });
     }
 
-    async getTrainingAssignmentsByCourse(courseId) {
-        return await TrainingAssignment.find({ 
+    async getTrainingAssignmentsByCourse(courseId, tenantId = null) {
+        const query = { 
             course_id: courseId,
             status: 'active'
-        })
+        };
+        // ✅ Tenant filter
+        if (tenantId) {
+            query.tenant_id = tenantId;
+        }
+        return await TrainingAssignment.find(query)
         .populate('department_id', 'department_name')
         .populate('assigned_by', 'full_name email')
         .sort({ created_at: -1 });
     }
 
-    async getCoursesByDepartment(departmentId) {
-        const assignments = await this.getTrainingAssignmentsByDepartment(departmentId);
+    async getCoursesByDepartment(departmentId, tenantId = null) {
+        const assignments = await this.getTrainingAssignmentsByDepartment(departmentId, tenantId);
         const courseIds = assignments
             .filter(assignment => assignment.course_id && assignment.course_id._id)
             .map(assignment => assignment.course_id._id);
         
         // Get full course data with deployment info
-        const courses = await Course.find({ _id: { $in: courseIds } })
+        // Ensure we only fetch courses that belong to the tenant (if tenantId provided)
+        const courseQuery = { _id: { $in: courseIds } };
+        if (tenantId) {
+            courseQuery.tenant_id = tenantId;
+        }
+        const courses = await Course.find(courseQuery)
             .populate('deployed_by', 'full_name email')
             .lean();
         
@@ -943,16 +1020,21 @@ class TrainingRepository {
     }
 
     // ========== Employee Training Methods ==========
-    async getEmployeeTrainingSessions(userId) {
-        // Get all deployed courses that the employee can access
-        const deployedCourses = await Course.find({
+    async getEmployeeTrainingSessions(userId, tenantId = null) {
+        // Get all deployed courses that the employee can access (filter by tenant if provided)
+        const courseQuery = {
             is_deployed: true,
             status: 'active'
-        })
-        .populate('course_set_id', 'name description')
-        .populate('question_bank_id', 'name description')
-        .select('name description course_set_id question_bank_id duration_minutes created_at deployed_at')
-        .sort({ deployed_at: -1 });
+        };
+        if (tenantId) {
+            courseQuery.tenant_id = tenantId;
+        }
+
+        const deployedCourses = await Course.find(courseQuery)
+            .populate('course_set_id', 'name description')
+            .populate('question_bank_id', 'name description')
+            .select('name description course_set_id question_bank_id duration_minutes created_at deployed_at tenant_id')
+            .sort({ deployed_at: -1 });
 
         // Get employee's training history
         const trainingHistory = await TrainingHistory.find({

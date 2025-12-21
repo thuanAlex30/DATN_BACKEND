@@ -39,14 +39,35 @@ class QualityEvents {
       // Send to Kafka
       await kafkaProducer.sendQualityEvent('quality_checkpoint.created', eventData);
 
-      // Send WebSocket notification
+      // Send realtime notification (WebSocket + Database)
+      const QualityNotificationService = require('../services/qualityNotificationService');
+      const User = require('../models/user');
+      const tenantId = checkpoint.tenant_id || metadata.tenantId;
+      
+      if (tenantId) {
+        let assignedUser = null;
+        if (checkpoint.assignedTo) {
+          assignedUser = await User.findById(checkpoint.assignedTo).select('_id full_name').lean();
+        }
+        
+        await QualityNotificationService.notifyQualityCheckpointCreated({
+          checkpoint,
+          creator: {
+            _id: metadata.userId,
+            full_name: metadata.userFullName
+          },
+          assignedUser,
+          tenantId
+        });
+      }
+      
+      // Also send WebSocket for backward compatibility
       await WebSocketService.broadcastToAll('quality_checkpoint_created', {
         message: `New quality checkpoint "${checkpoint.name}" has been created`,
         checkpoint: eventData.checkpoint,
         createdBy: metadata.userFullName || 'System'
       });
 
-      // Notify assigned user if exists
       if (checkpoint.assignedTo) {
         await WebSocketService.emitToUser(checkpoint.assignedTo, 'quality_checkpoint_assigned', {
           message: `You have been assigned a new quality checkpoint: "${checkpoint.name}"`,

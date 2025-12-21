@@ -37,11 +37,18 @@ class ErrorMiddleware {
 
     // Custom API errors
     if (err.statusCode) {
-      return ApiResponse.error(res, err.message, err.statusCode);
+      // Ensure message is always a string
+      const errorMessage = typeof err.message === 'string' 
+        ? err.message 
+        : (err.message?.toString() || 'An error occurred');
+      return ApiResponse.error(res, errorMessage, err.statusCode);
     }
 
     // Default server error
-    return ApiResponse.error(res, 'Internal server error', 500);
+    const errorMessage = typeof err.message === 'string' 
+      ? err.message 
+      : (err.message?.toString() || 'Internal server error');
+    return ApiResponse.error(res, errorMessage, 500);
   }
 
   // 404 Not Found handler
@@ -52,37 +59,19 @@ class ErrorMiddleware {
   // Async error wrapper
   static asyncHandler(fn) {
     return (req, res, next) => {
-      console.log(`🔍 ErrorMiddleware.asyncHandler - Wrapping function for ${req.method} ${req.path}`);
-      console.log(`🔍 ErrorMiddleware.asyncHandler - Function type: ${typeof fn}, is function: ${typeof fn === 'function'}`);
-      console.log(`🔍 ErrorMiddleware.asyncHandler - About to call wrapped function...`);
-      console.log(`🔍 ErrorMiddleware.asyncHandler - Function name: ${fn.name || 'anonymous'}`);
-      console.log(`🔍 ErrorMiddleware.asyncHandler - Function toString: ${fn.toString().substring(0, 200)}...`);
-      
       try {
         // Call the function and handle the promise
-        console.log(`🔍 ErrorMiddleware.asyncHandler - About to call fn(req, res, next)...`);
         const promise = Promise.resolve(fn(req, res, next));
-        console.log(`🔍 ErrorMiddleware.asyncHandler - Promise created, isPromise: ${promise instanceof Promise}`);
-        console.log(`🔍 ErrorMiddleware.asyncHandler - Promise state: ${promise.toString()}`);
         
-        // Add then/catch handlers to track execution
-        promise
-          .then((result) => {
-            console.log(`✅ ErrorMiddleware.asyncHandler - Promise resolved with result:`, typeof result, result?.constructor?.name);
-            return result;
-          })
-          .catch((error) => {
-            console.error(`❌ ErrorMiddleware.asyncHandler - Error caught in promise:`, error);
-            console.error(`❌ ErrorMiddleware.asyncHandler - Error message:`, error.message);
-            console.error(`❌ ErrorMiddleware.asyncHandler - Error stack:`, error.stack);
-            return next(error);
-          });
+        // Handle promise rejection
+        promise.catch((error) => {
+          console.error(`❌ ErrorMiddleware.asyncHandler - Error caught:`, error);
+          return next(error);
+        });
         
-        console.log(`🔍 ErrorMiddleware.asyncHandler - Returning promise...`);
         return promise;
       } catch (error) {
         console.error(`❌ ErrorMiddleware.asyncHandler - Synchronous error:`, error);
-        console.error(`❌ ErrorMiddleware.asyncHandler - Synchronous error stack:`, error.stack);
         return next(error);
       }
     };

@@ -98,7 +98,8 @@ exports.getAccessControlEvents = async (req, res) => {
         
         if (employeeNos.length > 0) {
           console.log('🔍 Enriching events with user info for employeeNos:', employeeNos);
-          const users = await UserRepository.findByUserIds(employeeNos);
+          // Scope user lookup to current tenant to avoid cross-tenant enrichment
+          const users = await UserRepository.findByUserIds(employeeNos, [], req.user?.tenant_id);
           
           // Create a map for quick lookup
           const userMap = new Map();
@@ -191,7 +192,8 @@ exports.searchAccessControlEvents = async (req, res) => {
           .filter(no => no && no !== '' && no !== 'undefined');
         
         if (employeeNos.length > 0) {
-          const users = await UserRepository.findByUserIds(employeeNos);
+        // Scope user lookup to current tenant to avoid cross-tenant enrichment
+        const users = await UserRepository.findByUserIds(employeeNos, [], req.user?.tenant_id);
           const userMap = new Map();
           users.forEach(user => {
             if (user.user_id) {
@@ -319,7 +321,8 @@ exports.getAccessControlEventsByProject = async (req, res) => {
       // Fallback: nếu chưa có employeeNo nhưng có danh sách userIds, tra cứu user để lấy user_id
       if (projectEmployeeNos.size === 0 && projectUserIds.size > 0) {
         try {
-          const usersById = await UserRepository.findByIds(Array.from(projectUserIds));
+          // Scope the lookup to current tenant to avoid cross-tenant matches
+          const usersById = await UserRepository.findByIds(Array.from(projectUserIds), [], req.user?.tenant_id);
           usersById.forEach(u => {
             if (u && u.user_id !== undefined && u.user_id !== null && u.user_id !== '') {
               projectEmployeeNos.add(String(u.user_id));
@@ -365,33 +368,68 @@ exports.getAccessControlEventsByProject = async (req, res) => {
       ...(endTime && { endTime })
     };
 
-    // Get events from Hikvision
-    let result;
-    const shouldGetAll = getAll === 'true' || getAll === true || getAll === '1' || getAll === 1;
-    
-    if (shouldGetAll) {
-      result = await hikvisionService.getAllAccessControlEvents(searchParams);
-    } else {
-      result = await hikvisionService.getAccessControlEvents(searchParams);
-    }
-
-    if (!result.success) {
-      const statusCode = result.status || 500;
-      return res.status(statusCode).json(
-        createResponse(statusCode, result.error || 'Lỗi khi lấy dữ liệu từ Hikvision', null, result.error)
+    // Get devices assigned to this project (and implicitly tenant)
+    const TimeDevice = require('../models/timeDevice');
+    // Ensure devices are filtered by tenant to avoid cross-tenant device access
+    const tenantIdForQuery = req.user?.tenant_id || null;
+    const deviceQuery = tenantIdForQuery ? { project_id: projectId, tenant_id: tenantIdForQuery } : { project_id: projectId };
+    const devices = await TimeDevice.find(deviceQuery).lean();
+    if (!devices || devices.length === 0) {
+      console.log('⚠️ No devices configured for project', projectId);
+      return res.status(200).json(
+        createResponse(200, 'Dự án chưa gán máy chấm công', { events: [], total: 0, projectUserIds: Array.from(projectUserIds) })
       );
     }
 
-    // Extract events
-    const allEvents = result.data?.events || result.data?.AcsEvent?.InfoList || [];
-    
+    // For each device, call Hikvision API with device-specific config and collect events
+    const shouldGetAll = getAll === 'true' || getAll === true || getAll === '1' || getAll === 1;
+
+    // Process devices in batches to avoid sending too many concurrent requests (which can trigger 429)
+    const batchSize = 3; // conservative parallelism; adjust if needed
+    const allEvents = [];
+    for (let i = 0; i < devices.length; i += batchSize) {
+      const batch = devices.slice(i, i + batchSize);
+      const batchPromises = batch.map(async (device) => {
+        try {
+          const DeviceHikvisionService = hikvisionService.HikvisionService;
+          const svc = new DeviceHikvisionService({
+            baseURL: device.baseURL || (device.ip ? `http://${device.ip}:${device.port || 80}` : undefined),
+            username: device.username,
+            password: device.password,
+            timeout: 30000
+          });
+
+          let result;
+          if (shouldGetAll) result = await svc.getAllAccessControlEvents(searchParams);
+          else result = await svc.getAccessControlEvents(searchParams);
+
+          if (!result.success) {
+            console.warn('⚠️ Device fetch failed for', device.device_id, result.error);
+            return [];
+          }
+
+          const events = result.data?.events || result.data?.AcsEvent?.InfoList || [];
+          return events.map(e => ({ ...e, _device_id: device.device_id }));
+        } catch (err) {
+          console.error('❌ Error fetching events for device', device.device_id, err.message);
+          return [];
+        }
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      allEvents.push(...batchResults.flat());
+
+      // small delay between batches to reduce burst load
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
     // Filter events by project employee numbers
     const filteredEvents = allEvents.filter(event => {
       if (!event.employeeNoString) return false;
       return employeeNos.includes(String(event.employeeNoString));
     });
 
-    console.log(`✅ Filtered ${filteredEvents.length} events from ${allEvents.length} total events for project ${projectId}`);
+    console.log(`✅ Collected ${filteredEvents.length} filtered events from ${allEvents.length} total events across ${devices.length} devices for project ${projectId}`);
 
     // Enrich filtered events với thông tin user từ assignments/leader
     let enrichedEvents = filteredEvents;

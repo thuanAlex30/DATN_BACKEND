@@ -17,7 +17,8 @@ class SystemLogController {
                 start_date,
                 end_date,
                 search,
-                ip_address
+                ip_address,
+                tenant_id
             } = req.query;
 
             const filters = {};
@@ -36,13 +37,26 @@ class SystemLogController {
                 setTimeout(() => reject(new Error('Request timeout')), 20000); // 20 second timeout
             });
 
-            const tenantId = req.user?.tenant_id || null;
-            if (tenantId) {
-                filters.tenant_id = tenantId;
-            }
-
             // Get current user's role level to filter logs
             const currentUserRoleLevel = req.user?.role?.role_level || req.user?.role_level || 0;
+            const isSystemAdmin = currentUserRoleLevel >= 100;
+
+            // Tenant filtering logic:
+            // - System Admin (level 100): Can view all tenants or filter by tenant_id from query
+            // - Other users: Automatically filter by their own tenant_id
+            if (isSystemAdmin) {
+                // System Admin can specify tenant_id in query to filter, or leave empty to see all
+                if (tenant_id) {
+                    filters.tenant_id = tenant_id;
+                }
+                // If no tenant_id specified, don't filter by tenant (show all tenants)
+            } else {
+                // Non-System Admin: Always filter by their own tenant
+                const userTenantId = req.user?.tenant_id || null;
+                if (userTenantId) {
+                    filters.tenant_id = userTenantId;
+                }
+            }
             
             // For company admin (level 90), only show logs of users with lower level
             // For system admin (level 100), show all logs
@@ -91,9 +105,29 @@ class SystemLogController {
                     }
                 }
 
+                // Extract tenant information
+                let tenantPayload = null;
+                if (logObj.tenant_id) {
+                    if (typeof logObj.tenant_id === 'object' && (logObj.tenant_id._id || logObj.tenant_id.name)) {
+                        tenantPayload = {
+                            _id: logObj.tenant_id._id?.toString() || logObj.tenant_id._id,
+                            name: logObj.tenant_id.name,
+                            company_name: logObj.tenant_id.company_name
+                        };
+                    } else {
+                        tenantPayload = {
+                            _id: logObj.tenant_id?.toString(),
+                            name: null,
+                            company_name: null
+                        };
+                    }
+                }
+
                 return {
                     _id: logObj._id?.toString() || logObj.id,
                     user_id: userPayload,
+                    tenant_id: tenantPayload?._id || logObj.tenant_id?.toString() || null,
+                    tenant_name: tenantPayload?.name || tenantPayload?.company_name || null,
                     action: logObj.action,
                     module: logObj.module,
                     severity: logObj.severity,

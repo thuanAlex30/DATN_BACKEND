@@ -27,7 +27,6 @@ const connectDB = require('./config/database');
 const routes = require('./routes');
 const ErrorMiddleware = require('./middlewares/ErrorMiddleware');
 const LoggingMiddleware = require('./middlewares/LoggingMiddleware');
-const initializeTrainingData = require('./database/initializeTrainingData');
 const websocketService = require('./services/websocketService');
 const kafkaProducer = require('./services/kafkaProducer');
 const kafkaConsumer = require('./services/kafkaConsumer');
@@ -184,7 +183,6 @@ const io = new Server(server, {
 (async () => {
   try {
     await connectDB();
-    await initializeTrainingData();
 
     server.listen(PORT, () => {
       console.log(`🚀 API running on port ${PORT}`);

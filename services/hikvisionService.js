@@ -12,13 +12,13 @@ const crypto = require('crypto');
  * - HIKVISION_PASSWORD: Password for Digest Auth (default: 12345678A)
  */
 class HikvisionService {
-  constructor() {
+  constructor(config = {}) {
     // Default Hikvision configuration
-    // Can be overridden via environment variables
-    this.baseURL = process.env.HIKVISION_BASE_URL || 'http://192.168.1.3:80';
-    this.username = process.env.HIKVISION_USERNAME || 'admin';
-    this.password = process.env.HIKVISION_PASSWORD || '12345678A';
-    this.timeout = 30000; // 30 seconds
+    // Can be overridden via constructor config or environment variables
+    this.baseURL = config.baseURL || process.env.HIKVISION_BASE_URL || 'http://192.168.1.3:80';
+    this.username = config.username || process.env.HIKVISION_USERNAME || 'admin';
+    this.password = config.password || process.env.HIKVISION_PASSWORD || '12345678A';
+    this.timeout = config.timeout || 30000; // 30 seconds
   }
 
   /**
@@ -135,284 +135,178 @@ class HikvisionService {
     let cnonce = crypto.randomBytes(8).toString('hex');
     let nc = '00000001';
 
-    try {
-      console.log('🔐 Making Hikvision request:', { method, url, hasData: !!data });
+    const maxRetries = 3;
+    let attempt = 0;
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-      // Step 1: First request without auth to get challenge (like Python's HTTPDigestAuth)
-      const firstResponse = await axios({
-        method,
-        url,
-        data, // Axios will automatically stringify JSON
-        headers: {
-          'Content-Type': 'application/json',
-          ...headers
-        },
-        timeout: this.timeout,
-        validateStatus: (status) => status === 401 || status === 200
-      });
+    while (attempt <= maxRetries) {
+      try {
+        console.log('🔐 Making Hikvision request:', { method, url, hasData: !!data, attempt });
 
-      // If already authenticated (unlikely on first request)
-      if (firstResponse.status === 200) {
-        console.log('✅ Already authenticated');
-        return {
-          success: true,
-          data: firstResponse.data,
-          status: firstResponse.status
-        };
-      }
-
-      // Step 2: Parse WWW-Authenticate header
-      const wwwAuth = firstResponse.headers['www-authenticate'] || 
-                      firstResponse.headers['WWW-Authenticate'] ||
-                      firstResponse.headers['Www-Authenticate'];
-      
-      if (!wwwAuth) {
-        console.error('❌ No WWW-Authenticate header in 401 response');
-        return {
-          success: false,
-          error: 'Authentication required but no WWW-Authenticate header received',
-          status: 401,
-          data: firstResponse.data
-        };
-      }
-
-      const authParams = this.parseAuthHeader(wwwAuth);
-      const realm = authParams.realm || 'IP Camera';
-      const nonce = authParams.nonce || '';
-      const qop = authParams.qop || null;
-
-      console.log('🔑 Parsed auth params:', { 
-        realm, 
-        hasNonce: !!nonce, 
-        qop,
-        allParams: authParams
-      });
-
-      // Step 3: Generate Digest Auth header
-      // For Digest Auth, URI should be the absolute path
-      // Some Hikvision implementations require URI without query string
-      // Try path only first (without query string)
-      const urlObj = new URL(endpoint, 'http://dummy');
-      const uriForAuth = urlObj.pathname; // Just the path: /ISAPI/AccessControl/AcsEvent
-      
-      console.log('🔍 URI for Digest Auth (path only):', uriForAuth);
-      console.log('🔍 Original endpoint:', endpoint);
-      
-      const authHeader = this.generateDigestAuth(method, uriForAuth, realm, nonce, qop, cnonce, nc);
-
-      console.log('🔐 Making authenticated request with Digest Auth...');
-      console.log('📋 Full auth header:', authHeader);
-
-      // Step 4: Second request with Digest Auth header
-      console.log('📤 Sending authenticated request:', {
-        method,
-        url,
-        hasData: !!data,
-        authHeaderLength: authHeader.length
-      });
-      
-      // Format data exactly like Python's requests.post(json=payload)
-      // Axios automatically stringifies JSON objects when Content-Type is application/json
-      console.log('📤 Request data (object):', data ? JSON.stringify(data).substring(0, 200) : 'no data');
-      
-      const response = await axios({
-        method,
-        url,
-        data, // Axios will automatically stringify JSON objects
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authHeader,
-          ...headers
-        },
-        timeout: this.timeout,
-        validateStatus: (status) => {
-          // Accept 200 (success) and 400 (some Hikvision devices return 400 with valid data)
-          return status === 200 || status === 400;
-        }
-      });
-      
-      // Check if still 401
-      if (response.status === 401) {
-        console.error('❌ Still getting 401 after Digest Auth');
-        console.error('Response headers:', JSON.stringify(response.headers, null, 2));
-        console.error('Response data:', response.data);
-        
-        return {
-          success: false,
-          error: 'Authentication failed - Digest Auth not accepted by Hikvision. Please check username/password.',
-          status: 401,
-          data: response.data
-        };
-      }
-
-      // Log raw response for debugging
-      console.log('📥 Raw Hikvision response:', {
-        status: response.status,
-        statusText: response.statusText,
-        dataType: typeof response.data,
-        dataIsString: typeof response.data === 'string',
-        dataPreview: typeof response.data === 'string' 
-          ? response.data.substring(0, 200) 
-          : JSON.stringify(response.data).substring(0, 200)
-      });
-
-      // Parse response.data if it's a string (shouldn't happen with Axios, but defensive)
-      let responseData = response.data;
-      if (typeof responseData === 'string') {
-        try {
-          responseData = JSON.parse(responseData);
-          console.log('⚠️ Parsed string response to object');
-        } catch (e) {
-          console.error('❌ Failed to parse response data as JSON:', e.message);
-        }
-      }
-
-      // Hikvision sometimes returns 400 but with valid data
-      // Check if we have AcsEvent object (even if InfoList is empty/undefined - "NO MATCH" is valid)
-      // Use 'in' operator to check if property exists, and ensure it's an object
-      const hasAcsEvent = responseData && 
-                          'AcsEvent' in responseData && 
-                          responseData.AcsEvent !== null &&
-                          typeof responseData.AcsEvent === 'object';
-      
-      // Check if InfoList exists (has actual events)
-      const hasInfoList = hasAcsEvent && 
-                         responseData.AcsEvent.InfoList !== undefined && 
-                         Array.isArray(responseData.AcsEvent.InfoList);
-
-      // Debug logging
-      console.log('🔍 Response analysis:', {
-        hasData: !!responseData,
-        hasAcsEvent: hasAcsEvent,
-        acsEventType: responseData?.AcsEvent ? typeof responseData.AcsEvent : 'none',
-        acsEventValue: responseData?.AcsEvent,
-        hasInfoList: hasInfoList,
-        responseStatus: responseData?.AcsEvent?.responseStatusStrg
-      });
-
-      // Check if this is a pure error response (no AcsEvent data, but has error fields)
-      const isPureErrorResponse = responseData && 
-                                  !hasAcsEvent &&
-                                  (responseData.statusCode !== undefined ||
-                                   responseData.statusString !== undefined ||
-                                   responseData.errorCode !== undefined ||
-                                   responseData.errorMsg !== undefined);
-
-      // If we have AcsEvent object, consider it success (even if InfoList is empty - "NO MATCH" is valid)
-      if (hasAcsEvent) {
-        const responseStatus = responseData.AcsEvent.responseStatusStrg || 'UNKNOWN';
-        const numOfMatches = responseData.AcsEvent.numOfMatches || 0;
-        const totalMatches = responseData.AcsEvent.totalMatches || 0;
-        
-        console.log('✅ Hikvision request successful (has AcsEvent):', {
-          status: response.status,
-          hasAcsEvent: true,
-          hasInfoList: hasInfoList,
-          responseStatusStrg: responseStatus,
-          numOfMatches: numOfMatches,
-          totalMatches: totalMatches,
-          hasErrorFields: !!(responseData.statusCode || responseData.errorCode)
+        // Step 1: First request without auth to get challenge (like Python's HTTPDigestAuth)
+        const firstResponse = await axios({
+          method,
+          url,
+          data, // Axios will automatically stringify JSON
+          headers: {
+            'Content-Type': 'application/json',
+            ...headers
+          },
+          timeout: this.timeout,
+          validateStatus: (status) => status === 401 || status === 200
         });
 
-        // Ensure InfoList exists as empty array if not present (for "NO MATCH" responses)
-        if (!hasInfoList) {
-          responseData.AcsEvent.InfoList = [];
+        // If already authenticated (unlikely on first request)
+        if (firstResponse.status === 200) {
+          console.log('✅ Already authenticated');
+          return {
+            success: true,
+            data: firstResponse.data,
+            status: firstResponse.status
+          };
+        }
+
+        // Step 2: Parse WWW-Authenticate header
+        const wwwAuth = firstResponse.headers['www-authenticate'] ||
+                        firstResponse.headers['WWW-Authenticate'] ||
+                        firstResponse.headers['Www-Authenticate'];
+
+        if (!wwwAuth) {
+          console.error('❌ No WWW-Authenticate header in 401 response');
+          return {
+            success: false,
+            error: 'Authentication required but no WWW-Authenticate header received',
+            status: 401,
+            data: firstResponse.data
+          };
+        }
+
+        const authParams = this.parseAuthHeader(wwwAuth);
+        const realm = authParams.realm || 'IP Camera';
+        const nonce = authParams.nonce || '';
+        const qop = authParams.qop || null;
+
+        // Step 3: Generate Digest Auth header
+        const urlObj = new URL(endpoint, 'http://dummy');
+        const uriForAuth = urlObj.pathname;
+        const authHeader = this.generateDigestAuth(method, uriForAuth, realm, nonce, qop, cnonce, nc);
+
+        // Step 4: Second request with Digest Auth header
+        const response = await axios({
+          method,
+          url,
+          data,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader,
+            ...headers
+          },
+          timeout: this.timeout,
+          validateStatus: (status) => status === 200 || status === 400
+        });
+
+        // Handle successful responses as before
+        // Parse response.data if it's a string (defensive)
+        let responseData = response.data;
+        if (typeof responseData === 'string') {
+          try {
+            responseData = JSON.parse(responseData);
+          } catch (e) {
+            console.error('❌ Failed to parse response data as JSON:', e.message);
+          }
+        }
+
+        const hasAcsEvent = responseData &&
+                            'AcsEvent' in responseData &&
+                            responseData.AcsEvent !== null &&
+                            typeof responseData.AcsEvent === 'object';
+
+        const hasInfoList = hasAcsEvent &&
+                           responseData.AcsEvent.InfoList !== undefined &&
+                           Array.isArray(responseData.AcsEvent.InfoList);
+
+        if (hasAcsEvent) {
+          if (!hasInfoList) {
+            responseData.AcsEvent.InfoList = [];
+          }
+          return {
+            success: true,
+            data: responseData,
+            status: 200
+          };
+        }
+
+        // Pure error or bad request handling (preserve original behavior)
+        const isPureErrorResponse = responseData &&
+                                    !hasAcsEvent &&
+                                    (responseData.statusCode !== undefined ||
+                                     responseData.statusString !== undefined ||
+                                     responseData.errorCode !== undefined ||
+                                     responseData.errorMsg !== undefined);
+
+        if (isPureErrorResponse) {
+          const errorMsg = responseData.statusString || responseData.errorMsg || 'Unknown error from Hikvision';
+          return {
+            success: false,
+            error: `Hikvision API error: ${errorMsg} (Code: ${responseData.errorCode || responseData.statusCode})`,
+            status: response.status,
+            data: responseData
+          };
         }
 
         return {
-          success: true,
-          data: responseData,
-          status: 200 // Normalize to 200 for frontend
-        };
-      }
-
-      // If we have pure error response (no AcsEvent data), return error
-      if (isPureErrorResponse) {
-        const errorMsg = responseData.statusString || responseData.errorMsg || 'Unknown error from Hikvision';
-        console.error('❌ Hikvision error response:', {
-          statusCode: responseData.statusCode,
-          statusString: responseData.statusString,
-          errorCode: responseData.errorCode,
-          errorMsg: responseData.errorMsg
-        });
-        
-        return {
           success: false,
-          error: `Hikvision API error: ${errorMsg} (Code: ${responseData.errorCode || responseData.statusCode})`,
-          status: response.status,
+          error: `Bad request to Hikvision API: ${JSON.stringify(responseData)}`,
+          status: 400,
           data: responseData
         };
-      }
+      } catch (error) {
+        // If we received 429 (Too Many Requests), perform exponential backoff and retry
+        const status = error.response?.status;
+        console.error('❌ Hikvision API Error:', {
+          method,
+          endpoint,
+          url,
+          error: error.message,
+          code: error.code,
+          status
+        });
 
-      // If 400 without valid data, return error
-      // This should not happen if AcsEvent exists, but log for debugging
-      console.error('❌ Bad request (400) without valid data:', {
-        responseData: responseData,
-        hasData: !!responseData,
-        dataKeys: responseData ? Object.keys(responseData) : [],
-        acsEventExists: responseData?.AcsEvent !== undefined,
-        acsEventValue: responseData?.AcsEvent,
-        fullResponseData: JSON.stringify(responseData)
-      });
-      
-      // Even if we reach here, check one more time if AcsEvent exists (defensive check)
-      if (responseData && responseData.AcsEvent) {
-        console.log('⚠️ Found AcsEvent in error path, treating as success');
-        if (!responseData.AcsEvent.InfoList) {
-          responseData.AcsEvent.InfoList = [];
+        if (status === 429 && attempt < maxRetries) {
+          const delay = 1000 * Math.pow(2, attempt); // 1s, 2s, 4s...
+          console.warn(`⏳ Received 429, retrying after ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
+          await sleep(delay);
+          attempt += 1;
+          continue;
         }
-        return {
-          success: true,
-          data: responseData,
-          status: 200
-        };
-      }
-      
-      return {
-        success: false,
-        error: `Bad request to Hikvision API: ${JSON.stringify(responseData)}`,
-        status: 400,
-        data: responseData
-      };
 
-    } catch (error) {
-      console.error('❌ Hikvision API Error:', {
-        method,
-        endpoint,
-        url,
-        error: error.message,
-        code: error.code,
-        response: error.response?.data,
-        status: error.response?.status
-      });
+        // Handle network errors and timeouts
+        if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND') {
+          return {
+            success: false,
+            error: `Cannot connect to Hikvision device at ${this.baseURL}. Please check if the device is online and the URL is correct.`,
+            status: 503,
+            data: null
+          };
+        }
 
-      // Handle network errors
-      if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND') {
+        if (error.code === 'ECONNABORTED') {
+          return {
+            success: false,
+            error: 'Request to Hikvision device timed out',
+            status: 504,
+            data: null
+          };
+        }
+
         return {
           success: false,
-          error: `Cannot connect to Hikvision device at ${this.baseURL}. Please check if the device is online and the URL is correct.`,
-          status: 503,
-          data: null
+          error: error.message || 'Unknown error occurred',
+          status: error.response?.status || 500,
+          data: error.response?.data || null
         };
       }
-
-      // Handle timeout
-      if (error.code === 'ECONNABORTED') {
-        return {
-          success: false,
-          error: 'Request to Hikvision device timed out',
-          status: 504,
-          data: null
-        };
-      }
-
-      return {
-        success: false,
-        error: error.message || 'Unknown error occurred',
-        status: error.response?.status || 500,
-        data: error.response?.data || null
-      };
-    }
+    } // end while
   }
 
   /**
@@ -607,5 +501,8 @@ class HikvisionService {
   }
 }
 
-module.exports = new HikvisionService();
+// Export a default instance for backward compatibility, and expose the class for per-device instances
+const defaultHikvisionService = new HikvisionService();
+defaultHikvisionService.HikvisionService = HikvisionService;
+module.exports = defaultHikvisionService;
 
