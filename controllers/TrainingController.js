@@ -8,7 +8,8 @@ const TrainingEvents = require('../events/trainingEvents');
 class TrainingController {
     // ========== Course Set Controllers ==========
     static getAllCourseSets = ErrorMiddleware.asyncHandler(async (req, res) => {
-        const result = await trainingService.getAllCourseSets();
+        const tenantId = req.user?.tenant_id;
+        const result = await trainingService.getAllCourseSets(tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -19,7 +20,8 @@ class TrainingController {
 
     static getCourseSetById = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseSetId } = req.params;
-        const result = await trainingService.getCourseSetById(courseSetId);
+        const tenantId = req.user?.tenant_id;
+        const result = await trainingService.getCourseSetById(courseSetId, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -29,8 +31,16 @@ class TrainingController {
     });
 
     static createCourseSet = ErrorMiddleware.asyncHandler(async (req, res) => {
-        const courseSetData = req.body;
-        const result = await trainingService.createCourseSet(courseSetData);
+        // Clone body to avoid mutating req.body
+        const courseSetData = { ...req.body };
+        const tenantId = req.user?.tenant_id || courseSetData.tenant_id;
+
+        if (!tenantId) {
+            return ApiResponse.validationError(res, { tenant_id: ['tenant_id is required'] }, 'Missing tenant_id');
+        }
+
+        courseSetData.tenant_id = tenantId;
+        const result = await trainingService.createCourseSet(courseSetData, tenantId);
         
         if (result.success) {
             // Emit course set created event
@@ -57,10 +67,11 @@ class TrainingController {
     static updateCourseSet = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseSetId } = req.params;
         const courseSetData = req.body;
+        const tenantId = req.user?.tenant_id;
         
         // Get old course set data for comparison
-        const oldCourseSetResult = await trainingService.getCourseSetById(courseSetId);
-        const result = await trainingService.updateCourseSet(courseSetId, courseSetData);
+        const oldCourseSetResult = await trainingService.getCourseSetById(courseSetId, tenantId);
+        const result = await trainingService.updateCourseSet(courseSetId, courseSetData, tenantId);
         
         if (result.success) {
             // Emit course set updated event
@@ -88,10 +99,11 @@ class TrainingController {
 
     static deleteCourseSet = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseSetId } = req.params;
+        const tenantId = req.user?.tenant_id;
         
         // Get course set data before deletion
-        const oldCourseSetResult = await trainingService.getCourseSetById(courseSetId);
-        const result = await trainingService.deleteCourseSet(courseSetId);
+        const oldCourseSetResult = await trainingService.getCourseSetById(courseSetId, tenantId);
+        const result = await trainingService.deleteCourseSet(courseSetId, tenantId);
         
         if (result.success) {
             // Emit course set deleted event
@@ -268,6 +280,24 @@ class TrainingController {
     static createTrainingSession = ErrorMiddleware.asyncHandler(async (req, res) => {
         const sessionData = req.body;
         const tenantId = req.user.tenant_id;
+        
+        // Automatically add department_id from user if not provided
+        if (!sessionData.department_id) {
+            // Try to get department_id from user object (could be _id string or populated object)
+            if (req.user.department_id) {
+                sessionData.department_id = req.user.department_id;
+            } else if (req.user.department && req.user.department._id) {
+                sessionData.department_id = req.user.department._id;
+            } else if (req.user.department) {
+                sessionData.department_id = req.user.department;
+            }
+        }
+        
+        // Validate department_id is present
+        if (!sessionData.department_id) {
+            return ApiResponse.error(res, 'department_id is required. User must be assigned to a department.', 400);
+        }
+        
         const result = await trainingService.createTrainingSession(sessionData, tenantId);
         
         if (result.success) {
@@ -391,8 +421,9 @@ class TrainingController {
     static getTrainingEnrollmentById = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { enrollmentId } = req.params;
         const userRole = req.user?.role?.role_name;
+        const tenantId = req.user?.tenant_id;
         
-        const result = await trainingService.getTrainingEnrollmentById(enrollmentId);
+        const result = await trainingService.getTrainingEnrollmentById(enrollmentId, tenantId);
         
         if (result.success) {
             // If user is employee, check if they own this enrollment
@@ -407,15 +438,29 @@ class TrainingController {
     });
 
     static createTrainingEnrollment = ErrorMiddleware.asyncHandler(async (req, res) => {
-        const enrollmentData = req.body;
+        // Clone body to avoid mutating req.body unexpectedly
+        const enrollmentData = { ...req.body };
         const userRole = req.user?.role?.role_name;
-        
+        // Prefer tenant from authenticated user but allow explicit tenant in body (for system/admin)
+        const tenantId = req.user?.tenant_id || enrollmentData.tenant_id;
+
+        // Validate tenant presence early to avoid Mongoose validation error
+        if (!tenantId) {
+            return ApiResponse.validationError(res, { tenant_id: ['tenant_id is required'] }, 'Missing tenant_id');
+        }
+        enrollmentData.tenant_id = tenantId;
+
         // If user is employee, they can only enroll themselves
         if (userRole === 'employee') {
             enrollmentData.user_id = req.user.id;
         }
-        
-        const result = await trainingService.createTrainingEnrollment(enrollmentData);
+
+        // If manager is assigning to employee, set assigned_by
+        if (userRole === 'manager' && enrollmentData.user_id && enrollmentData.user_id !== req.user.id) {
+            enrollmentData.assigned_by = req.user.id;
+        }
+
+        const result = await trainingService.createTrainingEnrollment(enrollmentData, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -427,7 +472,8 @@ class TrainingController {
     static updateTrainingEnrollment = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { enrollmentId } = req.params;
         const enrollmentData = req.body;
-        const result = await trainingService.updateTrainingEnrollment(enrollmentId, enrollmentData);
+        const tenantId = req.user?.tenant_id;
+        const result = await trainingService.updateTrainingEnrollment(enrollmentId, enrollmentData, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -438,7 +484,8 @@ class TrainingController {
 
     static deleteTrainingEnrollment = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { enrollmentId } = req.params;
-        const result = await trainingService.deleteTrainingEnrollment(enrollmentId);
+        const tenantId = req.user?.tenant_id;
+        const result = await trainingService.deleteTrainingEnrollment(enrollmentId, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -584,13 +631,17 @@ class TrainingController {
     });
 
     static importQuestionsFromExcel = ErrorMiddleware.asyncHandler(async (req, res) => {
-        const { bankId } = req.params;
+        const { bank_id } = req.body;
         
         if (!req.file) {
             return ApiResponse.error(res, 'No file uploaded', 400);
         }
 
-        const result = await trainingService.importQuestionsFromExcel(bankId, req.file);
+        if (!bank_id) {
+            return ApiResponse.error(res, 'Question bank ID is required', 400);
+        }
+
+        const result = await trainingService.importQuestionsFromExcel(bank_id, req.file);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -636,81 +687,11 @@ class TrainingController {
     });
 
     // ========== Training Actions ==========
-    static startTraining = ErrorMiddleware.asyncHandler(async (req, res) => {
-        const { sessionId } = req.params;
-        const userId = req.user._id || req.user.id;
-        
-        const result = await trainingService.startTraining(sessionId, userId);
-        
-        if (result.success) {
-            return ApiResponse.success(res, result.data, result.message, result.statusCode);
-        } else {
-            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
-        }
-    });
-
-    static submitTraining = ErrorMiddleware.asyncHandler(async (req, res) => {
-        const { sessionId } = req.params;
-        const userId = req.user._id || req.user.id;
-        const { answers, score, completionTime } = req.body;
-        
-        const result = await trainingService.submitTraining(sessionId, userId, answers, score, completionTime);
-        
-        if (result.success) {
-            // Emit training completion event
-            try {
-                const metadata = {
-                    userId: req.user?.id,
-                    userRole: req.user?.role,
-                    userFullName: req.user?.full_name,
-                    ipAddress: req.ip,
-                    userAgent: req.get('User-Agent')
-                };
-                await TrainingEvents.emitTrainingCompletion(result.data, metadata);
-            } catch (error) {
-                console.error('❌ Error emitting training completion event:', error);
-                // Don't fail the request if event emission fails
-            }
-            
-            return ApiResponse.success(res, result.data, result.message, result.statusCode);
-        } else {
-            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
-        }
-    });
-
-    static retakeTraining = ErrorMiddleware.asyncHandler(async (req, res) => {
-        const { sessionId } = req.params;
-        const userId = req.user._id || req.user.id;
-        
-        const result = await trainingService.retakeTraining(sessionId, userId);
-        
-        if (result.success) {
-            // Emit training retake event
-            try {
-                const metadata = {
-                    userId: req.user?.id,
-                    userRole: req.user?.role,
-                    userFullName: req.user?.full_name,
-                    ipAddress: req.ip,
-                    userAgent: req.get('User-Agent')
-                };
-                await TrainingEvents.emitTrainingRetake(result.data, metadata);
-            } catch (error) {
-                console.error('❌ Error emitting training retake event:', error);
-                // Don't fail the request if event emission fails
-            }
-            
-            return ApiResponse.success(res, result.data, result.message, result.statusCode);
-        } else {
-            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
-        }
-    });
-
-    // ========== Course Quiz Controllers (New - replaces session-based training) ==========
+    // New method for starting course quiz (replaces startTraining)
     static startCourseQuiz = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseId } = req.params;
         const userId = req.user._id || req.user.id;
-        const tenantId = req.user?.tenant_id;
+        const tenantId = req.user.tenant_id;
         
         const result = await trainingService.startCourseQuiz(courseId, userId, tenantId);
         
@@ -721,13 +702,19 @@ class TrainingController {
         }
     });
 
+    // Keep old method for backward compatibility (deprecated)
+    static startTraining = ErrorMiddleware.asyncHandler(async (req, res) => {
+        return ApiResponse.error(res, 'This method is deprecated. Please use POST /training/courses/:courseId/start instead.', 400);
+    });
+
+    // New method for submitting course quiz (replaces submitTraining)
     static submitCourseQuiz = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseId } = req.params;
         const userId = req.user._id || req.user.id;
-        const { answers, score, completionTime } = req.body;
-        const tenantId = req.user?.tenant_id;
+        const tenantId = req.user.tenant_id;
+        const { answers } = req.body; // score and completionTime are calculated automatically
         
-        const result = await trainingService.submitCourseQuiz(courseId, userId, answers, score, completionTime, tenantId);
+        const result = await trainingService.submitCourseQuiz(courseId, userId, answers, tenantId);
         
         if (result.success) {
             // Emit training completion event
@@ -751,10 +738,16 @@ class TrainingController {
         }
     });
 
+    // Keep old method for backward compatibility (deprecated)
+    static submitTraining = ErrorMiddleware.asyncHandler(async (req, res) => {
+        return ApiResponse.error(res, 'This method is deprecated. Please use POST /training/courses/:courseId/submit instead.', 400);
+    });
+
+    // New method for retaking course quiz (replaces retakeTraining)
     static retakeCourseQuiz = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseId } = req.params;
         const userId = req.user._id || req.user.id;
-        const tenantId = req.user?.tenant_id;
+        const tenantId = req.user.tenant_id;
         
         const result = await trainingService.retakeCourseQuiz(courseId, userId, tenantId);
         
@@ -778,6 +771,11 @@ class TrainingController {
         } else {
             return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
+    });
+
+    // Keep old method for backward compatibility (deprecated)
+    static retakeTraining = ErrorMiddleware.asyncHandler(async (req, res) => {
+        return ApiResponse.error(res, 'This method is deprecated. Please use POST /training/courses/:courseId/retake instead.', 400);
     });
 
     // ========== Training Assignment Controllers ==========

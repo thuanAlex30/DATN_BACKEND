@@ -52,7 +52,7 @@ class TrainingEvents {
       }
       
       // Also send WebSocket for backward compatibility
-      await WebSocketService.broadcastToAll('course_set_created', {
+      await WebSocketService.emitToAll('course_set_created', {
         message: `New course set "${courseSet.name}" has been created`,
         courseSet: eventData.courseSet,
         createdBy: metadata.userFullName || 'System'
@@ -124,7 +124,7 @@ class TrainingEvents {
       }
       
       // Also send WebSocket for backward compatibility
-      await WebSocketService.broadcastToAll('course_set_updated', {
+      await WebSocketService.emitToAll('course_set_updated', {
         message: `Course set "${newCourseSet.name}" has been updated`,
         courseSet: eventData.courseSet,
         changes: Object.keys(changes),
@@ -166,7 +166,7 @@ class TrainingEvents {
       await kafkaProducer.sendTrainingEvent('course_set.deleted', eventData);
 
       // Send WebSocket notification
-      await WebSocketService.broadcastToAll('course_set_deleted', {
+      await WebSocketService.emitToAll('course_set_deleted', {
         message: `Course set "${courseSet.name}" has been deleted`,
         courseSet: eventData.courseSet,
         deletedBy: metadata.userFullName || 'System'
@@ -226,7 +226,7 @@ class TrainingEvents {
       }
       
       // Also send WebSocket for backward compatibility
-      await WebSocketService.broadcastToAll('training_session_created', {
+      await WebSocketService.emitToAll('training_session_created', {
         message: `New training session "${session.name}" has been created`,
         session: eventData.session,
         createdBy: metadata.userFullName || 'System'
@@ -285,7 +285,7 @@ class TrainingEvents {
       await kafkaProducer.sendTrainingEvent('training_session.updated', eventData);
 
       // Send WebSocket notification
-      await WebSocketService.broadcastToAll('training_session_updated', {
+      await WebSocketService.emitToAll('training_session_updated', {
         message: `Training session "${newSession.name}" has been updated`,
         session: eventData.session,
         changes: Object.keys(changes),
@@ -295,7 +295,7 @@ class TrainingEvents {
       // Special notification for status changes
       if (changes.status) {
         const statusMessage = `Training session "${newSession.name}" status changed to ${changes.status.new}`;
-        await WebSocketService.broadcastToAll('training_session_status_changed', {
+        await WebSocketService.emitToAll('training_session_status_changed', {
           message: statusMessage,
           session: eventData.session,
           statusChange: changes.status,
@@ -338,7 +338,7 @@ class TrainingEvents {
       await kafkaProducer.sendTrainingEvent('training_session.deleted', eventData);
 
       // Send WebSocket notification
-      await WebSocketService.broadcastToAll('training_session_deleted', {
+      await WebSocketService.emitToAll('training_session_deleted', {
         message: `Training session "${session.name}" has been deleted`,
         session: eventData.session,
         deletedBy: metadata.userFullName || 'System'
@@ -379,7 +379,7 @@ class TrainingEvents {
       await kafkaProducer.sendTrainingEvent('training.enrollment', eventData);
 
       // Send WebSocket notification
-      await WebSocketService.broadcastToAll('training_enrollment', {
+      await WebSocketService.emitToAll('training_enrollment', {
         message: `New training enrollment for session`,
         enrollment: eventData.enrollment,
         enrolledBy: metadata.userFullName || 'System'
@@ -432,7 +432,7 @@ class TrainingEvents {
 
       // Send WebSocket notification
       const resultMessage = completion.passed ? 'passed' : 'failed';
-      await WebSocketService.broadcastToAll('training_completion', {
+      await WebSocketService.emitToAll('training_completion', {
         message: `Training completed with score ${completion.score}% (${resultMessage})`,
         completion: eventData.completion,
         completedBy: metadata.userFullName || 'System'
@@ -482,7 +482,7 @@ class TrainingEvents {
       await kafkaProducer.sendTrainingEvent('training.retake', eventData);
 
       // Send WebSocket notification
-      await WebSocketService.broadcastToAll('training_retake', {
+      await WebSocketService.emitToAll('training_retake', {
         message: `Training retake initiated (attempt #${retake.retakeCount})`,
         retake: eventData.retake,
         retakenBy: metadata.userFullName || 'System'
@@ -533,7 +533,7 @@ class TrainingEvents {
       await kafkaProducer.sendTrainingEvent('training.assignment', eventData);
 
       // Send WebSocket notification
-      await WebSocketService.broadcastToAll('training_assignment', {
+      await WebSocketService.emitToAll('training_assignment', {
         message: `Course assigned to department`,
         assignment: eventData.assignment,
         assignedBy: metadata.userFullName || 'System'
