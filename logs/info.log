@@ -888,3 +888,11 @@
 {"timestamp":"2025-12-22T07:47:58.748Z","level":"INFO","message":"User connected","metadata":{"socketId":"oaJNUTQRo8YXjTNPAAAp"},"pid":21696,"hostname":"MSI"}
 {"timestamp":"2025-12-22T07:47:58.751Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"693762346890b8984d13558b","role":"Company Admin","socketId":"oaJNUTQRo8YXjTNPAAAp"},"pid":21696,"hostname":"MSI"}
 {"timestamp":"2025-12-22T07:48:34.190Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":21696,"hostname":"MSI"}
+{"timestamp":"2025-12-22T08:17:09.880Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":5944,"hostname":"MSI"}
+{"timestamp":"2025-12-22T08:17:09.898Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":5944,"hostname":"MSI"}
+{"timestamp":"2025-12-22T08:17:09.899Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":5944,"hostname":"MSI"}
+{"timestamp":"2025-12-22T08:18:07.002Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":5944,"hostname":"MSI"}
+{"timestamp":"2025-12-22T08:18:11.180Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":23036,"hostname":"MSI"}
+{"timestamp":"2025-12-22T08:18:11.198Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":23036,"hostname":"MSI"}
+{"timestamp":"2025-12-22T08:18:11.199Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":23036,"hostname":"MSI"}
+{"timestamp":"2025-12-22T08:19:20.486Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":23036,"hostname":"MSI"}
