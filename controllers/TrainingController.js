@@ -396,7 +396,6 @@ class TrainingController {
         const filters = req.query;
         const tenantId = req.user?.tenant_id || null;
         const userRole = req.user?.role?.role_name;
-        const tenantId = req.user?.tenant_id;
         
         // If user is employee, only show their own enrollments
         if (userRole === 'employee') {

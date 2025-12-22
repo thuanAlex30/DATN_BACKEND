@@ -74,10 +74,7 @@ class TrainingRepository {
     async getAllCourses(filters = {}, tenantId = null) {
         const query = {};
         
-<<<<<<< HEAD
-=======
         // ✅ Tenant filter cho courses
->>>>>>> ThuanDH30
         if (tenantId) {
             query.tenant_id = tenantId;
         }
@@ -115,18 +112,10 @@ class TrainingRepository {
                 department_id: departmentId,
                 status: 'active'
             };
-<<<<<<< HEAD
-            
-            if (tenantId) {
-                assignmentQuery.tenant_id = tenantId;
-            }
-            
-=======
             // ✅ Tenant filter
             if (tenantId) {
                 assignmentQuery.tenant_id = tenantId;
             }
->>>>>>> ThuanDH30
             const assignments = await TrainingAssignment.find(assignmentQuery).populate('course_id');
 
             // Filter courses that are deployed and belong to tenant
@@ -165,16 +154,6 @@ class TrainingRepository {
         if (!mongoose.Types.ObjectId.isValid(courseId)) {
             return null;
         }
-<<<<<<< HEAD
-        const filter = { _id: courseId };
-        if (tenantId) {
-            filter.tenant_id = tenantId;
-        }
-        return await Course.findOne(filter).populate('course_set_id', 'name');
-    }
-
-    async createCourse(courseData, tenantId = null) {
-=======
         const query = { _id: courseId };
         // ✅ Tenant filter
         if (tenantId) {
@@ -185,7 +164,6 @@ class TrainingRepository {
 
     async createCourse(courseData, tenantId = null) {
         // ✅ Tự động set tenant_id nếu có
->>>>>>> ThuanDH30
         const course = new Course({
             ...courseData,
             ...(tenantId ? { tenant_id: tenantId } : {})
@@ -197,14 +175,6 @@ class TrainingRepository {
         if (!mongoose.Types.ObjectId.isValid(courseId)) {
             throw new Error('Course not found');
         }
-<<<<<<< HEAD
-        const filter = { _id: courseId };
-        if (tenantId) {
-            filter.tenant_id = tenantId;
-        }
-        const course = await Course.findOneAndUpdate(
-            filter, 
-=======
         const query = { _id: courseId };
         // ✅ Tenant filter
         if (tenantId) {
@@ -216,7 +186,6 @@ class TrainingRepository {
         }
         const course = await Course.findOneAndUpdate(
             query, 
->>>>>>> ThuanDH30
             courseData, 
             { new: true, runValidators: true }
         ).populate('course_set_id', 'name');
@@ -230,23 +199,12 @@ class TrainingRepository {
         if (!mongoose.Types.ObjectId.isValid(courseId)) {
             throw new Error('Course not found');
         }
-<<<<<<< HEAD
-        
-        const filter = { _id: courseId };
-        if (tenantId) {
-            filter.tenant_id = tenantId;
-        }
-        
-        // Check if course exists
-        const course = await Course.findOne(filter);
-=======
         const query = { _id: courseId };
         // ✅ Tenant filter
         if (tenantId) {
             query.tenant_id = tenantId;
         }
         const course = await Course.findOneAndDelete(query);
->>>>>>> ThuanDH30
         if (!course) {
             throw new Error('Course not found');
         }
@@ -475,29 +433,31 @@ class TrainingRepository {
             query.status = filters.status;
         }
 
-<<<<<<< HEAD
-        if (filters.assignedBy) {
-            query.assigned_by = filters.assignedBy;
-        }
-
-        return await TrainingEnrollment.find(query)
-            .populate({
-                path: 'course_id',
-                select: 'course_name description duration_hours is_mandatory validity_months course_set_id is_deployed'
-=======
-        // ✅ Tenant filter cho enrollment qua session.tenant_id
+        // ✅ Tenant filter cho enrollment: hỗ trợ cả mô hình cũ (session) và mới (course)
         let enrollmentQuery = TrainingEnrollment.find(query);
         
         if (tenantId) {
-            // Filter enrollments by sessions that belong to the tenant
-            const sessionIds = await TrainingSession.find({ tenant_id: tenantId }).distinct('_id');
+            // Lấy danh sách session và course thuộc tenant
+            const [sessionIds, courseIds] = await Promise.all([
+                TrainingSession.find({ tenant_id: tenantId }).distinct('_id'),
+                Course.find({ tenant_id: tenantId }).distinct('_id'),
+            ]);
+
+            const orConditions = [];
             if (sessionIds.length > 0) {
+                orConditions.push({ session_id: { $in: sessionIds } });
+            }
+            if (courseIds.length > 0) {
+                orConditions.push({ course_id: { $in: courseIds } });
+            }
+
+            if (orConditions.length > 0) {
                 enrollmentQuery = TrainingEnrollment.find({
                     ...query,
-                    session_id: { $in: sessionIds }
+                    $or: orConditions,
                 });
             } else {
-                // No sessions for this tenant, return empty array
+                // Tenant chưa có session/course nào → không có enrollment
                 return [];
             }
         }
@@ -506,13 +466,22 @@ class TrainingRepository {
             .populate({
                 path: 'session_id',
                 select: 'session_name start_time end_time course_id tenant_id',
+                strictPopulate: false,
                 populate: {
                     path: 'course_id',
                     select: 'course_name description duration_hours is_mandatory validity_months course_set_id'
                 }
->>>>>>> ThuanDH30
             })
-            .populate('user_id', 'full_name email')
+            // Populate course_id directly for course-based enrollments (no session)
+            .populate('course_id', 'course_name description duration_hours is_mandatory validity_months course_set_id')
+            .populate({
+                path: 'user_id',
+                select: 'full_name email department_id',
+                populate: {
+                    path: 'department_id',
+                    select: 'department_name'
+                }
+            })
             .populate('assigned_by', 'full_name email')
             .sort({ enrolled_at: -1 });
     }

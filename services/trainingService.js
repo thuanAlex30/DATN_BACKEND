@@ -679,17 +679,16 @@ class TrainingService {
             }
 
             // Check if enrollment status allows starting
-            if (enrollment.status !== 'enrolled' && enrollment.status !== 'failed') {
+            const isRetakeAllowedStatus = enrollment.status === 'failed';
+            const isFreshStartStatus = enrollment.status === 'enrolled';
+            const isInProgress = enrollment.status === 'in_progress';
+            if (!isFreshStartStatus && !isRetakeAllowedStatus && !isInProgress) {
                 return createResponse(400, `Cannot start quiz. Current status: ${enrollment.status}`);
             }
 
-<<<<<<< HEAD
-            // Get course information
-            const course = await trainingRepository.getCourseById(courseId, tenantId);
-=======
             // Get course information and question bank (ensure tenant scoping)
-            const course = await trainingRepository.getCourseById(session.course_id, session.tenant_id || null);
->>>>>>> ThuanDH30
+            const courseTenant = tenantId || enrollment.tenant_id || null;
+            const course = await trainingRepository.getCourseById(courseId, courseTenant);
             if (!course) {
                 return createResponse(404, 'Course not found');
             }
@@ -711,11 +710,13 @@ class TrainingService {
                 return createResponse(400, 'No questions available in the question bank');
             }
 
-            // Update enrollment status to in_progress and set started_at
-            await trainingRepository.updateTrainingEnrollment(enrollment._id, {
-                status: 'in_progress',
-                started_at: new Date()
-            }, tenantId);
+            // Update enrollment status to in_progress and set started_at (only when not already in progress)
+            if (!isInProgress) {
+                await trainingRepository.updateTrainingEnrollment(enrollment._id, {
+                    status: 'in_progress',
+                    started_at: new Date()
+                }, tenantId);
+            }
 
             return createResponse(200, 'Quiz started successfully', {
                 course: {
@@ -728,7 +729,7 @@ class TrainingService {
                     _id: enrollment._id,
                     status: 'in_progress',
                     enrolled_at: enrollment.enrolled_at,
-                    started_at: new Date()
+                    started_at: isInProgress ? enrollment.started_at : new Date()
                 },
                 questionBank: {
                     _id: questionBank._id,
