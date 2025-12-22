@@ -454,3 +454,10 @@
 {"timestamp":"2025-12-22T05:36:13.970Z","level":"INFO","message":"User connected","metadata":{"socketId":"StVfo5QTv6f6iFmGAAAN"},"pid":1152,"hostname":"MSI"}
 {"timestamp":"2025-12-22T05:36:13.972Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"StVfo5QTv6f6iFmGAAAN"},"pid":1152,"hostname":"MSI"}
 {"timestamp":"2025-12-22T05:40:47.232Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:41:30.654Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":13908,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:41:30.672Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":13908,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:41:30.673Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":13908,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:41:41.312Z","level":"INFO","message":"User connected","metadata":{"socketId":"gbAoELRGMgsGR8A-AAAC"},"pid":13908,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:41:41.313Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"gbAoELRGMgsGR8A-AAAC"},"pid":13908,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:41:44.932Z","level":"INFO","message":"Air quality fetched","metadata":{"latencyMs":183,"cacheKey":"airquality:15.978308996724056:108.26522650508201"},"pid":13908,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:41:44.948Z","level":"INFO","message":"Weather fetched","metadata":{"latencyMs":197,"cacheKey":"weather:15.978308996724056:108.26522650508201:undefined:temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day"},"pid":13908,"hostname":"MSI"}
