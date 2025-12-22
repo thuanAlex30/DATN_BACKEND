@@ -1,4 +1,5 @@
 const AuthService = require('../services/authService');
+const PasswordResetService = require('../services/passwordResetService');
 const { ApiResponse } = require('../utils/response');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 const AuthEvents = require('../events/authEvents');
@@ -7,21 +8,8 @@ class AuthController {
   // Register new user
   static register = ErrorMiddleware.asyncHandler(async (req, res) => {
     const result = await AuthService.register(req.body);
-    
-    // Emit user registered event
-    // try {
-    //   const metadata = {ss
-    //     userId: result.user?._id || result.user?.id,
-    //     userRole: result.user?.role,
-    //     userFullName: result.user?.full_name,
-    //     ipAddress: req.ip,
-    //     userAgent: req.get('User-Agent')
-    //   };
-    //   await AuthEvents.emitUserRegistered(result.user, metadata);
-    // } catch (error) {
-    //   console.error('❌ Error emitting user registered event:', error);
-    //   // Don't fail the request if event emission fails
-    // }
+
+
     
     return ApiResponse.success(res, result, 'User registered successfully', 201);
   });
@@ -64,10 +52,32 @@ class AuthController {
 
   // Change password
   static changePassword = ErrorMiddleware.asyncHandler(async (req, res) => {
+    console.log('🔐 [AuthController] changePassword called');
+    console.log('🔐 [AuthController] req.body:', { 
+      currentPassword: '***', 
+      newPassword: '***',
+      confirmNewPassword: req.body.confirmNewPassword ? '***' : undefined
+    });
+    console.log('🔐 [AuthController] req.user:', { 
+      id: req.user._id || req.user.id,
+      username: req.user.username 
+    });
+    
     const { currentPassword, newPassword } = req.body;
     const userId = req.user._id || req.user.id;
     
+    if (!userId) {
+      console.log('❌ [AuthController] No userId found');
+      return ApiResponse.unauthorized(res, 'User not authenticated');
+    }
+    
     const result = await AuthService.changePassword(userId, currentPassword, newPassword);
+    
+    console.log('🔐 [AuthController] AuthService result:', {
+      statusCode: result.statusCode,
+      message: result.message,
+      success: result.success
+    });
     
     // Emit password changed event
     try {
@@ -88,6 +98,10 @@ class AuthController {
     } catch (error) {
       console.error('❌ Error emitting password changed event:', error);
       // Don't fail the request if event emission fails
+    }
+    
+    if (result.statusCode !== 200) {
+      return ApiResponse.error(res, result.message, result.statusCode);
     }
     
     return ApiResponse.success(res, result, 'Password changed successfully');
@@ -141,6 +155,59 @@ class AuthController {
     const userId = req.user._id || req.user.id;
     const result = await AuthService.getProfile(userId);
     return ApiResponse.success(res, result.data, 'Current user info retrieved successfully');
+  });
+
+  // Forgot password - Send OTP
+  static forgotPassword = ErrorMiddleware.asyncHandler(async (req, res) => {
+    console.log('🔐 [AuthController] forgotPassword called');
+    console.log('🔐 [AuthController] req.body:', { email: req.body.email });
+    console.log('🔐 [AuthController] req.headers:', { 
+      authorization: req.headers.authorization ? 'present' : 'missing',
+      'content-type': req.headers['content-type']
+    });
+    
+    const { email } = req.body;
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('User-Agent');
+
+    const result = await PasswordResetService.sendOTP(email, ipAddress, userAgent);
+    
+    console.log('🔐 [AuthController] PasswordResetService result:', {
+      statusCode: result.statusCode,
+      message: result.message
+    });
+    
+    if (result.statusCode !== 200) {
+      return ApiResponse.error(res, result.message, result.statusCode);
+    }
+
+    return ApiResponse.success(res, result.data, result.message);
+  });
+
+  // Verify OTP
+  static verifyOTP = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { email, otp } = req.body;
+
+    const result = await PasswordResetService.verifyOTP(email, otp);
+    
+    if (result.statusCode !== 200) {
+      return ApiResponse.error(res, result.message, result.statusCode);
+    }
+
+    return ApiResponse.success(res, result.data, result.message);
+  });
+
+  // Reset password with verified OTP
+  static resetPasswordWithOTP = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { email, newPassword, otpToken } = req.body;
+
+    const result = await PasswordResetService.resetPassword(email, newPassword, otpToken);
+    
+    if (result.statusCode !== 200) {
+      return ApiResponse.error(res, result.message, result.statusCode);
+    }
+
+    return ApiResponse.success(res, null, result.message);
   });
 }
 
