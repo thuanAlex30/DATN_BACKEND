@@ -110,7 +110,7 @@ systemLogSchema.statics.getLogs = async function(filters = {}, page = 1, limit =
         
         const skip = (page - 1) * limit;
         
-        // Populate user with role information
+        // Populate user with role information and tenant information
         let logs = await this.find(query)
             .populate({
                 path: 'user_id',
@@ -119,6 +119,10 @@ systemLogSchema.statics.getLogs = async function(filters = {}, page = 1, limit =
                     path: 'role_id',
                     select: 'role_name role_code role_level'
                 }
+            })
+            .populate({
+                path: 'tenant_id',
+                select: 'name company_name'
             })
             .sort({ timestamp: -1 })
             .skip(skip)

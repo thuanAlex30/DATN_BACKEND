@@ -29,7 +29,7 @@ class WeatherController {
       timezone: timezone || undefined,
     });
 
-    return EnhancedApiResponse.success(res, weather, 'Current weather retrieved');
+    return await EnhancedApiResponse.success(res, weather, 'Current weather retrieved');
   });
 
   static getEquipmentSuggestions = ErrorMiddleware.asyncHandler(async (req, res) => {
@@ -61,7 +61,7 @@ class WeatherController {
     // Get equipment suggestions based on weather
     const suggestions = await EquipmentSuggestionService.suggestEquipment(weather, tenantId);
 
-    return EnhancedApiResponse.success(res, {
+    return await EnhancedApiResponse.success(res, {
       weather,
       suggestions: suggestions.suggestions,
       message: suggestions.message,
@@ -95,7 +95,7 @@ class WeatherController {
       timezone: timezone || undefined,
     });
 
-    return EnhancedApiResponse.success(res, forecast, 'Weather forecast retrieved');
+    return await EnhancedApiResponse.success(res, forecast, 'Weather forecast retrieved');
   });
 
   static getHourly = ErrorMiddleware.asyncHandler(async (req, res) => {

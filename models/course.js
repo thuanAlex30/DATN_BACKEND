@@ -5,7 +5,11 @@ const courseSchema = new mongoose.Schema({
     tenant_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Tenant',
+<<<<<<< HEAD
         required: true,
+=======
+        required: false,
+>>>>>>> ThuanDH30
         default: getDefaultTenantObjectId
     },
     course_set_id: {

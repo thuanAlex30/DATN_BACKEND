@@ -10,6 +10,7 @@ class WebSocketService {
     this.io = null;
     this.connectedUsers = new Map(); // userId -> socketId
     this.userRoles = new Map(); // userId -> role
+    this.userTenants = new Map(); // userId -> tenantId
   }
 
   /**
@@ -38,13 +39,18 @@ class WebSocketService {
           
           const userId = decoded.id || decoded.userId;
           const role = decoded.role || 'user';
+          const tenantId = decoded.tenant_id || decoded.tenantId || null;
           
           this.connectedUsers.set(userId, socket.id);
           this.userRoles.set(userId, role);
+          if (tenantId) {
+            this.userTenants.set(userId, tenantId);
+          }
           socket.userId = userId;
           socket.role = role;
+          socket.tenantId = tenantId;
           
-          logger.info('User authenticated via WebSocket', { userId, role, socketId: socket.id });
+          logger.info('User authenticated via WebSocket', { userId, role, tenantId, socketId: socket.id });
           
           socket.emit('authenticated', { success: true, userId, role });
         } catch (error) {
@@ -77,13 +83,18 @@ class WebSocketService {
           const decoded = jwt.verify(data.token, process.env.JWT_SECRET);
           const userId = decoded.id || decoded.userId;
           const role = decoded.role || 'user';
+          const tenantId = decoded.tenant_id || decoded.tenantId || null;
 
           this.connectedUsers.set(userId, socket.id);
           this.userRoles.set(userId, role);
+          if (tenantId) {
+            this.userTenants.set(userId, tenantId);
+          }
           socket.userId = userId;
           socket.role = role;
+          socket.tenantId = tenantId;
           
-          logger.info('User authenticated via WebSocket (legacy jwt)', { userId, role, socketId: socket.id });
+          logger.info('User authenticated via WebSocket (legacy jwt)', { userId, role, tenantId, socketId: socket.id });
           
           socket.emit('authenticated', { success: true, userId, role });
         } catch (error) {
@@ -103,6 +114,7 @@ class WebSocketService {
         if (socket.userId) {
           this.connectedUsers.delete(socket.userId);
           this.userRoles.delete(socket.userId);
+          this.userTenants.delete(socket.userId);
           logger.info('User disconnected', { userId: socket.userId, socketId: socket.id });
         }
       });
@@ -162,6 +174,114 @@ class WebSocketService {
     if (this.io) {
       this.io.emit(event, data);
       logger.debug('Emitted to all users', { event, userCount: this.connectedUsers.size });
+    }
+  }
+
+  /**
+   * Emit to user in specific tenant
+   * @param {string} userId - User ID
+   * @param {string} tenantId - Tenant ID
+   * @param {string} event - Event name
+   * @param {Object} data - Data to send
+   */
+  emitToUserInTenant(userId, tenantId, event, data) {
+    // Normalize userId to string for Map lookup
+    const userIdStr = userId?.toString?.() || userId;
+    const userTenant = this.userTenants.get(userIdStr);
+    
+    // If user tenant matches, emit to user
+    if (userTenant && userTenant.toString() === tenantId.toString()) {
+      this.emitToUser(userIdStr, event, data);
+      logger.debug('Emitted to user in tenant', { userId: userIdStr, tenantId, event });
+    } else {
+      // Fallback: if user is connected but tenant not set, still emit (for backward compatibility)
+      // This handles cases where user connected before tenant_id was stored
+      const socketId = this.connectedUsers.get(userIdStr);
+      if (socketId && this.io) {
+        logger.warn('User tenant not set in Map, emitting anyway (fallback)', { 
+          userId: userIdStr, 
+          tenantId, 
+          userTenant,
+          event 
+        });
+        this.io.to(socketId).emit(event, data);
+      } else {
+        logger.debug('User not in tenant or not connected', { userId: userIdStr, tenantId, userTenant, event });
+      }
+    }
+  }
+
+  /**
+   * Emit to all users with specific role in tenant
+   * @param {string} role - User role
+   * @param {string} tenantId - Tenant ID
+   * @param {string} event - Event name
+   * @param {Object} data - Data to send
+   */
+  emitToRoleInTenant(role, tenantId, event, data) {
+    if (!this.io) return;
+
+    let count = 0;
+    this.userRoles.forEach((userRole, userId) => {
+      if (userRole === role) {
+        const userTenant = this.userTenants.get(userId);
+        if (userTenant && userTenant.toString() === tenantId.toString()) {
+          this.emitToUser(userId, event, data);
+          count++;
+        }
+      }
+    });
+
+    logger.debug('Emitted to role in tenant', { role, tenantId, event, userCount: count });
+  }
+
+  /**
+   * Emit to all users in tenant
+   * @param {string} tenantId - Tenant ID
+   * @param {string} event - Event name
+   * @param {Object} data - Data to send
+   */
+  emitToTenant(tenantId, event, data) {
+    if (!this.io) return;
+
+    let count = 0;
+    this.userTenants.forEach((userTenant, userId) => {
+      if (userTenant && userTenant.toString() === tenantId.toString()) {
+        this.emitToUser(userId, event, data);
+        count++;
+      }
+    });
+
+    logger.debug('Emitted to tenant', { tenantId, event, userCount: count });
+  }
+
+  /**
+   * Emit to all users in department
+   * @param {string|ObjectId} departmentId - Department ID
+   * @param {string} event - Event name
+   * @param {Object} data - Data to send
+   */
+  async emitToDepartment(departmentId, event, data) {
+    if (!this.io) return;
+
+    try {
+      const User = require('../models/user');
+      const users = await User.find({
+        department_id: departmentId,
+        is_active: true
+      }).select('_id');
+
+      let count = 0;
+      users.forEach(user => {
+        if (this.connectedUsers.has(user._id.toString())) {
+          this.emitToUser(user._id.toString(), event, data);
+          count++;
+        }
+      });
+
+      logger.debug('Emitted to department', { departmentId, event, userCount: count });
+    } catch (error) {
+      logger.error('Error emitting to department:', error);
     }
   }
 

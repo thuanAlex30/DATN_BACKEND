@@ -221,7 +221,17 @@ class PPEExpiryManagementService {
         }
       };
 
-      // Send WebSocket notification
+      // Send realtime notification (WebSocket + Database) using PPENotificationService
+      const PPENotificationService = require('./ppeNotificationService');
+      const tenantId = trackingItem.tenant_id || trackingItem.tenantId;
+      
+      await PPENotificationService.notifyPPEExpiring({
+        trackingItem,
+        daysBefore,
+        tenantId
+      });
+      
+      // Also send WebSocket for backward compatibility
       if (trackingItem.user_id) {
         websocketService.emitToUser(
           trackingItem.user_id._id,
@@ -229,8 +239,6 @@ class PPEExpiryManagementService {
           notificationData
         );
       }
-
-      // Send to managers/admins
       websocketService.emitToRole('manager', 'ppe_expiry_warning', notificationData);
       websocketService.emitToRole('admin', 'ppe_expiry_warning', notificationData);
 

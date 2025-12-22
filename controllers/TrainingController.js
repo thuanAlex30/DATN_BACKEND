@@ -125,7 +125,16 @@ class TrainingController {
     // ========== Course Controllers ==========
     static getAllCourses = ErrorMiddleware.asyncHandler(async (req, res) => {
         const filters = req.query;
+<<<<<<< HEAD
         const tenantId = req.user?.tenant_id;
+=======
+        // Allow system admin to override tenant filter via query param
+        let tenantId = req.user?.tenant_id || null;
+        const currentRoleLevel = (req.user && req.user.role && req.user.role.role_level) ? req.user.role.role_level : (req.user?.role_level || 0);
+        if (currentRoleLevel >= 100 && req.query?.tenant_id) {
+            tenantId = req.query.tenant_id;
+        }
+>>>>>>> ThuanDH30
         const result = await trainingService.getAllCourses(filters, tenantId);
         
         if (result.success) {
@@ -138,7 +147,11 @@ class TrainingController {
     static getAvailableCoursesForEmployee = ErrorMiddleware.asyncHandler(async (req, res) => {
         const filters = req.query;
         const userId = req.user.id;
+<<<<<<< HEAD
         const tenantId = req.user?.tenant_id;
+=======
+        const tenantId = req.user?.tenant_id || null;
+>>>>>>> ThuanDH30
         const result = await trainingService.getAvailableCoursesForEmployee(userId, filters, tenantId);
         
         if (result.success) {
@@ -150,7 +163,11 @@ class TrainingController {
 
     static getCourseById = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseId } = req.params;
+<<<<<<< HEAD
         const tenantId = req.user?.tenant_id;
+=======
+        const tenantId = req.user?.tenant_id || null;
+>>>>>>> ThuanDH30
         const result = await trainingService.getCourseById(courseId, tenantId);
         
         if (result.success) {
@@ -162,7 +179,11 @@ class TrainingController {
 
     static createCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
         const courseData = req.body;
+<<<<<<< HEAD
         const tenantId = req.user?.tenant_id;
+=======
+        const tenantId = req.user?.tenant_id || null;
+>>>>>>> ThuanDH30
         const result = await trainingService.createCourse(courseData, tenantId);
         
         if (result.success) {
@@ -175,7 +196,11 @@ class TrainingController {
     static updateCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseId } = req.params;
         const courseData = req.body;
+<<<<<<< HEAD
         const tenantId = req.user?.tenant_id;
+=======
+        const tenantId = req.user?.tenant_id || null;
+>>>>>>> ThuanDH30
         const result = await trainingService.updateCourse(courseId, courseData, tenantId);
         
         if (result.success) {
@@ -187,7 +212,11 @@ class TrainingController {
 
     static deleteCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseId } = req.params;
+<<<<<<< HEAD
         const tenantId = req.user?.tenant_id;
+=======
+        const tenantId = req.user?.tenant_id || null;
+>>>>>>> ThuanDH30
         const result = await trainingService.deleteCourse(courseId, tenantId);
         
         if (result.success) {
@@ -211,7 +240,12 @@ class TrainingController {
     // ========== Training Session Controllers ==========
     static getAllTrainingSessions = ErrorMiddleware.asyncHandler(async (req, res) => {
         const filters = req.query;
-        const tenantId = req.user.tenant_id;
+        // Allow system admin to override tenant filter via query param
+        let tenantId = req.user?.tenant_id || null;
+        const currentRoleLevel = (req.user && req.user.role && req.user.role.role_level) ? req.user.role.role_level : (req.user?.role_level || 0);
+        if (currentRoleLevel >= 100 && req.query?.tenant_id) {
+            tenantId = req.query.tenant_id;
+        }
         const result = await trainingService.getAllTrainingSessions(filters, tenantId);
         
         if (result.success) {
@@ -384,6 +418,7 @@ class TrainingController {
     // ========== Training Enrollment Controllers ==========
     static getAllTrainingEnrollments = ErrorMiddleware.asyncHandler(async (req, res) => {
         const filters = req.query;
+        const tenantId = req.user?.tenant_id || null;
         const userRole = req.user?.role?.role_name;
         const tenantId = req.user?.tenant_id;
         
@@ -756,7 +791,8 @@ class TrainingController {
     // ========== Training Assignment Controllers ==========
     static getAllTrainingAssignments = ErrorMiddleware.asyncHandler(async (req, res) => {
         const filters = req.query;
-        const result = await trainingService.getAllTrainingAssignments(filters);
+        const tenantId = req.user?.tenant_id || null;
+        const result = await trainingService.getAllTrainingAssignments(filters, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -777,10 +813,16 @@ class TrainingController {
     });
 
     static createTrainingAssignment = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const tenantId = req.user?.tenant_id || null;
         const assignmentData = {
             ...req.body,
+<<<<<<< HEAD
             assigned_by: req.user._id || req.user.id,
             tenant_id: req.user.tenant_id || req.body.tenant_id
+=======
+            assigned_by: req.user._id,
+            tenant_id: tenantId  // ✅ Tự động set tenant_id
+>>>>>>> ThuanDH30
         };
         
         const result = await trainingService.createTrainingAssignment(assignmentData);
@@ -833,7 +875,8 @@ class TrainingController {
 
     static getTrainingAssignmentsByDepartment = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { departmentId } = req.params;
-        const result = await trainingService.getTrainingAssignmentsByDepartment(departmentId);
+        const tenantId = req.user?.tenant_id || null;
+        const result = await trainingService.getTrainingAssignmentsByDepartment(departmentId, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -844,7 +887,8 @@ class TrainingController {
 
     static getTrainingAssignmentsByCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseId } = req.params;
-        const result = await trainingService.getTrainingAssignmentsByCourse(courseId);
+        const tenantId = req.user?.tenant_id || null;
+        const result = await trainingService.getTrainingAssignmentsByCourse(courseId, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -855,7 +899,8 @@ class TrainingController {
 
     static getCoursesByDepartment = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { departmentId } = req.params;
-        const result = await trainingService.getCoursesByDepartment(departmentId);
+        const tenantId = req.user?.tenant_id || null;
+        const result = await trainingService.getCoursesByDepartment(departmentId, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -941,7 +986,8 @@ class TrainingController {
     // ========== Employee Training Routes ==========
     static getEmployeeTrainingSessions = ErrorMiddleware.asyncHandler(async (req, res) => {
         const userId = req.user._id || req.user.id;
-        const result = await trainingService.getEmployeeTrainingSessions(userId);
+        const tenantId = req.user?.tenant_id || null;
+        const result = await trainingService.getEmployeeTrainingSessions(userId, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);

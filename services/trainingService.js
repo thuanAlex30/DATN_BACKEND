@@ -683,8 +683,13 @@ class TrainingService {
                 return createResponse(400, `Cannot start quiz. Current status: ${enrollment.status}`);
             }
 
+<<<<<<< HEAD
             // Get course information
             const course = await trainingRepository.getCourseById(courseId, tenantId);
+=======
+            // Get course information and question bank (ensure tenant scoping)
+            const course = await trainingRepository.getCourseById(session.course_id, session.tenant_id || null);
+>>>>>>> ThuanDH30
             if (!course) {
                 return createResponse(404, 'Course not found');
             }
@@ -885,9 +890,9 @@ class TrainingService {
     }
 
     // ========== Training Assignment Services ==========
-    async getAllTrainingAssignments(filters = {}) {
+    async getAllTrainingAssignments(filters = {}, tenantId = null) {
         try {
-            const assignments = await trainingRepository.getAllTrainingAssignments(filters);
+            const assignments = await trainingRepository.getAllTrainingAssignments(filters, tenantId);
             return createResponse(200, 'Training assignments retrieved successfully', assignments);
         } catch (error) {
             throw error;
@@ -942,27 +947,27 @@ class TrainingService {
         }
     }
 
-    async getTrainingAssignmentsByDepartment(departmentId) {
+    async getTrainingAssignmentsByDepartment(departmentId, tenantId = null) {
         try {
-            const assignments = await trainingRepository.getTrainingAssignmentsByDepartment(departmentId);
+            const assignments = await trainingRepository.getTrainingAssignmentsByDepartment(departmentId, tenantId);
             return createResponse(200, 'Department training assignments retrieved successfully', assignments);
         } catch (error) {
             throw error;
         }
     }
 
-    async getTrainingAssignmentsByCourse(courseId) {
+    async getTrainingAssignmentsByCourse(courseId, tenantId = null) {
         try {
-            const assignments = await trainingRepository.getTrainingAssignmentsByCourse(courseId);
+            const assignments = await trainingRepository.getTrainingAssignmentsByCourse(courseId, tenantId);
             return createResponse(200, 'Course training assignments retrieved successfully', assignments);
         } catch (error) {
             throw error;
         }
     }
 
-    async getCoursesByDepartment(departmentId) {
+    async getCoursesByDepartment(departmentId, tenantId = null) {
         try {
-            const courses = await trainingRepository.getCoursesByDepartment(departmentId);
+            const courses = await trainingRepository.getCoursesByDepartment(departmentId, tenantId);
             return createResponse(200, 'Department courses retrieved successfully', courses);
         } catch (error) {
             throw error;
@@ -1081,9 +1086,9 @@ class TrainingService {
     }
 
     // ========== Employee Training Methods ==========
-    async getEmployeeTrainingSessions(userId) {
+    async getEmployeeTrainingSessions(userId, tenantId = null) {
         try {
-            const sessions = await trainingRepository.getEmployeeTrainingSessions(userId);
+            const sessions = await trainingRepository.getEmployeeTrainingSessions(userId, tenantId);
             return createResponse(200, 'Employee training sessions retrieved successfully', sessions);
         } catch (error) {
             throw error;
