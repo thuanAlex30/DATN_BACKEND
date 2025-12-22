@@ -232,36 +232,77 @@ class AuthMiddleware {
         const userRoleCode = userRole?.role_code ? userRole.role_code.trim().toLowerCase() : null;
         const userRoleLevel = userRole?.role_level;
 
-        // Map role codes to role names for backward compatibility
-        const roleCodeToNameMap = {
-          'company_admin': 'company admin',
-          'system_admin': 'system admin',
-          'department_header': 'header_department',
-          'department_manager': 'manager'
+        // Map role codes to route role names for backward compatibility
+        const roleCodeToRouteNameMap = {
+          'company_admin': ['company_admin', 'company admin'],
+          'system_admin': ['system_admin', 'system admin'],
+          'department_header': ['header_department', 'department header', 'department_header'],
+          'department_manager': ['manager', 'department_manager', 'department manager']
+        };
+
+        // Reverse map: map route role names to role codes
+        const routeNameToCodeMap = {
+          'header_department': 'department_header',
+          'department_header': 'department_header',
+          'department header': 'department_header',
+          'company_admin': 'company_admin',
+          'company admin': 'company_admin',
+          'system_admin': 'system_admin',
+          'system admin': 'system_admin',
+          'manager': 'department_manager',
+          'department_manager': 'department_manager',
+          'department manager': 'department_manager'
+        };
+
+        // Additional mappings for common variations
+        const roleNameVariations = {
+          'department header': ['header_department', 'department_header', 'department header'],
+          'department_header': ['header_department', 'department_header', 'department header'],
+          'header_department': ['header_department', 'department_header', 'department header']
         };
 
         // Check if user has any of the allowed roles
         const hasAccess = allowedRoles.some(allowed => {
           const allowedLower = typeof allowed === 'string' ? allowed.trim().toLowerCase() : allowed;
           
-          // Check by role name
+          // Check by role name (exact match)
           if (userRoleName && userRoleName === allowedLower) {
             return true;
           }
           
-          // Check by role code
+          // Check by role code (exact match)
           if (userRoleCode && userRoleCode === allowedLower) {
             return true;
           }
           
-          // Check by mapped role code (e.g., 'company_admin' -> 'company admin')
-          if (userRoleCode && roleCodeToNameMap[userRoleCode] === allowedLower) {
+          // Check if allowed is a route name that maps to user's role code
+          // e.g., route requires 'header_department', user has 'department_header'
+          if (userRoleCode && routeNameToCodeMap[allowedLower] === userRoleCode) {
             return true;
           }
           
-          // Check if allowed is a role code that maps to user's role name
-          if (userRoleName && Object.values(roleCodeToNameMap).some(mapped => mapped === allowedLower && roleCodeToNameMap[userRoleCode] === mapped)) {
-            return true;
+          // Check if user role code maps to any of the allowed route names
+          if (userRoleCode && roleCodeToRouteNameMap[userRoleCode]) {
+            const mappedNames = roleCodeToRouteNameMap[userRoleCode];
+            if (mappedNames.includes(allowedLower)) {
+              return true;
+            }
+          }
+          
+          // Check if user role name (normalized) matches allowed
+          // e.g., user has 'department header', route requires 'header_department'
+          if (userRoleName) {
+            const normalizedRoleName = userRoleName.replace(/\s+/g, '_');
+            if (normalizedRoleName === allowedLower || routeNameToCodeMap[normalizedRoleName] === userRoleCode) {
+              return true;
+            }
+            // Check role name variations
+            if (roleNameVariations[normalizedRoleName] && roleNameVariations[normalizedRoleName].includes(allowedLower)) {
+              return true;
+            }
+            if (roleNameVariations[allowedLower] && roleNameVariations[allowedLower].includes(normalizedRoleName)) {
+              return true;
+            }
           }
           
           // Check by role level (if allowed is a number)

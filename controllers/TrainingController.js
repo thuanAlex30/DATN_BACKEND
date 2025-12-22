@@ -8,7 +8,8 @@ const TrainingEvents = require('../events/trainingEvents');
 class TrainingController {
     // ========== Course Set Controllers ==========
     static getAllCourseSets = ErrorMiddleware.asyncHandler(async (req, res) => {
-        const result = await trainingService.getAllCourseSets();
+        const tenantId = req.user?.tenant_id;
+        const result = await trainingService.getAllCourseSets(tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -19,7 +20,8 @@ class TrainingController {
 
     static getCourseSetById = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseSetId } = req.params;
-        const result = await trainingService.getCourseSetById(courseSetId);
+        const tenantId = req.user?.tenant_id;
+        const result = await trainingService.getCourseSetById(courseSetId, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -30,7 +32,8 @@ class TrainingController {
 
     static createCourseSet = ErrorMiddleware.asyncHandler(async (req, res) => {
         const courseSetData = req.body;
-        const result = await trainingService.createCourseSet(courseSetData);
+        const tenantId = req.user?.tenant_id;
+        const result = await trainingService.createCourseSet(courseSetData, tenantId);
         
         if (result.success) {
             // Emit course set created event
@@ -57,10 +60,11 @@ class TrainingController {
     static updateCourseSet = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseSetId } = req.params;
         const courseSetData = req.body;
+        const tenantId = req.user?.tenant_id;
         
         // Get old course set data for comparison
-        const oldCourseSetResult = await trainingService.getCourseSetById(courseSetId);
-        const result = await trainingService.updateCourseSet(courseSetId, courseSetData);
+        const oldCourseSetResult = await trainingService.getCourseSetById(courseSetId, tenantId);
+        const result = await trainingService.updateCourseSet(courseSetId, courseSetData, tenantId);
         
         if (result.success) {
             // Emit course set updated event
@@ -88,10 +92,11 @@ class TrainingController {
 
     static deleteCourseSet = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseSetId } = req.params;
+        const tenantId = req.user?.tenant_id;
         
         // Get course set data before deletion
-        const oldCourseSetResult = await trainingService.getCourseSetById(courseSetId);
-        const result = await trainingService.deleteCourseSet(courseSetId);
+        const oldCourseSetResult = await trainingService.getCourseSetById(courseSetId, tenantId);
+        const result = await trainingService.deleteCourseSet(courseSetId, tenantId);
         
         if (result.success) {
             // Emit course set deleted event
@@ -120,7 +125,8 @@ class TrainingController {
     // ========== Course Controllers ==========
     static getAllCourses = ErrorMiddleware.asyncHandler(async (req, res) => {
         const filters = req.query;
-        const result = await trainingService.getAllCourses(filters);
+        const tenantId = req.user?.tenant_id;
+        const result = await trainingService.getAllCourses(filters, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -132,7 +138,8 @@ class TrainingController {
     static getAvailableCoursesForEmployee = ErrorMiddleware.asyncHandler(async (req, res) => {
         const filters = req.query;
         const userId = req.user.id;
-        const result = await trainingService.getAvailableCoursesForEmployee(userId, filters);
+        const tenantId = req.user?.tenant_id;
+        const result = await trainingService.getAvailableCoursesForEmployee(userId, filters, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -143,7 +150,8 @@ class TrainingController {
 
     static getCourseById = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseId } = req.params;
-        const result = await trainingService.getCourseById(courseId);
+        const tenantId = req.user?.tenant_id;
+        const result = await trainingService.getCourseById(courseId, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -154,7 +162,8 @@ class TrainingController {
 
     static createCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
         const courseData = req.body;
-        const result = await trainingService.createCourse(courseData);
+        const tenantId = req.user?.tenant_id;
+        const result = await trainingService.createCourse(courseData, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -166,7 +175,8 @@ class TrainingController {
     static updateCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseId } = req.params;
         const courseData = req.body;
-        const result = await trainingService.updateCourse(courseId, courseData);
+        const tenantId = req.user?.tenant_id;
+        const result = await trainingService.updateCourse(courseId, courseData, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -177,7 +187,8 @@ class TrainingController {
 
     static deleteCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { courseId } = req.params;
-        const result = await trainingService.deleteCourse(courseId);
+        const tenantId = req.user?.tenant_id;
+        const result = await trainingService.deleteCourse(courseId, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -223,6 +234,20 @@ class TrainingController {
         }
     });
 
+    static getAvailableSessionsForCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const userId = req.user?.id;
+        const tenantId = req.user.tenant_id;
+        const filters = { ...req.query, courseId };
+        const result = await trainingService.getAvailableTrainingSessionsForEmployee(userId, tenantId, filters);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
     static getTrainingSessionById = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { sessionId } = req.params;
         const tenantId = req.user.tenant_id;
@@ -238,6 +263,24 @@ class TrainingController {
     static createTrainingSession = ErrorMiddleware.asyncHandler(async (req, res) => {
         const sessionData = req.body;
         const tenantId = req.user.tenant_id;
+        
+        // Automatically add department_id from user if not provided
+        if (!sessionData.department_id) {
+            // Try to get department_id from user object (could be _id string or populated object)
+            if (req.user.department_id) {
+                sessionData.department_id = req.user.department_id;
+            } else if (req.user.department && req.user.department._id) {
+                sessionData.department_id = req.user.department._id;
+            } else if (req.user.department) {
+                sessionData.department_id = req.user.department;
+            }
+        }
+        
+        // Validate department_id is present
+        if (!sessionData.department_id) {
+            return ApiResponse.error(res, 'department_id is required. User must be assigned to a department.', 400);
+        }
+        
         const result = await trainingService.createTrainingSession(sessionData, tenantId);
         
         if (result.success) {
@@ -342,13 +385,14 @@ class TrainingController {
     static getAllTrainingEnrollments = ErrorMiddleware.asyncHandler(async (req, res) => {
         const filters = req.query;
         const userRole = req.user?.role?.role_name;
+        const tenantId = req.user?.tenant_id;
         
         // If user is employee, only show their own enrollments
         if (userRole === 'employee') {
             filters.userId = req.user.id;
         }
         
-        const result = await trainingService.getAllTrainingEnrollments(filters);
+        const result = await trainingService.getAllTrainingEnrollments(filters, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -360,8 +404,9 @@ class TrainingController {
     static getTrainingEnrollmentById = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { enrollmentId } = req.params;
         const userRole = req.user?.role?.role_name;
+        const tenantId = req.user?.tenant_id;
         
-        const result = await trainingService.getTrainingEnrollmentById(enrollmentId);
+        const result = await trainingService.getTrainingEnrollmentById(enrollmentId, tenantId);
         
         if (result.success) {
             // If user is employee, check if they own this enrollment
@@ -378,13 +423,19 @@ class TrainingController {
     static createTrainingEnrollment = ErrorMiddleware.asyncHandler(async (req, res) => {
         const enrollmentData = req.body;
         const userRole = req.user?.role?.role_name;
+        const tenantId = req.user?.tenant_id;
         
         // If user is employee, they can only enroll themselves
         if (userRole === 'employee') {
             enrollmentData.user_id = req.user.id;
         }
         
-        const result = await trainingService.createTrainingEnrollment(enrollmentData);
+        // If manager is assigning to employee, set assigned_by
+        if (userRole === 'manager' && enrollmentData.user_id && enrollmentData.user_id !== req.user.id) {
+            enrollmentData.assigned_by = req.user.id;
+        }
+        
+        const result = await trainingService.createTrainingEnrollment(enrollmentData, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -396,7 +447,8 @@ class TrainingController {
     static updateTrainingEnrollment = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { enrollmentId } = req.params;
         const enrollmentData = req.body;
-        const result = await trainingService.updateTrainingEnrollment(enrollmentId, enrollmentData);
+        const tenantId = req.user?.tenant_id;
+        const result = await trainingService.updateTrainingEnrollment(enrollmentId, enrollmentData, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -407,7 +459,8 @@ class TrainingController {
 
     static deleteTrainingEnrollment = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { enrollmentId } = req.params;
-        const result = await trainingService.deleteTrainingEnrollment(enrollmentId);
+        const tenantId = req.user?.tenant_id;
+        const result = await trainingService.deleteTrainingEnrollment(enrollmentId, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -553,13 +606,17 @@ class TrainingController {
     });
 
     static importQuestionsFromExcel = ErrorMiddleware.asyncHandler(async (req, res) => {
-        const { bankId } = req.params;
+        const { bank_id } = req.body;
         
         if (!req.file) {
             return ApiResponse.error(res, 'No file uploaded', 400);
         }
 
-        const result = await trainingService.importQuestionsFromExcel(bankId, req.file);
+        if (!bank_id) {
+            return ApiResponse.error(res, 'Question bank ID is required', 400);
+        }
+
+        const result = await trainingService.importQuestionsFromExcel(bank_id, req.file);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -605,11 +662,13 @@ class TrainingController {
     });
 
     // ========== Training Actions ==========
-    static startTraining = ErrorMiddleware.asyncHandler(async (req, res) => {
-        const { sessionId } = req.params;
+    // New method for starting course quiz (replaces startTraining)
+    static startCourseQuiz = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
         const userId = req.user._id || req.user.id;
+        const tenantId = req.user.tenant_id;
         
-        const result = await trainingService.startTraining(sessionId, userId);
+        const result = await trainingService.startCourseQuiz(courseId, userId, tenantId);
         
         if (result.success) {
             return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -618,12 +677,19 @@ class TrainingController {
         }
     });
 
-    static submitTraining = ErrorMiddleware.asyncHandler(async (req, res) => {
-        const { sessionId } = req.params;
+    // Keep old method for backward compatibility (deprecated)
+    static startTraining = ErrorMiddleware.asyncHandler(async (req, res) => {
+        return ApiResponse.error(res, 'This method is deprecated. Please use POST /training/courses/:courseId/start instead.', 400);
+    });
+
+    // New method for submitting course quiz (replaces submitTraining)
+    static submitCourseQuiz = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
         const userId = req.user._id || req.user.id;
-        const { answers, score, completionTime } = req.body;
+        const tenantId = req.user.tenant_id;
+        const { answers } = req.body; // score and completionTime are calculated automatically
         
-        const result = await trainingService.submitTraining(sessionId, userId, answers, score, completionTime);
+        const result = await trainingService.submitCourseQuiz(courseId, userId, answers, tenantId);
         
         if (result.success) {
             // Emit training completion event
@@ -647,11 +713,18 @@ class TrainingController {
         }
     });
 
-    static retakeTraining = ErrorMiddleware.asyncHandler(async (req, res) => {
-        const { sessionId } = req.params;
+    // Keep old method for backward compatibility (deprecated)
+    static submitTraining = ErrorMiddleware.asyncHandler(async (req, res) => {
+        return ApiResponse.error(res, 'This method is deprecated. Please use POST /training/courses/:courseId/submit instead.', 400);
+    });
+
+    // New method for retaking course quiz (replaces retakeTraining)
+    static retakeCourseQuiz = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
         const userId = req.user._id || req.user.id;
+        const tenantId = req.user.tenant_id;
         
-        const result = await trainingService.retakeTraining(sessionId, userId);
+        const result = await trainingService.retakeCourseQuiz(courseId, userId, tenantId);
         
         if (result.success) {
             // Emit training retake event
@@ -673,6 +746,11 @@ class TrainingController {
         } else {
             return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
         }
+    });
+
+    // Keep old method for backward compatibility (deprecated)
+    static retakeTraining = ErrorMiddleware.asyncHandler(async (req, res) => {
+        return ApiResponse.error(res, 'This method is deprecated. Please use POST /training/courses/:courseId/retake instead.', 400);
     });
 
     // ========== Training Assignment Controllers ==========
@@ -701,7 +779,8 @@ class TrainingController {
     static createTrainingAssignment = ErrorMiddleware.asyncHandler(async (req, res) => {
         const assignmentData = {
             ...req.body,
-            assigned_by: req.user._id
+            assigned_by: req.user._id || req.user.id,
+            tenant_id: req.user.tenant_id || req.body.tenant_id
         };
         
         const result = await trainingService.createTrainingAssignment(assignmentData);

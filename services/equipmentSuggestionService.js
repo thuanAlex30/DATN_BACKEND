@@ -33,6 +33,11 @@ const WEATHER_TO_PPE_MAPPING = {
     categories: ['Mũ nón', 'Kính mắt', 'Kem chống nắng', 'Áo chống nắng'],
     keywords: ['mũ', 'nón', 'kính', 'sunglasses', 'chống nắng', 'sun']
   },
+  // High UV - need sun protection
+  HIGH_UV: {
+    categories: ['Mũ nón', 'Kính mắt', 'Kem chống nắng', 'Áo chống nắng'],
+    keywords: ['mũ', 'nón', 'kính', 'sunglasses', 'chống nắng', 'sun', 'uv']
+  },
   // Cold weather - need warm gear
   COLD: {
     categories: ['Áo ấm', 'Găng tay', 'Mũ len', 'Khăn quàng'],
@@ -41,7 +46,12 @@ const WEATHER_TO_PPE_MAPPING = {
   // Fog/low visibility - need high visibility gear
   LOW_VISIBILITY: {
     categories: ['Áo phản quang', 'Đèn pin', 'Kính bảo hộ'],
-    keywords: ['phản quang', 'reflective', 'đèn', 'light', 'high visibility']
+    keywords: ['phản quang', 'reflective', 'đèn', 'light', 'high visibility', 'tầm nhìn']
+  },
+  // Poor air quality - need masks
+  POOR_AIR_QUALITY: {
+    categories: ['Khẩu trang N95', 'Khẩu trang y tế', 'Kính bảo hộ'],
+    keywords: ['khẩu trang', 'mask', 'n95', 'respirator', 'air', 'bụi', 'dust']
   },
   // Thunderstorm - need electrical safety
   THUNDERSTORM: {
@@ -54,7 +64,7 @@ class EquipmentSuggestionService {
   /**
    * Get weather condition type from weather code and temperature
    */
-  static getWeatherCondition(weatherCode, temperature, windSpeed) {
+  static getWeatherCondition(weatherCode, temperature, windSpeed, uvIndex = null, visibility = null, airQuality = null) {
     const conditions = [];
 
     // Check for rain
@@ -68,8 +78,8 @@ class EquipmentSuggestionService {
       conditions.push('THUNDERSTORM');
     }
 
-    // Check for fog/low visibility
-    if (WEATHER_CODES.FOG.includes(weatherCode)) {
+    // Check for fog/low visibility (from weather code or visibility value)
+    if (WEATHER_CODES.FOG.includes(weatherCode) || (visibility !== null && visibility < 1)) {
       conditions.push('LOW_VISIBILITY');
     }
 
@@ -83,6 +93,17 @@ class EquipmentSuggestionService {
     // Check wind conditions (km/h)
     if (windSpeed >= 25) {
       conditions.push('WIND');
+    }
+
+    // Check UV index (>= 6 is high)
+    if (uvIndex !== null && uvIndex >= 6) {
+      conditions.push('HIGH_UV');
+    }
+
+    // Check air quality (AQI > 100 is unhealthy)
+    const aqi = airQuality?.us_aqi ?? airQuality?.european_aqi ?? null;
+    if (aqi !== null && aqi > 100) {
+      conditions.push('POOR_AIR_QUALITY');
     }
 
     return conditions;
@@ -101,9 +122,12 @@ class EquipmentSuggestionService {
       const weatherCode = current.weathercode || 0;
       const temperature = current.temperature || 20;
       const windSpeed = current.windspeed || 0;
+      const uvIndex = current.uv_index ?? null;
+      const visibility = current.visibility ?? null;
 
-      // Get weather conditions
-      const conditions = this.getWeatherCondition(weatherCode, temperature, windSpeed);
+      // Get weather conditions (including UV and visibility)
+      // Note: airQuality will be added if available in the request
+      const conditions = this.getWeatherCondition(weatherCode, temperature, windSpeed, uvIndex, visibility);
 
       // Get all PPE items for the tenant
       const allItems = await PPERepository.getAllItems({}, tenantId);
@@ -160,6 +184,8 @@ class EquipmentSuggestionService {
           case 'WIND': return 'gió mạnh';
           case 'LOW_VISIBILITY': return 'tầm nhìn thấp';
           case 'THUNDERSTORM': return 'dông bão';
+          case 'HIGH_UV': return 'UV cao';
+          case 'POOR_AIR_QUALITY': return 'chất lượng không khí kém';
           default: return '';
         }
       }).filter(Boolean);
@@ -211,6 +237,12 @@ class EquipmentSuggestionService {
     if (conditions.includes('LOW_VISIBILITY') && (itemName.includes('phản quang') || itemName.includes('sáng'))) {
       reasons.push('Tăng tầm nhìn');
     }
+    if (conditions.includes('HIGH_UV') && (itemName.includes('nắng') || itemName.includes('nón') || itemName.includes('kính'))) {
+      reasons.push('Bảo vệ khỏi tia UV');
+    }
+    if (conditions.includes('POOR_AIR_QUALITY') && (itemName.includes('khẩu trang') || itemName.includes('mask'))) {
+      reasons.push('Bảo vệ hô hấp');
+    }
 
     return reasons.length > 0 ? reasons.join(', ') : 'Phù hợp với điều kiện thời tiết';
   }
@@ -227,6 +259,8 @@ class EquipmentSuggestionService {
     if (conditions.includes('RAIN')) priority += 2;
     if (conditions.includes('WIND')) priority += 2;
     if (conditions.includes('LOW_VISIBILITY')) priority += 2;
+    if (conditions.includes('POOR_AIR_QUALITY')) priority += 3; // High priority for health
+    if (conditions.includes('HIGH_UV')) priority += 2;
     if (conditions.includes('HOT') || conditions.includes('COLD')) priority += 1;
 
     // Higher priority for essential safety items

@@ -1,6 +1,13 @@
 const mongoose = require('mongoose');
+const { getDefaultTenantObjectId } = require('../utils/tenancy');
 
 const courseSetSchema = new mongoose.Schema({
+    tenant_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tenant',
+        required: true,
+        default: getDefaultTenantObjectId
+    },
     name: {
         type: String,
         required: true,
@@ -20,7 +27,9 @@ const courseSetSchema = new mongoose.Schema({
 });
 
 // Add indexes
+courseSetSchema.index({ tenant_id: 1 });
 courseSetSchema.index({ name: 1 });
+courseSetSchema.index({ tenant_id: 1, name: 1 }, { unique: true });
 
 const CourseSet = mongoose.model('CourseSet', courseSetSchema);
 
