@@ -378,3 +378,79 @@
 {"timestamp":"2025-12-21T09:50:48.600Z","level":"INFO","message":"Hourly forecast fetched","metadata":{"latencyMs":187,"cacheKey":"hourly:13.7560064:109.2091904:24h","hours":24},"pid":16228,"hostname":"MSI"}
 {"timestamp":"2025-12-21T09:50:54.742Z","level":"INFO","message":"Weather forecast fetched","metadata":{"latencyMs":735,"cacheKey":"forecast:13.7560064:109.2091904:7days"},"pid":16228,"hostname":"MSI"}
 {"timestamp":"2025-12-21T10:02:24.331Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":16228,"hostname":"MSI"}
+{"timestamp":"2025-12-22T04:58:04.288Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":3432,"hostname":"MSI"}
+{"timestamp":"2025-12-22T04:58:04.309Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":3432,"hostname":"MSI"}
+{"timestamp":"2025-12-22T04:58:04.310Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":3432,"hostname":"MSI"}
+{"timestamp":"2025-12-22T04:58:13.510Z","level":"INFO","message":"User connected","metadata":{"socketId":"QeymPMMINfczOgaoAAAC"},"pid":3432,"hostname":"MSI"}
+{"timestamp":"2025-12-22T04:58:13.512Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"QeymPMMINfczOgaoAAAC"},"pid":3432,"hostname":"MSI"}
+{"timestamp":"2025-12-22T04:58:16.600Z","level":"INFO","message":"Weather fetched","metadata":{"latencyMs":200,"cacheKey":"weather:15.978335616888028:108.26521046684843:undefined:temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day"},"pid":3432,"hostname":"MSI"}
+{"timestamp":"2025-12-22T04:58:16.603Z","level":"INFO","message":"Air quality fetched","metadata":{"latencyMs":191,"cacheKey":"airquality:15.978335616888028:108.26521046684843"},"pid":3432,"hostname":"MSI"}
+{"timestamp":"2025-12-22T04:58:23.383Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","socketId":"QeymPMMINfczOgaoAAAC"},"pid":3432,"hostname":"MSI"}
+{"timestamp":"2025-12-22T04:58:34.250Z","level":"INFO","message":"User connected","metadata":{"socketId":"poO-RrFkMGTKZKwtAAAF"},"pid":3432,"hostname":"MSI"}
+{"timestamp":"2025-12-22T04:58:34.252Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"poO-RrFkMGTKZKwtAAAF"},"pid":3432,"hostname":"MSI"}
+{"timestamp":"2025-12-22T04:58:52.997Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","socketId":"poO-RrFkMGTKZKwtAAAF"},"pid":3432,"hostname":"MSI"}
+{"timestamp":"2025-12-22T04:59:22.559Z","level":"INFO","message":"User connected","metadata":{"socketId":"kLcWA9RIQQYlbUSKAAAI"},"pid":3432,"hostname":"MSI"}
+{"timestamp":"2025-12-22T04:59:22.560Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"kLcWA9RIQQYlbUSKAAAI"},"pid":3432,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:07:46.431Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","socketId":"kLcWA9RIQQYlbUSKAAAI"},"pid":3432,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:08:12.448Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":3432,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:08:16.674Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":17584,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:08:16.690Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":17584,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:08:16.691Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":17584,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:12:41.998Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":17584,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:12:46.087Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:12:46.102Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:12:46.104Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:14:51.018Z","level":"INFO","message":"User connected","metadata":{"socketId":"5cB69AM4rUVYO1o-AAAC"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:14:51.022Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"5cB69AM4rUVYO1o-AAAC"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:14:52.718Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","socketId":"5cB69AM4rUVYO1o-AAAC"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:14:52.736Z","level":"INFO","message":"User connected","metadata":{"socketId":"3ns8QbsRhYDxIEtPAAAF"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:14:52.738Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"3ns8QbsRhYDxIEtPAAAF"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:14:55.384Z","level":"INFO","message":"Weather fetched","metadata":{"latencyMs":196,"cacheKey":"weather:15.978320669756425:108.26522296743592:undefined:temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:14:55.465Z","level":"INFO","message":"Air quality fetched","metadata":{"latencyMs":193,"cacheKey":"airquality:15.978320669756425:108.26522296743592"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:18:26.499Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","socketId":"3ns8QbsRhYDxIEtPAAAF"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:18:33.564Z","level":"INFO","message":"User connected","metadata":{"socketId":"nPskR7yF0sOVwXFZAAAI"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:18:33.566Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69394ede56cccae5f492c8e8","role":"Department Manager","socketId":"nPskR7yF0sOVwXFZAAAI"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:18:42.051Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69394ede56cccae5f492c8e8","socketId":"nPskR7yF0sOVwXFZAAAI"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:18:45.645Z","level":"INFO","message":"User connected","metadata":{"socketId":"se6eMegMVW52mrFEAAAL"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:18:45.646Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"se6eMegMVW52mrFEAAAL"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:21:28.079Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","socketId":"se6eMegMVW52mrFEAAAL"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:21:28.590Z","level":"INFO","message":"User connected","metadata":{"socketId":"9r-kugrqh6MHWqcKAAAP"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:21:28.591Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"9r-kugrqh6MHWqcKAAAP"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:21:31.427Z","level":"INFO","message":"Air quality fetched","metadata":{"latencyMs":183,"cacheKey":"airquality:15.97833907194534:108.26521314977772"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:21:31.524Z","level":"INFO","message":"Weather fetched","metadata":{"latencyMs":186,"cacheKey":"weather:15.97833907194534:108.26521314977772:undefined:temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:21:55.348Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","socketId":"9r-kugrqh6MHWqcKAAAP"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:21:55.833Z","level":"INFO","message":"User connected","metadata":{"socketId":"9h2GBejKR5cHRX7rAAAS"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:21:55.835Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"9h2GBejKR5cHRX7rAAAS"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:24:47.335Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","socketId":"9h2GBejKR5cHRX7rAAAS"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:24:47.810Z","level":"INFO","message":"User connected","metadata":{"socketId":"VnraJbxrpy4KLQehAAAV"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:24:47.812Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"VnraJbxrpy4KLQehAAAV"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:24:51.774Z","level":"INFO","message":"Weather fetched","metadata":{"latencyMs":194,"cacheKey":"weather:15.978335616888028:108.26521046684843:undefined:temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:24:51.844Z","level":"INFO","message":"Air quality fetched","metadata":{"latencyMs":181,"cacheKey":"airquality:15.978335616888028:108.26521046684843"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:25:43.944Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","socketId":"VnraJbxrpy4KLQehAAAV"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:25:44.447Z","level":"INFO","message":"User connected","metadata":{"socketId":"dG4WhGglYOIPHVciAAAY"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:25:44.448Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"dG4WhGglYOIPHVciAAAY"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:11.508Z","level":"INFO","message":"User connected","metadata":{"socketId":"2I1eG_FFbzFz9ytvAAAb"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:11.510Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69394ede56cccae5f492c8e8","role":"Department Manager","socketId":"2I1eG_FFbzFz9ytvAAAb"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:18.158Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69394ede56cccae5f492c8e8","socketId":"2I1eG_FFbzFz9ytvAAAb"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:18.479Z","level":"INFO","message":"User connected","metadata":{"socketId":"JNw35DOEJ__W8_HFAAAg"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:18.480Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69394ede56cccae5f492c8e8","role":"Department Manager","socketId":"JNw35DOEJ__W8_HFAAAg"},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:37.424Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":4504,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:41.385Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:41.402Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:41.403Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:44.018Z","level":"INFO","message":"User connected","metadata":{"socketId":"rzuqsbtsROtIjc8AAAAB"},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:44.021Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"rzuqsbtsROtIjc8AAAAB"},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:44.698Z","level":"INFO","message":"User connected","metadata":{"socketId":"twIVjp2gnSCgOs8EAAAD"},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:44.699Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69394ede56cccae5f492c8e8","role":"Department Manager","socketId":"twIVjp2gnSCgOs8EAAAD"},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:45.260Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","socketId":"rzuqsbtsROtIjc8AAAAB"},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:45.728Z","level":"INFO","message":"User connected","metadata":{"socketId":"j3LZl8kFwXi-Y21PAAAG"},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:45.730Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"j3LZl8kFwXi-Y21PAAAG"},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:48.484Z","level":"INFO","message":"Weather fetched","metadata":{"latencyMs":761,"cacheKey":"weather:15.978320669756425:108.26522296743592:undefined:temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day"},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:48.501Z","level":"INFO","message":"Air quality fetched","metadata":{"latencyMs":753,"cacheKey":"airquality:15.978320669756425:108.26522296743592"},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:50.794Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69394ede56cccae5f492c8e8","socketId":"twIVjp2gnSCgOs8EAAAD"},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:51.156Z","level":"INFO","message":"User connected","metadata":{"socketId":"bbMRUednEckV7QweAAAK"},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:26:51.158Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69394ede56cccae5f492c8e8","role":"Department Manager","socketId":"bbMRUednEckV7QweAAAK"},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:30:21.444Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","socketId":"j3LZl8kFwXi-Y21PAAAG"},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:36:13.970Z","level":"INFO","message":"User connected","metadata":{"socketId":"StVfo5QTv6f6iFmGAAAN"},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:36:13.972Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","socketId":"StVfo5QTv6f6iFmGAAAN"},"pid":1152,"hostname":"MSI"}
+{"timestamp":"2025-12-22T05:40:47.232Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":1152,"hostname":"MSI"}
