@@ -4,6 +4,8 @@ const Course = require('../models/course');
 const { TrainingSession, SessionStatus } = require('../models/trainingSession');
 const TrainingEnrollment = require('../models/trainingEnrollment');
 const { QuestionBank, Question } = require('../models/questionBank');
+const { getDefaultTenantObjectId } = require('../utils/tenancy');
+const Tenant = require('../models/tenant');
 
 const initializeTrainingData = async () => {
     try {
@@ -16,28 +18,51 @@ const initializeTrainingData = async () => {
             return;
         }
 
-        // Create session statuses
-        const sessionStatuses = [
-            { status_code: 'SCHEDULED', description: 'Đã lên lịch' },
-            { status_code: 'ONGOING', description: 'Đang diễn ra' },
-            { status_code: 'COMPLETED', description: 'Hoàn thành' },
-            { status_code: 'CANCELLED', description: 'Đã hủy' }
-        ];
+        // Create session statuses (only if they don't exist)
+        const existingStatuses = await SessionStatus.countDocuments();
+        if (existingStatuses === 0) {
+            const sessionStatuses = [
+                { status_code: 'SCHEDULED', description: 'Đã lên lịch' },
+                { status_code: 'ONGOING', description: 'Đang diễn ra' },
+                { status_code: 'COMPLETED', description: 'Hoàn thành' },
+                { status_code: 'CANCELLED', description: 'Đã hủy' }
+            ];
 
-        await SessionStatus.insertMany(sessionStatuses);
-        console.log('Session statuses created');
+            await SessionStatus.insertMany(sessionStatuses);
+            console.log('Session statuses created');
+        } else {
+            console.log('Session statuses already exist, skipping creation');
+        }
+
+        // Get default tenant ID
+        let defaultTenantId = getDefaultTenantObjectId();
+        
+        // If DEFAULT_TENANT_ID is not set, try to get the first tenant from database
+        if (!defaultTenantId) {
+            const firstTenant = await Tenant.findOne({ status: { $in: ['active', 'ACTIVE'] } }).sort({ created_at: 1 });
+            if (firstTenant) {
+                defaultTenantId = firstTenant._id;
+                console.log(`Using tenant from database: ${firstTenant.name} (${firstTenant._id})`);
+            } else {
+                console.warn('No tenant found in database and DEFAULT_TENANT_ID is not set. Skipping training data initialization.');
+                return;
+            }
+        }
 
         // Create course sets
         const courseSets = [
             {
+                tenant_id: defaultTenantId,
                 name: 'An toàn cơ bản',
                 description: 'Các khóa học an toàn lao động cơ bản'
             },
             {
+                tenant_id: defaultTenantId,
                 name: 'An toàn nâng cao',
                 description: 'Các khóa học an toàn lao động nâng cao'
             },
             {
+                tenant_id: defaultTenantId,
                 name: 'Chuyên môn kỹ thuật',
                 description: 'Các khóa học chuyên môn kỹ thuật'
             }
@@ -49,6 +74,7 @@ const initializeTrainingData = async () => {
         // Create courses
         const courses = [
             {
+                tenant_id: defaultTenantId,
                 course_set_id: createdCourseSets[0]._id,
                 course_name: 'An toàn lao động cơ bản',
                 description: 'Khóa học cơ bản về an toàn lao động cho tất cả nhân viên',
@@ -57,6 +83,7 @@ const initializeTrainingData = async () => {
                 validity_months: 12
             },
             {
+                tenant_id: defaultTenantId,
                 course_set_id: createdCourseSets[0]._id,
                 course_name: 'Sử dụng thiết bị bảo hộ',
                 description: 'Hướng dẫn sử dụng các loại thiết bị bảo hộ cá nhân',
@@ -65,6 +92,7 @@ const initializeTrainingData = async () => {
                 validity_months: 6
             },
             {
+                tenant_id: defaultTenantId,
                 course_set_id: createdCourseSets[1]._id,
                 course_name: 'An toàn điện nâng cao',
                 description: 'Khóa học chuyên sâu về an toàn điện cho kỹ thuật viên',
@@ -73,6 +101,7 @@ const initializeTrainingData = async () => {
                 validity_months: 24
             },
             {
+                tenant_id: defaultTenantId,
                 course_set_id: createdCourseSets[1]._id,
                 course_name: 'Quản lý rủi ro',
                 description: 'Phương pháp đánh giá và quản lý rủi ro trong công việc',
