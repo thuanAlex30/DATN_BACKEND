@@ -829,6 +829,202 @@ class TrainingService {
         }
     }
 
+    // ========== Course Quiz Services (New - replaces session-based training) ==========
+    async startCourseQuiz(courseId, userId, tenantId = null) {
+        try {
+            // Check if user is enrolled in this course
+            const enrollment = await trainingRepository.getEnrollmentByUserAndCourse(userId, courseId, tenantId);
+            if (!enrollment) {
+                return createResponse(403, 'You are not enrolled in this course');
+            }
+
+            // Check if enrollment status allows starting
+            if (enrollment.status !== 'enrolled' && enrollment.status !== 'failed') {
+                return createResponse(400, `Cannot start quiz. Current status: ${enrollment.status}`);
+            }
+
+            // Get course information
+            const course = await trainingRepository.getCourseById(courseId, tenantId);
+            if (!course) {
+                return createResponse(404, 'Course not found');
+            }
+
+            if (!course.is_deployed) {
+                return createResponse(400, 'Course is not deployed yet');
+            }
+
+            // Get question bank for this course
+            const questionBank = await trainingRepository.getQuestionBankByCourseId(courseId);
+            if (!questionBank) {
+                return createResponse(404, 'No question bank found for this course');
+            }
+
+            // Get questions for the quiz
+            const questions = await trainingRepository.getQuestionsByBankId(questionBank._id);
+
+            if (questions.length === 0) {
+                return createResponse(400, 'No questions available in the question bank');
+            }
+
+            // Update enrollment status to in_progress and set started_at
+            const updatedEnrollment = await trainingRepository.updateTrainingEnrollment(enrollment._id, {
+                status: enrollment.status === 'failed' ? 'enrolled' : enrollment.status,
+                started_at: new Date()
+            });
+
+            return createResponse(200, 'Course quiz started successfully', {
+                course: {
+                    _id: course._id,
+                    course_name: course.course_name,
+                    description: course.description,
+                    duration_hours: course.duration_hours
+                },
+                enrollment: {
+                    _id: updatedEnrollment._id,
+                    status: updatedEnrollment.status,
+                    started_at: updatedEnrollment.started_at
+                },
+                questionBank: {
+                    _id: questionBank._id,
+                    name: questionBank.name,
+                    total_questions: questions.length
+                },
+                questions: questions.map(q => ({
+                    _id: q._id,
+                    content: q.content,
+                    options: q.options,
+                    difficulty_level: q.difficulty_level,
+                    points: q.points
+                    // Note: correct_answer is not sent to frontend for security
+                }))
+            });
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async submitCourseQuiz(courseId, userId, answers, score, completionTime, tenantId = null) {
+        try {
+            // Check if user is enrolled in this course
+            const enrollment = await trainingRepository.getEnrollmentByUserAndCourse(userId, courseId, tenantId);
+            if (!enrollment) {
+                return createResponse(403, 'You are not enrolled in this course');
+            }
+
+            // Get course information
+            const course = await trainingRepository.getCourseById(courseId, tenantId);
+            if (!course) {
+                return createResponse(404, 'Course not found');
+            }
+
+            // Get question bank and questions
+            const questionBank = await trainingRepository.getQuestionBankByCourseId(courseId);
+            if (!questionBank) {
+                return createResponse(404, 'Question bank not found');
+            }
+
+            const questions = await trainingRepository.getQuestionsByBankId(questionBank._id);
+            
+            // Calculate actual score based on correct answers
+            let actualScore = 0;
+            let correctAnswers = 0;
+            
+            questions.forEach(question => {
+                const userAnswer = answers[question._id];
+                if (userAnswer === question.correct_answer) {
+                    actualScore += question.points || 1;
+                    correctAnswers++;
+                }
+            });
+
+            const totalPossibleScore = questions.reduce((sum, q) => sum + (q.points || 1), 0);
+            const passThreshold = 70; // 70% to pass
+            const percentage = totalPossibleScore > 0 ? (actualScore / totalPossibleScore) * 100 : 0;
+            const passed = percentage >= passThreshold;
+
+            // Update enrollment with results
+            const updatedEnrollment = await trainingRepository.updateTrainingEnrollment(enrollment._id, {
+                status: passed ? 'completed' : 'failed',
+                score: actualScore,
+                passed: passed,
+                completion_date: completionTime || new Date()
+            });
+
+            return createResponse(200, 'Course quiz submitted successfully', {
+                enrollment: updatedEnrollment,
+                results: {
+                    totalQuestions: questions.length,
+                    correctAnswers: correctAnswers,
+                    score: actualScore,
+                    totalPossibleScore: totalPossibleScore,
+                    percentage: Math.round(percentage),
+                    passed: passed,
+                    passThreshold: passThreshold
+                }
+            });
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async retakeCourseQuiz(courseId, userId, tenantId = null) {
+        try {
+            // Check if user is enrolled in this course
+            const enrollment = await trainingRepository.getEnrollmentByUserAndCourse(userId, courseId, tenantId);
+            if (!enrollment) {
+                return createResponse(403, 'You are not enrolled in this course');
+            }
+
+            // Check if enrollment status allows retake (only failed enrollments can retake)
+            if (enrollment.status !== 'failed') {
+                return createResponse(400, `Cannot retake quiz. Current status: ${enrollment.status}. Only failed quizzes can be retaken.`);
+            }
+
+            // Get course information
+            const course = await trainingRepository.getCourseById(courseId, tenantId);
+            if (!course) {
+                return createResponse(404, 'Course not found');
+            }
+
+            // Reset enrollment status to 'enrolled' for retake
+            const updatedEnrollment = await trainingRepository.updateTrainingEnrollment(enrollment._id, {
+                status: 'enrolled',
+                score: null,
+                passed: null,
+                completion_date: null,
+                started_at: null
+            });
+
+            // Get question bank and questions
+            const questionBank = await trainingRepository.getQuestionBankByCourseId(courseId);
+            if (!questionBank) {
+                return createResponse(404, 'Question bank not found');
+            }
+
+            const questions = await trainingRepository.getQuestionsByBankId(questionBank._id);
+            
+            return createResponse(200, 'Course quiz retake initiated successfully', {
+                course: course,
+                enrollment: updatedEnrollment,
+                questionBank: questionBank,
+                questions: questions.map(q => ({
+                    _id: q._id,
+                    content: q.content,
+                    options: q.options,
+                    difficulty_level: q.difficulty_level,
+                    points: q.points
+                })),
+                retakeInfo: {
+                    previousScore: enrollment.score,
+                    previousStatus: enrollment.status,
+                    retakeDate: new Date()
+                }
+            });
+        } catch (error) {
+            throw error;
+        }
+    }
+
     // ========== Training Assignment Services ==========
     async getAllTrainingAssignments(filters = {}, tenantId = null) {
         try {

@@ -239,6 +239,20 @@ class TrainingController {
         }
     });
 
+    static getAvailableSessionsForCourse = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const userId = req.user?.id;
+        const tenantId = req.user.tenant_id;
+        const filters = { ...req.query, courseId };
+        const result = await trainingService.getAvailableTrainingSessionsForEmployee(userId, tenantId, filters);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
     static getTrainingSessionById = ErrorMiddleware.asyncHandler(async (req, res) => {
         const { sessionId } = req.params;
         const tenantId = req.user.tenant_id;
@@ -669,6 +683,80 @@ class TrainingController {
         const userId = req.user._id || req.user.id;
         
         const result = await trainingService.retakeTraining(sessionId, userId);
+        
+        if (result.success) {
+            // Emit training retake event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                await TrainingEvents.emitTrainingRetake(result.data, metadata);
+            } catch (error) {
+                console.error('❌ Error emitting training retake event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    // ========== Course Quiz Controllers (New - replaces session-based training) ==========
+    static startCourseQuiz = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const userId = req.user._id || req.user.id;
+        const tenantId = req.user?.tenant_id;
+        
+        const result = await trainingService.startCourseQuiz(courseId, userId, tenantId);
+        
+        if (result.success) {
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static submitCourseQuiz = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const userId = req.user._id || req.user.id;
+        const { answers, score, completionTime } = req.body;
+        const tenantId = req.user?.tenant_id;
+        
+        const result = await trainingService.submitCourseQuiz(courseId, userId, answers, score, completionTime, tenantId);
+        
+        if (result.success) {
+            // Emit training completion event
+            try {
+                const metadata = {
+                    userId: req.user?.id,
+                    userRole: req.user?.role,
+                    userFullName: req.user?.full_name,
+                    ipAddress: req.ip,
+                    userAgent: req.get('User-Agent')
+                };
+                await TrainingEvents.emitTrainingCompletion(result.data, metadata);
+            } catch (error) {
+                console.error('❌ Error emitting training completion event:', error);
+                // Don't fail the request if event emission fails
+            }
+            
+            return ApiResponse.success(res, result.data, result.message, result.statusCode);
+        } else {
+            return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+        }
+    });
+
+    static retakeCourseQuiz = ErrorMiddleware.asyncHandler(async (req, res) => {
+        const { courseId } = req.params;
+        const userId = req.user._id || req.user.id;
+        const tenantId = req.user?.tenant_id;
+        
+        const result = await trainingService.retakeCourseQuiz(courseId, userId, tenantId);
         
         if (result.success) {
             // Emit training retake event

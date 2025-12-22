@@ -787,6 +787,19 @@ class TrainingRepository {
           .populate('user_id', 'full_name email');
     }
 
+    async getEnrollmentByUserAndCourse(userId, courseId, tenantId = null) {
+        const query = {
+            user_id: userId,
+            course_id: courseId
+        };
+        if (tenantId) {
+            query.tenant_id = tenantId;
+        }
+        return await TrainingEnrollment.findOne(query)
+          .populate('course_id', 'course_name description duration_hours is_deployed')
+          .populate('user_id', 'full_name email');
+    }
+
     async getQuestionBankByCourseId(courseId) {
         return await QuestionBank.findOne({ course_id: courseId });
     }
