@@ -1,5 +1,6 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 {"timestamp":"2025-12-19T14:00:57.528Z","level":"ERROR","message":"Weather API error","metadata":{"latencyMs":878,"cacheKey":"weather:NaN:NaN:undefined:precipitation","message":"Request failed with status code 400","status":400},"pid":21276,"hostname":"Bravo"}
 {"timestamp":"2025-12-19T14:00:58.692Z","level":"ERROR","message":"Weather API error","metadata":{"latencyMs":198,"cacheKey":"weather:NaN:NaN:undefined:precipitation","message":"Request failed with status code 400","status":400},"pid":21276,"hostname":"Bravo"}
 {"timestamp":"2025-12-19T14:01:11.466Z","level":"ERROR","message":"Weather API error","metadata":{"latencyMs":1019,"cacheKey":"weather:NaN:NaN:undefined:precipitation","message":"Request failed with status code 400","status":400},"pid":21276,"hostname":"Bravo"}
@@ -1079,3 +1080,5 @@
 {"timestamp":"2025-12-22T14:29:24.373Z","level":"ERROR","message":"Weather API error","metadata":{"latencyMs":374,"cacheKey":"weather:NaN:NaN:undefined:temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day","message":"Request failed with status code 400","status":400},"pid":13180,"hostname":"MSI"}
 {"timestamp":"2025-12-22T14:29:25.459Z","level":"ERROR","message":"Weather API error","metadata":{"latencyMs":227,"cacheKey":"weather:NaN:NaN:undefined:temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day","message":"Request failed with status code 400","status":400},"pid":13180,"hostname":"MSI"}
 >>>>>>> feat/Vu
+=======
+>>>>>>> dea3e988e76bf08d9594ddfb2a881798a522d11b

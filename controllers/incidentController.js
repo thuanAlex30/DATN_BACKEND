@@ -2,7 +2,8 @@ const incidentService = require('../services/incidentService');
 const Incident = require('../models/incident');
 const User = require('../models/user');
 const { IncidentEscalation } = require('../models/incidentEscalation');
-const { sendEmail, sendSMS, sendNotification } = require('../utils/notifications'); // giả sử có các hàm này
+const { sendSMS, sendNotification } = require('../utils/notifications'); // sendEmail replaced with Resend-based service
+const emailService = require('../services/emailService');
 const websocketService = require('../services/websocketService');
 const IncidentEvents = require('../events/incidentEvents');
 const { ApiResponse } = require('../utils/response');
@@ -18,7 +19,7 @@ class IncidentController {
     const result = await incidentService.createIncident(incidentData, userId, tenantId);
     
     if (result.success) {
-      // Send realtime notification (WebSocket + Database) for incident reported
+        // Send realtime notification (WebSocket + Database) for incident reported
       try {
         const IncidentNotificationService = require('../services/incidentNotificationService');
         const reporter = await User.findById(userId).select('_id role full_name tenant_id').lean();

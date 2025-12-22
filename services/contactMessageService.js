@@ -1,6 +1,6 @@
 const contactMessageRepository = require('../repository/ContactMessageRepository');
 const { createResponse } = require('../utils/response');
-const { sendEmail } = require('../utils/notifications');
+const emailService = require('./emailService');
 
 class ContactMessageService {
   async createContactMessage(data) {
@@ -89,15 +89,11 @@ class ContactMessageService {
           </div>
         `;
 
-        await sendEmail(
-          originalMessage.email,
-          emailSubject,
-          emailHtml
-        );
-        console.log(`✅ Email reply sent to ${originalMessage.email}`);
+        await emailService._sendEmail({ to: originalMessage.email, subject: emailSubject, html: emailHtml });
+        console.log(`✅ Email reply sent to ${originalMessage.email} via Resend`);
       } catch (emailError) {
         // Log error but don't fail the reply operation
-        console.error('Error sending reply email:', emailError);
+        console.error('Error sending reply email via Resend:', emailError);
         // Continue even if email fails
       }
 

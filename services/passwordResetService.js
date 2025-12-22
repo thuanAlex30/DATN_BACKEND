@@ -1,7 +1,7 @@
 const PasswordResetOTP = require('../models/passwordResetOTP');
 const UserRepository = require('../repository/UserRepository');
 const HashUtils = require('../utils/hash');
-const { sendEmail } = require('../utils/notifications');
+const emailService = require('./emailService');
 const { createResponse } = require('../utils/response');
 
 class PasswordResetService {
@@ -78,10 +78,10 @@ class PasswordResetService {
       `;
 
       try {
-        await sendEmail(email, emailSubject, emailHtml);
-        console.log(`✅ [PasswordReset] OTP sent to ${email}`);
+        await emailService._sendEmail({ to: email, subject: emailSubject, html: emailHtml });
+        console.log(`✅ [PasswordReset] OTP sent to ${email} (via Resend)`);
       } catch (emailError) {
-        console.error('❌ [PasswordReset] Error sending email:', emailError);
+        console.error('❌ [PasswordReset] Error sending email via Resend:', emailError);
         // Vẫn trả về success để không tiết lộ email có tồn tại hay không
       }
 
