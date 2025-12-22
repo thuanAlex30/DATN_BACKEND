@@ -1,0 +1,2 @@
+{"timestamp":"2025-12-22T14:23:51.863Z","level":"WARN","message":"User tenant not set in Map, emitting anyway (fallback)","metadata":{"userId":"693001f5d4c22c766d371c57","tenantId":"692f1ab190adce349220ffb3","event":"course_set_created"},"pid":392,"hostname":"MSI"}
+{"timestamp":"2025-12-22T14:25:01.391Z","level":"WARN","message":"User tenant not set in Map, emitting anyway (fallback)","metadata":{"userId":"693001f5d4c22c766d371c57","tenantId":"692f1ab190adce349220ffb3","event":"training_session_created"},"pid":392,"hostname":"MSI"}
