@@ -3,6 +3,54 @@ const IncidentUtils = require('../utils/incidentUtils');
 const websocketService = require('./websocketService');
 const IncidentEvents = require('../events/incidentEvents');
 const User = require('../models/user');
+const { uploadImageBuffer, CLOUDINARY_ENABLED } = require('../utils/cloudinaryHelper');
+const path = require('path');
+
+/**
+ * Upload array of images (URL or data URI) to Cloudinary.
+ * - Keeps items that are already URLs.
+ * - Uploads data:image/... base64 to Cloudinary when configured.
+ */
+async function uploadImagesIfNeeded(images = [], folderEnv = 'CLOUDINARY_INCIDENT_FOLDER', defaultFolder = 'incidents') {
+  if (!Array.isArray(images) || images.length === 0) return [];
+
+  const folder = process.env[folderEnv] || defaultFolder;
+  const uploaded = [];
+
+  for (const img of images) {
+    if (typeof img !== 'string') continue;
+
+    // If already a URL, keep as-is
+    if (/^https?:\/\//i.test(img)) {
+      uploaded.push(img);
+      continue;
+    }
+
+    // If data URI and Cloudinary enabled, upload
+    if (img.startsWith('data:image/')) {
+      if (!CLOUDINARY_ENABLED) {
+        throw new Error('Cloudinary chưa được cấu hình để upload ảnh incident');
+      }
+      try {
+        const match = img.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+        if (!match) throw new Error('Định dạng ảnh base64 không hợp lệ');
+        const mime = match[1];
+        const b64 = match[2];
+        const buffer = Buffer.from(b64, 'base64');
+        const ext = mime.split('/')[1] || 'png';
+        const uploadRes = await uploadImageBuffer(buffer, `incident-${Date.now()}.${ext}`, folder);
+        uploaded.push(uploadRes.secureUrl);
+      } catch (err) {
+        throw new Error(`Upload ảnh incident lên Cloudinary thất bại: ${err.message}`);
+      }
+      continue;
+    }
+
+    // Otherwise skip unrecognized string
+  }
+
+  return uploaded;
+}
 
 // Verify repository is loaded correctly
 if (!incidentRepository || typeof incidentRepository !== 'object') {
@@ -37,6 +85,15 @@ class IncidentService {
           message: validation.message,
           statusCode: 400
         };
+      }
+
+      // Upload images to Cloudinary if provided
+      if (incidentData.images && incidentData.images.length > 0) {
+        incidentData.images = await uploadImagesIfNeeded(
+          incidentData.images,
+          'CLOUDINARY_INCIDENT_FOLDER',
+          'incidents'
+        );
       }
 
       // Tạo incidentId tự động
@@ -87,6 +144,16 @@ class IncidentService {
       // Build query filters - extract pagination options
       const { page, limit, sortBy, sortOrder, department_id, ...queryFilters } = filters;
 
+      // If user is Manager, automatically filter by assignedTo
+      // Manager chỉ xem được incidents đã được phân công cho họ
+      if (user && user.role && (user.role.role_code === 'manager' || user.role.role_name?.toLowerCase() === 'manager' || user.role.role_name?.toLowerCase() === 'department manager')) {
+        const managerId = user._id || user.id;
+        if (managerId && !filters.assignedTo) {
+          // Tự động thêm filter assignedTo nếu manager chưa chỉ định
+          queryFilters.assignedTo = managerId;
+        }
+      }
+
       if (page || limit || Object.keys(queryFilters).length > 0) {
         const result = await incidentRepository.findAll(
           { ...queryFilters, tenant_id: tenantId },
@@ -97,7 +164,7 @@ class IncidentService {
             sortOrder: sortOrder || 'desc',
             status: filters.status,
             severity: filters.severity,
-            assignedTo: filters.assignedTo,
+            assignedTo: queryFilters.assignedTo || filters.assignedTo,
             createdBy: filters.createdBy,
             dateFrom: filters.dateFrom,
             dateTo: filters.dateTo
@@ -106,98 +173,41 @@ class IncidentService {
         
         // If department_header, filter results by department after query
         let incidents = result.incidents || [];
-        if (user?.department_id && user?.role?.role_code === 'department_header') {
-          const User = require('../models/user');
-          const mongoose = require('mongoose');
-          
-          // Filter incidents where createdBy or assignedTo belongs to the department_header's department
-          const filteredIncidents = [];
-          for (const incident of incidents) {
-            // Populate createdBy and assignedTo if not already populated
-            let createdByUser = incident.createdBy;
-            let assignedToUser = incident.assignedTo;
-            
-            if (mongoose.Types.ObjectId.isValid(incident.createdBy) && typeof incident.createdBy === 'object' && !incident.createdBy.department_id) {
-              createdByUser = await User.findById(incident.createdBy).select('department_id');
-            }
-            if (incident.assignedTo && mongoose.Types.ObjectId.isValid(incident.assignedTo) && typeof incident.assignedTo === 'object' && !incident.assignedTo.department_id) {
-              assignedToUser = await User.findById(incident.assignedTo).select('department_id');
-            }
-            
-            // Include incident if createdBy or assignedTo belongs to the same department
-            const createdByDeptId = createdByUser?.department_id?.toString() || (typeof createdByUser === 'object' && createdByUser?.department_id?.toString());
-            const assignedToDeptId = assignedToUser?.department_id?.toString() || (typeof assignedToUser === 'object' && assignedToUser?.department_id?.toString());
-            const userDeptId = user.department_id.toString();
-            
-            if (createdByDeptId === userDeptId || assignedToDeptId === userDeptId) {
-              filteredIncidents.push(incident);
-            }
-          }
-          incidents = filteredIncidents;
+        if (user?.department_id && user?.role?.role_code === 'department_header' && department_id) {
         }
         
         return {
           success: true,
           data: incidents,
-          pagination: {
-            ...result.pagination,
-            totalItems: incidents.length,
-            totalPages: Math.ceil(incidents.length / (result.pagination?.itemsPerPage || 20))
-          },
+          pagination: result.pagination,
           message: 'Lấy danh sách incidents thành công',
           statusCode: 200
         };
       } else {
+        // If no filters and user is Manager, still filter by assignedTo
+        let queryFiltersForManager = { tenant_id: tenantId };
+        if (user && user.role && (user.role.role_code === 'manager' || user.role.role_name?.toLowerCase() === 'manager' || user.role.role_name?.toLowerCase() === 'department manager')) {
+          const managerId = user._id || user.id;
+          if (managerId) {
+            queryFiltersForManager.assignedTo = managerId;
+          }
+        }
+        
         const result = await incidentRepository.findAll(
-          { tenant_id: tenantId },
+          queryFiltersForManager,
           {
             page: 1,
             limit: 20,
             sortBy: 'createdAt',
-            sortOrder: 'desc'
+            sortOrder: 'desc',
+            assignedTo: queryFiltersForManager.assignedTo
           }
         );
         
-        // If department_header, filter results by department after query
-        let incidents = result.incidents || [];
-        if (user?.department_id && user?.role?.role_code === 'department_header') {
-          const User = require('../models/user');
-          const mongoose = require('mongoose');
-          
-          // Filter incidents where createdBy or assignedTo belongs to the department_header's department
-          const filteredIncidents = [];
-          for (const incident of incidents) {
-            // Populate createdBy and assignedTo if not already populated
-            let createdByUser = incident.createdBy;
-            let assignedToUser = incident.assignedTo;
-            
-            if (mongoose.Types.ObjectId.isValid(incident.createdBy) && typeof incident.createdBy === 'object' && !incident.createdBy.department_id) {
-              createdByUser = await User.findById(incident.createdBy).select('department_id');
-            }
-            if (incident.assignedTo && mongoose.Types.ObjectId.isValid(incident.assignedTo) && typeof incident.assignedTo === 'object' && !incident.assignedTo.department_id) {
-              assignedToUser = await User.findById(incident.assignedTo).select('department_id');
-            }
-            
-            // Include incident if createdBy or assignedTo belongs to the same department
-            const createdByDeptId = createdByUser?.department_id?.toString() || (typeof createdByUser === 'object' && createdByUser?.department_id?.toString());
-            const assignedToDeptId = assignedToUser?.department_id?.toString() || (typeof assignedToUser === 'object' && assignedToUser?.department_id?.toString());
-            const userDeptId = user.department_id.toString();
-            
-            if (createdByDeptId === userDeptId || assignedToDeptId === userDeptId) {
-              filteredIncidents.push(incident);
-            }
-          }
-          incidents = filteredIncidents;
-        }
-        
         return {
           success: true,
-          data: incidents,
-          pagination: {
-            ...result.pagination,
-            totalItems: incidents.length,
-            totalPages: Math.ceil(incidents.length / (result.pagination?.itemsPerPage || 20))
-          },
+          data: result.incidents || [],
+          pagination: result.pagination,
           message: 'Lấy danh sách incidents thành công',
           statusCode: 200
         };
@@ -294,51 +304,6 @@ class IncidentService {
         };
       }
 
-      // Kiểm tra quyền phân công: Department Header chỉ được phân công cho managers dưới cấp
-      const assigner = await User.findById(userId).populate('role_id', 'role_code role_level');
-      const assignee = await User.findById(assignedTo).populate('role_id', 'role_code role_level');
-      
-      if (!assigner || !assigner.role_id) {
-        return {
-          success: false,
-          message: 'Không tìm thấy thông tin người phân công',
-          statusCode: 404
-        };
-      }
-      
-      if (!assignee || !assignee.role_id) {
-        return {
-          success: false,
-          message: 'Không tìm thấy thông tin người được phân công',
-          statusCode: 404
-        };
-      }
-
-      // Nếu người phân công là Department Header (role_level = 80)
-      if (assigner.role_id.role_level === 80 || assigner.role_id.role_code === 'department_header') {
-        const assigneeRoleLevel = assignee.role_id.role_level;
-        const assigneeRoleCode = assignee.role_id.role_code;
-        
-        // Chỉ được phân công cho users có role_level < 80 (Manager: 70, Employee: 10)
-        // Không được phân công cho Department Header (80), Company Admin (90), System Admin (100)
-        if (assigneeRoleLevel >= 80) {
-          return {
-            success: false,
-            message: 'Department Header chỉ được phân công cho Manager và Employee, không được phân công cho Department Header cùng cấp hoặc cấp cao hơn',
-            statusCode: 403
-          };
-        }
-        
-        // Kiểm tra thêm bằng role_code để đảm bảo
-        if (assigneeRoleCode === 'department_header' || assigneeRoleCode === 'company_admin' || assigneeRoleCode === 'system_admin') {
-          return {
-            success: false,
-            message: 'Department Header chỉ được phân công cho Manager và Employee',
-            statusCode: 403
-          };
-        }
-      }
-
       // Update assignedTo and status using repository
       const updatedIncident = await incidentRepository.updateById(id, {
         assignedTo,
@@ -349,7 +314,7 @@ class IncidentService {
       await incidentRepository.addHistory(id, {
         action: 'Phân công',
         performedBy: userId,
-        note: `Phân công xử lý cho ${assignee.full_name} (${assignee.username})`
+        note: `Phân công xử lý cho user ID: ${assignedTo}`
       }, tenantId);
 
       // Emit events
@@ -387,24 +352,47 @@ class IncidentService {
 
       const { investigation, solution, findingsImages, rootCauseImages } = investigationData;
 
-      // Cập nhật status: nếu đang là "Mới ghi nhận", chuyển sang "Đang xử lý"
-      const updateData = {};
-      if (incident.status === 'Mới ghi nhận') {
-        updateData.status = 'Đang xử lý';
+      // Upload investigation images if provided
+      const uploadedFindings = await uploadImagesIfNeeded(
+        findingsImages,
+        'CLOUDINARY_INCIDENT_FOLDER',
+        'incidents'
+      );
+      const uploadedRootCause = await uploadImagesIfNeeded(
+        rootCauseImages,
+        'CLOUDINARY_INCIDENT_FOLDER',
+        'incidents'
+      );
+      const mergedImages = Array.from(
+        new Set([...(incident.images || []), ...uploadedFindings, ...uploadedRootCause])
+      );
+      if (uploadedFindings.length || uploadedRootCause.length) {
+        await incidentRepository.updateById(id, { images: mergedImages }, tenantId);
       }
 
-      // Cập nhật status nếu cần
-      if (Object.keys(updateData).length > 0) {
-        await incidentRepository.updateById(id, updateData, tenantId);
-      }
+      console.log('🔍 Investigation data received:', {
+        investigation: investigation?.substring(0, 50) + '...',
+        solution: solution?.substring(0, 50) + '...',
+        findingsImages: findingsImages,
+        findingsImagesLength: findingsImages?.length
+      });
+
 
       // Thêm investigation entry
-      await incidentRepository.addHistory(id, {
+      const investigationHistoryData = {
         action: 'Điều tra',
         performedBy: userId,
         note: investigation,
-        timestamp: new Date()
-      }, tenantId);
+        timestamp: new Date(),
+        findingsImages: findingsImages || []
+      };
+      
+      console.log('📝 Adding investigation history:', {
+        action: investigationHistoryData.action,
+        findingsImagesCount: investigationHistoryData.findingsImages?.length
+      });
+      
+      await incidentRepository.addHistory(id, investigationHistoryData, tenantId);
 
       // Thêm solution entry
       await incidentRepository.addHistory(id, {
@@ -415,7 +403,7 @@ class IncidentService {
       }, tenantId);
 
       // Get updated incident with history
-      const updatedIncident = await incidentRepository.getIncidentById(id, tenantId);
+      const updatedIncident = await incidentRepository.getIncidentById(id);
 
       // Emit events
       await IncidentService.emitIncidentEvents('investigated', updatedIncident, userId);
@@ -461,29 +449,15 @@ class IncidentService {
         };
       }
 
-      // Kiểm tra xem sự cố đã có các action xử lý chưa
-      const histories = incident.histories || [];
-      const hasProgressHistory = histories.some(h => h.action === 'Cập nhật tiến độ');
-      const hasInvestigationHistory = histories.some(h => h.action === 'Điều tra');
-      const hasSolutionHistory = histories.some(h => h.action === 'Khắc phục');
-      const hasAssignmentHistory = histories.some(h => h.action === 'Phân công');
-      
-      // Nếu đã có bất kỳ action xử lý nào, chuyển status thành "Đang xử lý"
-      const hasAnyProcessingAction = hasProgressHistory || hasInvestigationHistory || 
-                                     hasSolutionHistory || hasAssignmentHistory;
-
-      const updateData = {};
-      if (hasAnyProcessingAction && incident.status !== 'Đang xử lý') {
-        // Nếu đã có action xử lý và status chưa phải "Đang xử lý", cập nhật
-        updateData.status = 'Đang xử lý';
-      } else if (!hasAnyProcessingAction && incident.status === 'Mới ghi nhận') {
-        // Nếu chưa có action xử lý nào và đang là "Mới ghi nhận", chuyển sang "Đang xử lý" (lần đầu cập nhật tiến độ)
-        updateData.status = 'Đang xử lý';
-      }
-
-      // Cập nhật status nếu cần
-      if (Object.keys(updateData).length > 0) {
-        await incidentRepository.updateById(id, updateData, tenantId);
+      // Upload progress images if any
+      const uploadedProgressImages = await uploadImagesIfNeeded(
+        progressData.images,
+        'CLOUDINARY_INCIDENT_FOLDER',
+        'incidents'
+      );
+      if (uploadedProgressImages.length) {
+        const merged = Array.from(new Set([...(incident.images || []), ...uploadedProgressImages]));
+        await incidentRepository.updateById(id, { images: merged }, tenantId);
       }
 
       // Thêm progress entry
@@ -495,7 +469,7 @@ class IncidentService {
       }, tenantId);
 
       // Get updated incident with history
-      const updatedIncident = await incidentRepository.getIncidentById(id, tenantId);
+      const updatedIncident = await incidentRepository.getIncidentById(id);
 
       // Emit events
       await IncidentService.emitIncidentEvents('progress_updated', updatedIncident, userId);
@@ -531,6 +505,17 @@ class IncidentService {
       }
 
       const { note, images } = closeData || {};
+
+      // Upload closing images if any
+      const uploadedCloseImages = await uploadImagesIfNeeded(
+        images,
+        'CLOUDINARY_INCIDENT_FOLDER',
+        'incidents'
+      );
+      if (uploadedCloseImages.length) {
+        const merged = Array.from(new Set([...(incident.images || []), ...uploadedCloseImages]));
+        await incidentRepository.updateById(id, { images: merged }, tenantId);
+      }
 
       // Update status using repository
       const updatedIncident = await incidentRepository.updateById(id, {
@@ -569,101 +554,9 @@ class IncidentService {
   /**
    * Lấy thống kê incidents
    */
-  static async getIncidentStats(filters = {}, tenantId = null, user = null) {
+  static async getIncidentStats(filters = {}) {
     try {
-      let stats = await incidentRepository.getIncidentStats({
-        ...filters,
-        tenant_id: tenantId
-      });
-      
-      // If department_header, filter stats by department
-      if (user?.department_id && user?.role?.role_code === 'department_header') {
-        console.log('🔍 Filtering stats for department_header:', {
-          userId: user._id,
-          departmentId: user.department_id,
-          roleCode: user.role?.role_code
-        });
-        
-        const User = require('../models/user');
-        const mongoose = require('mongoose');
-        const Incident = require('../models/incident');
-        
-        // Get all incidents of the tenant with populated users for department filtering
-        const allIncidents = await Incident.find({ tenant_id: tenantId })
-          .select('title description location severity status incidentId assignedTo createdBy images createdAt')
-          .populate('createdBy', 'department_id')
-          .populate('assignedTo', 'department_id')
-          .lean();
-        
-        console.log(`📊 Found ${allIncidents.length} total incidents for tenant ${tenantId}`);
-        
-        // Filter incidents by department
-        const filteredIncidents = [];
-        const userDeptId = user.department_id.toString();
-        
-        for (const incident of allIncidents || []) {
-          // Get department_id from populated or fetch if needed
-          let createdByDeptId = null;
-          let assignedToDeptId = null;
-          
-          if (incident.createdBy) {
-            if (typeof incident.createdBy === 'object' && incident.createdBy.department_id) {
-              createdByDeptId = incident.createdBy.department_id.toString();
-            } else if (mongoose.Types.ObjectId.isValid(incident.createdBy)) {
-              const createdByUser = await User.findById(incident.createdBy).select('department_id').lean();
-              createdByDeptId = createdByUser?.department_id?.toString() || null;
-            }
-          }
-          
-          if (incident.assignedTo) {
-            if (typeof incident.assignedTo === 'object' && incident.assignedTo.department_id) {
-              assignedToDeptId = incident.assignedTo.department_id.toString();
-            } else if (mongoose.Types.ObjectId.isValid(incident.assignedTo)) {
-              const assignedToUser = await User.findById(incident.assignedTo).select('department_id').lean();
-              assignedToDeptId = assignedToUser?.department_id?.toString() || null;
-            }
-          }
-          
-          // Include incident if createdBy or assignedTo belongs to the same department
-          if (createdByDeptId === userDeptId || assignedToDeptId === userDeptId) {
-            filteredIncidents.push(incident);
-          }
-        }
-        
-        console.log(`✅ Filtered to ${filteredIncidents.length} incidents for department ${userDeptId}`);
-        
-        // Recalculate stats from filtered incidents
-        const total = filteredIncidents.length;
-        const statusBreakdown = {};
-        const severityBreakdown = {};
-        
-        filteredIncidents.forEach(incident => {
-          const status = incident.status || 'Mới ghi nhận';
-          const severity = incident.severity || 'nhẹ';
-          
-          statusBreakdown[status] = (statusBreakdown[status] || 0) + 1;
-          severityBreakdown[severity] = (severityBreakdown[severity] || 0) + 1;
-        });
-        
-        const inProgress = (statusBreakdown['Đang xử lý'] || 0) + 
-                          (statusBreakdown['in_progress'] || 0) + 
-                          (statusBreakdown['investigating'] || 0);
-        const resolved = (statusBreakdown['Đã đóng'] || 0) + 
-                        (statusBreakdown['resolved'] || 0) + 
-                        (statusBreakdown['closed'] || 0);
-        // "Nghiêm trọng" chỉ đếm "rất nghiêm trọng", không bao gồm "nặng"
-        const critical = (severityBreakdown['rất nghiêm trọng'] || 0) + 
-                       (severityBreakdown['critical'] || 0);
-        
-        stats = {
-          total,
-          inProgress,
-          resolved,
-          critical,
-          byStatus: statusBreakdown,
-          bySeverity: severityBreakdown
-        };
-      }
+      const stats = await incidentRepository.getIncidentStats(filters);
       
       return {
         success: true,
@@ -705,9 +598,9 @@ class IncidentService {
   /**
    * Lấy incidents theo user
    */
-  static async getIncidentsByUser(userId, tenantId = null) {
+  static async getIncidentsByUser(userId) {
     try {
-      const incidents = await incidentRepository.getIncidentsByUser(userId, tenantId);
+      const incidents = await incidentRepository.getIncidentsByUser(userId);
       
       return {
         success: true,
@@ -749,9 +642,9 @@ class IncidentService {
   /**
    * Lấy incidents theo status
    */
-  static async getIncidentsByStatus(status, tenantId = null) {
+  static async getIncidentsByStatus(status) {
     try {
-      const incidents = await incidentRepository.getIncidentsByStatus(status, tenantId);
+      const incidents = await incidentRepository.getIncidentsByStatus(status);
       
       return {
         success: true,
@@ -771,9 +664,9 @@ class IncidentService {
   /**
    * Lấy incidents theo severity
    */
-  static async getIncidentsBySeverity(severity, tenantId = null) {
+  static async getIncidentsBySeverity(severity) {
     try {
-      const incidents = await incidentRepository.getIncidentsBySeverity(severity, tenantId);
+      const incidents = await incidentRepository.getIncidentsBySeverity(severity);
       
       return {
         success: true,
@@ -835,16 +728,66 @@ class IncidentService {
   }
 
   /**
+   * Cập nhật incident
+   */
+  static async updateIncident(id, updateData, userId) {
+    try {
+      const incident = await incidentRepository.getIncidentById(id);
+      
+      if (!incident) {
+        return {
+          success: false,
+          message: 'Không tìm thấy incident',
+          statusCode: 404
+        };
+      }
+
+      // Validate dữ liệu cập nhật (only validate if required fields are present)
+      // For partial updates, we don't require all fields
+      if (updateData.title !== undefined && (!updateData.title || updateData.title.trim() === '')) {
+        return {
+          success: false,
+          message: 'Tiêu đề không được để trống',
+          statusCode: 400
+        };
+      }
+
+      const updatedIncident = await incidentRepository.updateIncident(id, updateData);
+
+      // Emit events
+      await IncidentService.emitIncidentEvents('updated', updatedIncident, userId);
+
+      return {
+        success: true,
+        data: updatedIncident,
+        message: 'Cập nhật incident thành công',
+        statusCode: 200
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        statusCode: 500
+      };
+    }
+  }
+
+  /**
    * Emit incident events
    */
   static async emitIncidentEvents(eventType, incident, userId) {
     try {
+      // Emit WebSocket event
+      websocketService.emitIncidentEvent(eventType, incident, userId);
+      
       // Emit Kafka event based on event type
-      // WebSocket events will be emitted by Kafka consumer
       switch (eventType) {
         case 'created':
         case 'reported':
           await IncidentEvents.emitIncidentReported(incident, { _id: userId });
+          break;
+        case 'updated':
+          await IncidentEvents.emitIncidentUpdated(incident, { _id: userId }, {});
           break;
         case 'assigned':
           await IncidentEvents.emitIncidentAssigned(incident, { _id: incident.assignedTo }, { _id: userId });

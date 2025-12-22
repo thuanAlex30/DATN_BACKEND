@@ -3,11 +3,14 @@ const Joi = require('joi');
 const userValidation = {
   create: Joi.object({
     username: Joi.string()
-      .alphanum()
+      .pattern(/^[a-zA-Z0-9_]+$/)
       .min(3)
       .max(50)
       .required()
-      .trim(),
+      .trim()
+      .messages({
+        'string.pattern.base': '"username" must only contain alpha-numeric characters and underscores'
+      }),
 
     password: Joi.string()
       .min(6)
@@ -58,11 +61,14 @@ const userValidation = {
 
   update: Joi.object({
     username: Joi.string()
-      .alphanum()
+      .pattern(/^[a-zA-Z0-9_]+$/)
       .min(3)
       .max(50)
       .optional()
-      .trim(),
+      .trim()
+      .messages({
+        'string.pattern.base': '"username" must only contain alpha-numeric characters and underscores'
+      }),
 
     email: Joi.string()
       .email()

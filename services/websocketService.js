@@ -10,6 +10,7 @@ class WebSocketService {
     this.io = null;
     this.connectedUsers = new Map(); // userId -> socketId
     this.userRoles = new Map(); // userId -> role
+    this.userTenants = new Map(); // userId -> tenantId
   }
 
   /**
@@ -38,23 +39,34 @@ class WebSocketService {
           
           const userId = decoded.id || decoded.userId;
           const role = decoded.role || 'user';
+          const tenantId = decoded.tenant_id || decoded.tenantId || null;
           
           this.connectedUsers.set(userId, socket.id);
           this.userRoles.set(userId, role);
+          if (tenantId) {
+            this.userTenants.set(userId, tenantId);
+          }
           socket.userId = userId;
           socket.role = role;
+          socket.tenantId = tenantId;
           
-          logger.info('User authenticated via WebSocket', { userId, role, socketId: socket.id });
+          logger.info('User authenticated via WebSocket', { userId, role, tenantId, socketId: socket.id });
           
           socket.emit('authenticated', { success: true, userId, role });
         } catch (error) {
-          logger.error('WebSocket authentication error', { error: error.message });
-          socket.emit('authentication_error', { message: 'Authentication failed' });
+          // Phân biệt token hết hạn với các lỗi khác để tránh spam lỗi đỏ trong log
+          if (error.name === 'TokenExpiredError') {
+            logger.warn('WebSocket authentication error - token expired', { error: error.message });
+            socket.emit('auth_error', { message: 'jwt expired' });
+          } else {
+            logger.error('WebSocket authentication error', { error: error.message });
+            socket.emit('auth_error', { message: 'Authentication failed' });
+          }
           socket.disconnect();
         }
       } else {
         logger.warn('No authentication token provided', { socketId: socket.id });
-        socket.emit('authentication_error', { message: 'No authentication token provided' });
+        socket.emit('auth_error', { message: 'No authentication token provided' });
         socket.disconnect();
       }
 
@@ -71,18 +83,28 @@ class WebSocketService {
           const decoded = jwt.verify(data.token, process.env.JWT_SECRET);
           const userId = decoded.id || decoded.userId;
           const role = decoded.role || 'user';
+          const tenantId = decoded.tenant_id || decoded.tenantId || null;
 
           this.connectedUsers.set(userId, socket.id);
           this.userRoles.set(userId, role);
+          if (tenantId) {
+            this.userTenants.set(userId, tenantId);
+          }
           socket.userId = userId;
           socket.role = role;
+          socket.tenantId = tenantId;
           
-          logger.info('User authenticated via WebSocket (legacy jwt)', { userId, role, socketId: socket.id });
+          logger.info('User authenticated via WebSocket (legacy jwt)', { userId, role, tenantId, socketId: socket.id });
           
           socket.emit('authenticated', { success: true, userId, role });
         } catch (error) {
-          logger.error('WebSocket authentication error', { error: error.message });
-          socket.emit('authentication_error', { message: 'Authentication failed' });
+          if (error.name === 'TokenExpiredError') {
+            logger.warn('WebSocket authentication error (legacy jwt) - token expired', { error: error.message });
+            socket.emit('auth_error', { message: 'jwt expired' });
+          } else {
+            logger.error('WebSocket authentication error', { error: error.message });
+            socket.emit('auth_error', { message: 'Authentication failed' });
+          }
           socket.disconnect();
         }
       });
@@ -92,6 +114,7 @@ class WebSocketService {
         if (socket.userId) {
           this.connectedUsers.delete(socket.userId);
           this.userRoles.delete(socket.userId);
+          this.userTenants.delete(socket.userId);
           logger.info('User disconnected', { userId: socket.userId, socketId: socket.id });
         }
       });
@@ -155,6 +178,114 @@ class WebSocketService {
   }
 
   /**
+   * Emit to user in specific tenant
+   * @param {string} userId - User ID
+   * @param {string} tenantId - Tenant ID
+   * @param {string} event - Event name
+   * @param {Object} data - Data to send
+   */
+  emitToUserInTenant(userId, tenantId, event, data) {
+    // Normalize userId to string for Map lookup
+    const userIdStr = userId?.toString?.() || userId;
+    const userTenant = this.userTenants.get(userIdStr);
+    
+    // If user tenant matches, emit to user
+    if (userTenant && userTenant.toString() === tenantId.toString()) {
+      this.emitToUser(userIdStr, event, data);
+      logger.debug('Emitted to user in tenant', { userId: userIdStr, tenantId, event });
+    } else {
+      // Fallback: if user is connected but tenant not set, still emit (for backward compatibility)
+      // This handles cases where user connected before tenant_id was stored
+      const socketId = this.connectedUsers.get(userIdStr);
+      if (socketId && this.io) {
+        logger.warn('User tenant not set in Map, emitting anyway (fallback)', { 
+          userId: userIdStr, 
+          tenantId, 
+          userTenant,
+          event 
+        });
+        this.io.to(socketId).emit(event, data);
+      } else {
+        logger.debug('User not in tenant or not connected', { userId: userIdStr, tenantId, userTenant, event });
+      }
+    }
+  }
+
+  /**
+   * Emit to all users with specific role in tenant
+   * @param {string} role - User role
+   * @param {string} tenantId - Tenant ID
+   * @param {string} event - Event name
+   * @param {Object} data - Data to send
+   */
+  emitToRoleInTenant(role, tenantId, event, data) {
+    if (!this.io) return;
+
+    let count = 0;
+    this.userRoles.forEach((userRole, userId) => {
+      if (userRole === role) {
+        const userTenant = this.userTenants.get(userId);
+        if (userTenant && userTenant.toString() === tenantId.toString()) {
+          this.emitToUser(userId, event, data);
+          count++;
+        }
+      }
+    });
+
+    logger.debug('Emitted to role in tenant', { role, tenantId, event, userCount: count });
+  }
+
+  /**
+   * Emit to all users in tenant
+   * @param {string} tenantId - Tenant ID
+   * @param {string} event - Event name
+   * @param {Object} data - Data to send
+   */
+  emitToTenant(tenantId, event, data) {
+    if (!this.io) return;
+
+    let count = 0;
+    this.userTenants.forEach((userTenant, userId) => {
+      if (userTenant && userTenant.toString() === tenantId.toString()) {
+        this.emitToUser(userId, event, data);
+        count++;
+      }
+    });
+
+    logger.debug('Emitted to tenant', { tenantId, event, userCount: count });
+  }
+
+  /**
+   * Emit to all users in department
+   * @param {string|ObjectId} departmentId - Department ID
+   * @param {string} event - Event name
+   * @param {Object} data - Data to send
+   */
+  async emitToDepartment(departmentId, event, data) {
+    if (!this.io) return;
+
+    try {
+      const User = require('../models/user');
+      const users = await User.find({
+        department_id: departmentId,
+        is_active: true
+      }).select('_id');
+
+      let count = 0;
+      users.forEach(user => {
+        if (this.connectedUsers.has(user._id.toString())) {
+          this.emitToUser(user._id.toString(), event, data);
+          count++;
+        }
+      });
+
+      logger.debug('Emitted to department', { departmentId, event, userCount: count });
+    } catch (error) {
+      logger.error('Error emitting to department:', error);
+    }
+  }
+
+  /**
    * Get user count by role
    * @param {string} role - User role
    * @returns {number} User count
@@ -173,6 +304,192 @@ class WebSocketService {
    */
   getTotalConnectedUsers() {
     return this.connectedUsers.size;
+  }
+
+  // ========================================
+  // CERTIFICATE NOTIFICATIONS
+  // ========================================
+
+  /**
+   * Emit event when a new certificate is created
+   * @param {Object} certificate - Certificate data
+   * @param {Object} creator - User who created the certificate
+   */
+  emitCertificateCreated(certificate, creator) {
+    if (!this.io || !certificate) return;
+
+    const payload = {
+      type: 'certificate_created',
+      title: 'Chứng chỉ mới được tạo',
+      message: `Chứng chỉ "${certificate.certificateName || certificate.name}" đã được tạo`,
+      certificate: {
+        id: certificate._id || certificate.id,
+        certificateName: certificate.certificateName,
+        certificateCode: certificate.certificateCode,
+        category: certificate.category,
+        status: certificate.status,
+        priority: certificate.priority
+      },
+      createdBy: creator ? {
+        id: creator._id || creator.id,
+        full_name: creator.full_name || creator.username || creator.email
+      } : null,
+      timestamp: new Date()
+    };
+
+    // Gửi cho tất cả người dùng có quyền quản lý chứng chỉ
+    this.emitToRole('department_header', 'certificate_notification', payload);
+    this.emitToRole('manager', 'certificate_notification', payload);
+    this.emitToRole('admin', 'certificate_notification', payload);
+  }
+
+  /**
+   * Emit event when a certificate is updated
+   * @param {Object} certificate - Updated certificate data
+   * @param {Object} updater - User who updated the certificate
+   */
+  emitCertificateUpdated(certificate, updater) {
+    if (!this.io || !certificate) return;
+
+    const payload = {
+      type: 'certificate_updated',
+      title: 'Chứng chỉ đã được cập nhật',
+      message: `Chứng chỉ "${certificate.certificateName || certificate.name}" đã được cập nhật`,
+      certificate: {
+        id: certificate._id || certificate.id,
+        certificateName: certificate.certificateName,
+        certificateCode: certificate.certificateCode,
+        category: certificate.category,
+        status: certificate.status,
+        priority: certificate.priority
+      },
+      updatedBy: updater ? {
+        id: updater._id || updater.id,
+        full_name: updater.full_name || updater.username || updater.email
+      } : null,
+      timestamp: new Date()
+    };
+
+    this.emitToRole('department_header', 'certificate_notification', payload);
+    this.emitToRole('manager', 'certificate_notification', payload);
+    this.emitToRole('admin', 'certificate_notification', payload);
+  }
+
+  /**
+   * Emit event when a certificate is renewed
+   * @param {Object} certificate - Renewed certificate data
+   * @param {Object} renewer - User who renewed the certificate
+   */
+  emitCertificateRenewed(certificate, renewer) {
+    if (!this.io || !certificate) return;
+
+    const payload = {
+      type: 'certificate_renewed',
+      title: 'Chứng chỉ đã được gia hạn',
+      message: `Chứng chỉ "${certificate.certificateName || certificate.name}" đã được gia hạn`,
+      certificate: {
+        id: certificate._id || certificate.id,
+        certificateName: certificate.certificateName,
+        certificateCode: certificate.certificateCode,
+        expiryDate: certificate.expiryDate,
+        lastRenewalDate: certificate.lastRenewalDate
+      },
+      renewedBy: renewer ? {
+        id: renewer._id || renewer.id,
+        full_name: renewer.full_name || renewer.username || renewer.email
+      } : null,
+      timestamp: new Date()
+    };
+
+    this.emitToRole('department_header', 'certificate_notification', payload);
+    this.emitToRole('manager', 'certificate_notification', payload);
+    this.emitToRole('admin', 'certificate_notification', payload);
+  }
+
+  /**
+   * Emit event when a certificate is expiring soon
+   * @param {Object} certificate - Certificate data
+   * @param {number} daysUntilExpiry - Days until expiry
+   */
+  emitCertificateExpiringSoon(certificate, daysUntilExpiry) {
+    if (!this.io || !certificate) return;
+
+    const payload = {
+      type: 'certificate_expiring_soon',
+      title: 'Chứng chỉ sắp hết hạn',
+      message: `Chứng chỉ "${certificate.certificateName || certificate.name}" sẽ hết hạn trong ${daysUntilExpiry} ngày`,
+      certificate: {
+        id: certificate._id || certificate.id,
+        certificateName: certificate.certificateName,
+        certificateCode: certificate.certificateCode,
+        expiryDate: certificate.expiryDate
+      },
+      daysUntilExpiry,
+      timestamp: new Date()
+    };
+
+    this.emitToRole('department_header', 'certificate_notification', payload);
+    this.emitToRole('manager', 'certificate_notification', payload);
+    this.emitToRole('admin', 'certificate_notification', payload);
+  }
+
+  /**
+   * Emit event when a certificate is deleted
+   * @param {Object} certificate - Deleted certificate data
+   * @param {Object} deleter - User who deleted the certificate
+   */
+  emitCertificateDeleted(certificate, deleter) {
+    if (!this.io || !certificate) return;
+
+    const payload = {
+      type: 'certificate_deleted',
+      title: 'Chứng chỉ đã được xóa',
+      message: `Chứng chỉ "${certificate.certificateName || certificate.name}" đã được xóa`,
+      certificate: {
+        id: certificate._id || certificate.id,
+        certificateName: certificate.certificateName,
+        certificateCode: certificate.certificateCode
+      },
+      deletedBy: deleter ? {
+        id: deleter._id || deleter.id,
+        full_name: deleter.full_name || deleter.username || deleter.email
+      } : null,
+      timestamp: new Date()
+    };
+
+    this.emitToRole('department_header', 'certificate_notification', payload);
+    this.emitToRole('manager', 'certificate_notification', payload);
+    this.emitToRole('admin', 'certificate_notification', payload);
+  }
+
+  /**
+   * Emit event when certificate reminder settings are updated
+   * @param {Object} certificate - Certificate data
+   * @param {Object} updater - User who updated the reminder settings
+   */
+  emitCertificateReminderSettingsUpdated(certificate, updater) {
+    if (!this.io || !certificate) return;
+
+    const payload = {
+      type: 'certificate_reminder_settings_updated',
+      title: 'Cài đặt nhắc nhở chứng chỉ đã được cập nhật',
+      message: `Cài đặt nhắc nhở cho chứng chỉ "${certificate.certificateName || certificate.name}" đã được cập nhật`,
+      certificate: {
+        id: certificate._id || certificate.id,
+        certificateName: certificate.certificateName,
+        certificateCode: certificate.certificateCode,
+        reminderSettings: certificate.reminderSettings
+      },
+      updatedBy: updater ? {
+        id: updater._id || updater.id,
+        full_name: updater.full_name || updater.username || updater.email
+      } : null,
+      timestamp: new Date()
+    };
+
+    this.emitToRole('department_header', 'certificate_notification', payload);
+    this.emitToRole('manager', 'certificate_notification', payload);
+    this.emitToRole('admin', 'certificate_notification', payload);
   }
 
   // ========================================

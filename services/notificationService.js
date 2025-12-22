@@ -1,8 +1,10 @@
 const Notification = require('../models/notification');
+const RealtimeNotificationService = require('./realtimeNotificationService');
+const logger = require('../utils/logger');
 
 class NotificationService {
   /**
-   * Gửi thông báo cho system admin
+   * Gửi thông báo cho system admin (realtime + database)
    */
   async notifySystemAdmin({ type, message, orderId, tenantId, amount, title }) {
     try {
@@ -12,7 +14,7 @@ class NotificationService {
       
       // Log để debug
       if (type && !validTypes.includes(type)) {
-        console.warn(`Invalid notification type "${type}" provided, using default "info"`);
+        logger.warn(`Invalid notification type "${type}" provided, using default "info"`);
       }
 
       // Tìm system admin users
@@ -21,7 +23,7 @@ class NotificationService {
 
       const systemAdminRole = await Role.findOne({ role_code: 'system_admin' });
       if (!systemAdminRole) {
-        console.warn('System admin role not found');
+        logger.warn('System admin role not found');
         return;
       }
 
@@ -31,40 +33,42 @@ class NotificationService {
       });
 
       if (systemAdmins.length === 0) {
-        console.warn('No system admin users found');
+        logger.warn('No system admin users found');
         return;
       }
 
-      // Tìm notification_id cao nhất để generate ID mới
-      const lastNotification = await Notification.findOne(
-        { notification_id: { $exists: true, $ne: null } },
-        {},
-        { sort: { notification_id: -1 } }
+      // Gửi notification realtime + database cho từng system admin
+      const results = await Promise.allSettled(
+        systemAdmins.map(admin => 
+          RealtimeNotificationService.sendToUser({
+            userId: admin._id,
+            title: title || 'Thông báo đơn hàng',
+            message: message || `Có đơn hàng mới cần xử lý`,
+            type: notificationType,
+            category: 'system',
+            priority: 'medium',
+            tenantId: tenantId || admin.tenant_id || null,
+            data: {
+              orderId,
+              amount,
+              tenantId
+            },
+            eventName: 'notification',
+            saveToDatabase: true,
+            sendWebSocket: true
+          })
+        )
       );
-      
-      let nextNotificationId = 1;
-      if (lastNotification && lastNotification.notification_id) {
-        nextNotificationId = lastNotification.notification_id + 1;
-      }
 
-      // Tạo thông báo cho mỗi system admin với notification_id unique
-      const notifications = systemAdmins.map((admin, index) => ({
-        notification_id: nextNotificationId + index,
-        user_id: admin._id,
-        type: notificationType,
-        title: title || 'Thông báo đơn hàng',
-        message: message || `Có đơn hàng mới cần xử lý`,
-        category: 'system',
-        priority: 'medium',
-        is_read: false
-      }));
+      const successCount = results.filter(r => r.status === 'fulfilled').length;
+      logger.info(`Sent ${successCount}/${systemAdmins.length} notifications to system admins`);
 
-      await Notification.insertMany(notifications);
-
-      console.log(`Sent ${notifications.length} notifications to system admins`);
-      return notifications;
+      return results
+        .filter(r => r.status === 'fulfilled')
+        .map(r => r.value?.notification)
+        .filter(Boolean);
     } catch (error) {
-      console.error('Error notifying system admin:', error);
+      logger.error('Error notifying system admin:', error);
       throw error;
     }
   }

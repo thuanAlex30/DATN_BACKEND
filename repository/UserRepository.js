@@ -36,7 +36,8 @@ class UserRepository {
   }
 
   // Find users by user_id array (for bulk lookup)
-  static async findByUserIds(userIds, populate = []) {
+  // Added optional tenant_id to scope lookup to a tenant when provided
+  static async findByUserIds(userIds, populate = [], tenant_id = null) {
     try {
       // Filter out invalid values and convert to numbers
       const validUserIds = userIds
@@ -52,6 +53,11 @@ class UserRepository {
       }
 
       let query = User.find({ user_id: { $in: validUserIds } });
+      
+      // If tenant_id provided, restrict lookup to that tenant to enforce tenant isolation
+      if (tenant_id) {
+        query = query.where({ tenant_id });
+      }
       
       if (populate.length > 0) {
         populate.forEach(field => {
@@ -70,6 +76,35 @@ class UserRepository {
           .populate('department_id', 'department_name is_active');
       }
       
+      return await query.exec();
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Find users by MongoDB _id array (bulk lookup) with optional tenant scoping
+  static async findByIds(ids, populate = [], tenant_id = null) {
+    try {
+      if (!ids || ids.length === 0) return [];
+      let query = User.find({ _id: { $in: ids } });
+      if (tenant_id) {
+        query = query.where({ tenant_id });
+      }
+      if (populate.length > 0) {
+        populate.forEach(field => {
+          if (field === 'role_id') {
+            query = query.populate('role_id', 'role_name role_code role_level scope_rules permissions is_active');
+          } else if (field === 'department_id') {
+            query = query.populate('department_id', 'department_name is_active');
+          } else {
+            query = query.populate(field);
+          }
+        });
+      } else {
+        query = query
+          .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
+          .populate('department_id', 'department_name is_active');
+      }
       return await query.exec();
     } catch (error) {
       throw error;
@@ -273,6 +308,7 @@ class UserRepository {
 
       const result = await User.find(filter)
         .populate('role_id', 'role_name role_code role_level scope_rules permissions is_active')
+        .populate('department_id', 'department_name is_active')
         .sort(sortObj)
         .exec();
       

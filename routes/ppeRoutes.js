@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const fs = require('fs');
-const path = require('path');
 const ppeController = require('../controllers/PPEController');
 const authMiddleware = require('../middlewares/AuthMiddleware');
 const validationMiddleware = require('../middlewares/ValidationMiddleware');
@@ -25,24 +23,9 @@ const upload = multer({
   }
 });
 
-// Configure multer for image upload (PPE categories/items)
-const imageStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const targetDir = file.fieldname === 'image'
-      ? path.join('uploads', 'ppe')
-      : 'uploads';
-    fs.mkdirSync(targetDir, { recursive: true });
-    cb(null, targetDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-  }
-});
-
+// Configure multer for image upload (PPE categories/items) -> use memory so we can push to Cloudinary
 const imageUpload = multer({
-  storage: imageStorage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB
   },

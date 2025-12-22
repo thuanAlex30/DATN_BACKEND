@@ -103,15 +103,65 @@ class KafkaMonitor {
    * Collect topic-specific metrics
    */
   async collectTopicMetrics() {
+    let admin = null;
     try {
-      const admin = kafka.admin();
+      admin = kafka.admin();
       await admin.connect();
 
       const topicList = Object.values(topics);
-      const metadata = await admin.describeCluster();
-      const topicMetadata = await admin.fetchTopicMetadata({ topics: topicList });
+      
+      // Check if topics exist before fetching metadata
+      const existingTopics = await admin.listTopics();
+      const availableTopics = topicList.filter(topic => existingTopics.includes(topic));
+      
+      if (availableTopics.length === 0) {
+        // Topics don't exist yet, initialize with default values
+        for (const topic of topicList) {
+          if (!this.metrics.topics[topic]) {
+            this.metrics.topics[topic] = {
+              partitions: 0,
+              replicationFactor: 0,
+              messagesPerSecond: 0,
+              lastMessageTime: null
+            };
+          }
+        }
+        await admin.disconnect();
+        return; // Exit early if no topics exist
+      }
 
-      for (const topic of topicList) {
+      // Retry logic for leadership election errors
+      let topicMetadata = null;
+      let retries = 3;
+      let retryDelay = 1000;
+      
+      while (retries > 0) {
+        try {
+          const metadata = await admin.describeCluster();
+          topicMetadata = await admin.fetchTopicMetadata({ topics: availableTopics });
+          break; // Success, exit retry loop
+        } catch (error) {
+          const isLeadershipElection = error.message?.includes('leadership election') || 
+                                       error.message?.includes('no leader');
+          const isUnknownTopic = error.type === 'UNKNOWN_TOPIC_OR_PARTITION' || 
+                                error.code === 3;
+          
+          if ((isLeadershipElection || isUnknownTopic) && retries > 1) {
+            retries--;
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            retryDelay *= 2; // Exponential backoff
+            continue;
+          }
+          throw error; // Re-throw if not retryable or out of retries
+        }
+      }
+
+      if (!topicMetadata) {
+        await admin.disconnect();
+        return;
+      }
+
+      for (const topic of availableTopics) {
         if (!this.metrics.topics[topic]) {
           this.metrics.topics[topic] = {
             partitions: 0,
@@ -122,7 +172,7 @@ class KafkaMonitor {
         }
 
         const topicInfo = topicMetadata.topics.find(t => t.name === topic);
-        if (topicInfo) {
+        if (topicInfo && topicInfo.partitions && topicInfo.partitions.length > 0) {
           this.metrics.topics[topic].partitions = topicInfo.partitions.length;
           this.metrics.topics[topic].replicationFactor = topicInfo.partitions[0]?.replicas?.length || 0;
         }
@@ -130,7 +180,27 @@ class KafkaMonitor {
 
       await admin.disconnect();
     } catch (error) {
-      console.error('❌ Error collecting topic metrics:', error);
+      // Handle specific Kafka errors gracefully
+      const isLeadershipElection = error.message?.includes('leadership election') || 
+                                   error.message?.includes('no leader');
+      const isUnknownTopic = error.type === 'UNKNOWN_TOPIC_OR_PARTITION' || 
+                            error.code === 3;
+      
+      if (isLeadershipElection || isUnknownTopic) {
+        // These are expected during Kafka startup, log as warning instead of error
+        console.warn(`⚠️ Kafka topic metrics temporarily unavailable (Kafka initializing): ${error.message}`);
+      } else {
+        console.error('❌ Error collecting topic metrics:', error);
+      }
+      
+      // Ensure admin is disconnected even on error
+      if (admin) {
+        try {
+          await admin.disconnect();
+        } catch (disconnectError) {
+          // Ignore disconnect errors
+        }
+      }
     }
   }
 

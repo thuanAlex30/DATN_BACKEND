@@ -4,6 +4,7 @@ const EnhancedApiResponse = require('../utils/enhancedResponse');
 const ErrorMiddleware = require('../middlewares/ErrorMiddleware');
 const websocketService = require('../services/websocketService');
 const PPEEvents = require('../events/ppeEvents');
+const { uploadImageBuffer } = require('../utils/cloudinaryHelper');
 
 class PPEController {
   // PPE Categories
@@ -33,7 +34,13 @@ class PPEController {
   static createCategory = ErrorMiddleware.asyncHandler(async (req, res) => {
     const categoryData = req.body;
     if (req.file) {
-      categoryData.image_url = `/${req.file.path.replace(/\\/g, '/')}`;
+      try {
+        const folder = process.env.CLOUDINARY_PPE_FOLDER || 'ppe';
+        const uploadRes = await uploadImageBuffer(req.file.buffer, req.file.originalname, folder);
+        categoryData.image_url = uploadRes.secureUrl;
+      } catch (err) {
+        return ApiResponse.error(res, `Upload ảnh lên Cloudinary thất bại: ${err.message}`, 500);
+      }
     }
     const tenantId = req.user.tenant_id;
     const result = await ppeService.createCategory(categoryData, tenantId);
@@ -66,7 +73,13 @@ class PPEController {
     const { id } = req.params;
     const categoryData = req.body;
     if (req.file) {
-      categoryData.image_url = `/${req.file.path.replace(/\\/g, '/')}`;
+      try {
+        const folder = process.env.CLOUDINARY_PPE_FOLDER || 'ppe';
+        const uploadRes = await uploadImageBuffer(req.file.buffer, req.file.originalname, folder);
+        categoryData.image_url = uploadRes.secureUrl;
+      } catch (err) {
+        return ApiResponse.error(res, `Upload ảnh lên Cloudinary thất bại: ${err.message}`, 500);
+      }
     }
     const tenantId = req.user.tenant_id;
     const result = await ppeService.updateCategory(id, categoryData, tenantId);
@@ -151,7 +164,13 @@ class PPEController {
   static createItem = ErrorMiddleware.asyncHandler(async (req, res) => {
     const itemData = req.body;
     if (req.file) {
-      itemData.image_url = `/${req.file.path.replace(/\\/g, '/')}`;
+      try {
+        const folder = process.env.CLOUDINARY_PPE_FOLDER || 'ppe';
+        const uploadRes = await uploadImageBuffer(req.file.buffer, req.file.originalname, folder);
+        itemData.image_url = uploadRes.secureUrl;
+      } catch (err) {
+        return ApiResponse.error(res, `Upload ảnh lên Cloudinary thất bại: ${err.message}`, 500);
+      }
     }
     const tenantId = req.user.tenant_id;
     const result = await ppeService.createItem(itemData, tenantId);
@@ -188,7 +207,13 @@ class PPEController {
     const { id } = req.params;
     const itemData = req.body;
     if (req.file) {
-      itemData.image_url = `/${req.file.path.replace(/\\/g, '/')}`;
+      try {
+        const folder = process.env.CLOUDINARY_PPE_FOLDER || 'ppe';
+        const uploadRes = await uploadImageBuffer(req.file.buffer, req.file.originalname, folder);
+        itemData.image_url = uploadRes.secureUrl;
+      } catch (err) {
+        return ApiResponse.error(res, `Upload ảnh lên Cloudinary thất bại: ${err.message}`, 500);
+      }
     }
     const tenantId = req.user.tenant_id;
     const result = await ppeService.updateItem(id, itemData, tenantId);
@@ -713,13 +738,28 @@ class PPEController {
     const result = await ppeService.createIssuance({ ...issuanceData, tenant_id: tenantId });
     
     if (result.success) {
-      // Emit WebSocket notification for PPE issued to manager
+      // Send realtime notification (WebSocket + Database) for PPE issued to manager
       try {
         const { issuance, issuer, recipient } = result.data;
-        websocketService.emitPPEIssuedToManager(issuance, issuer, recipient);
-        console.log(`🛡️ PPE issued to manager WebSocket notification sent for user: ${recipient._id}`);
-      } catch (wsError) {
-        console.error('Failed to emit PPE issued to manager WebSocket notification:', wsError);
+        
+        // Ensure issuance has populated item_id before sending notification
+        const PPEIssuance = require('../models/ppeIssuance');
+        const populatedIssuance = await PPEIssuance.findById(issuance._id || issuance.id)
+          .populate('item_id', 'item_name item_code')
+          .lean();
+        
+        const issuanceWithItem = populatedIssuance || issuance;
+        
+        const PPENotificationService = require('../services/ppeNotificationService');
+        await PPENotificationService.notifyPPEIssuedToManager({
+          issuance: issuanceWithItem,
+          issuer,
+          recipient,
+          tenantId
+        });
+        console.log(`🛡️ PPE issued to manager notification sent (realtime + database) for user: ${recipient._id}, tenant: ${tenantId}`);
+      } catch (notifError) {
+        console.error('Failed to send PPE issued to manager notification:', notifError);
       }
       
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -749,13 +789,19 @@ class PPEController {
       console.log('🔍 issueToEmployee - result:', result);
       
       if (result.success) {
-      // Emit WebSocket notification for PPE issued to employee
+      // Send realtime notification (WebSocket + Database) for PPE issued to employee
       try {
         const { issuance, issuer, recipient } = result.data;
-        websocketService.emitPPEIssuedToEmployee(issuance, issuer, recipient);
-        console.log(`🛡️ PPE issued to employee WebSocket notification sent for user: ${recipient._id}`);
-      } catch (wsError) {
-        console.error('Failed to emit PPE issued to employee WebSocket notification:', wsError);
+        const PPENotificationService = require('../services/ppeNotificationService');
+        await PPENotificationService.notifyPPEIssuedToEmployee({
+          issuance,
+          issuer,
+          recipient,
+          tenantId
+        });
+        console.log(`🛡️ PPE issued to employee notification sent (realtime + database) for user: ${recipient._id}`);
+      } catch (notifError) {
+        console.error('Failed to send PPE issued to employee notification:', notifError);
       }
       
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -785,13 +831,19 @@ class PPEController {
       console.log('🔍 confirmReceivedPPE - result:', result);
       
       if (result.success) {
-        // Emit WebSocket notification for PPE confirmation
+        // Send realtime notification (WebSocket + Database) for PPE confirmation
         try {
           const { issuance, employee, manager } = result.data;
-          websocketService.emitPPEConfirmed(issuance, employee, manager);
-          console.log(`🛡️ PPE confirmed WebSocket notification sent for manager: ${manager._id}`);
-        } catch (wsError) {
-          console.error('Failed to emit PPE confirmed WebSocket notification:', wsError);
+          const PPENotificationService = require('../services/ppeNotificationService');
+          await PPENotificationService.notifyPPEConfirmed({
+            issuance,
+            employee,
+            manager,
+            tenantId
+          });
+          console.log(`🛡️ PPE confirmed notification sent (realtime + database) for manager: ${manager._id}`);
+        } catch (notifError) {
+          console.error('Failed to send PPE confirmed notification:', notifError);
         }
         
         return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -816,13 +868,19 @@ class PPEController {
     const result = await ppeService.returnIssuanceToManager(id, returnData, tenantId);
     
     if (result.success) {
-      // Emit WebSocket notification for PPE returned to manager
+      // Send realtime notification (WebSocket + Database) for PPE returned to manager
       try {
         const { issuance, returner, manager } = result.data;
-        websocketService.emitPPEReturnedToManager(issuance, returner, manager);
-        console.log(`🛡️ PPE returned to manager WebSocket notification sent for user: ${manager._id}`);
-      } catch (wsError) {
-        console.error('Failed to emit PPE returned to manager WebSocket notification:', wsError);
+        const PPENotificationService = require('../services/ppeNotificationService');
+        await PPENotificationService.notifyPPEReturnedToManager({
+          issuance,
+          employee: returner,
+          manager,
+          tenantId
+        });
+        console.log(`🛡️ PPE returned to manager notification sent (realtime + database) for user: ${manager._id}`);
+      } catch (notifError) {
+        console.error('Failed to send PPE returned to manager notification:', notifError);
       }
       
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -843,13 +901,18 @@ class PPEController {
     const result = await ppeService.returnIssuanceToAdmin(id, returnData, tenantId);
     
     if (result.success) {
-      // Emit WebSocket notification for PPE returned to admin
+      // Send realtime notification (WebSocket + Database) for PPE returned to admin
       try {
         const { issuance, returner } = result.data;
-        websocketService.emitPPEReturnedToAdmin(issuance, returner);
-        console.log(`🛡️ PPE returned to admin WebSocket notification sent for user: ${returner._id}`);
-      } catch (wsError) {
-        console.error('Failed to emit PPE returned to admin WebSocket notification:', wsError);
+        const PPENotificationService = require('../services/ppeNotificationService');
+        await PPENotificationService.notifyPPEReturnedToAdmin({
+          issuance,
+          manager: returner,
+          tenantId
+        });
+        console.log(`🛡️ PPE returned to admin notification sent (realtime + database) for user: ${returner._id}`);
+      } catch (notifError) {
+        console.error('Failed to send PPE returned to admin notification:', notifError);
       }
       
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -867,13 +930,19 @@ class PPEController {
     const result = await ppeService.confirmEmployeeReturn(id, managerId, tenantId);
     
     if (result.success) {
-      // Emit WebSocket notification for PPE return confirmed
+      // Send realtime notification (WebSocket + Database) for PPE return confirmed
       try {
         const { issuance, employee, manager } = result.data;
-        websocketService.emitPPEReturnedToManager(issuance, employee, manager);
-        console.log(`🛡️ PPE employee return confirmed WebSocket notification sent for manager: ${manager._id}`);
-      } catch (wsError) {
-        console.error('Failed to emit PPE return confirmation WebSocket notification:', wsError);
+        const PPENotificationService = require('../services/ppeNotificationService');
+        await PPENotificationService.notifyPPEReturnConfirmed({
+          issuance,
+          employee,
+          manager,
+          tenantId
+        });
+        console.log(`🛡️ PPE employee return confirmed notification sent (realtime + database) for manager: ${manager._id}`);
+      } catch (notifError) {
+        console.error('Failed to send PPE return confirmation notification:', notifError);
       }
       
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -949,13 +1018,29 @@ class PPEController {
     const result = await ppeService.createIssuance({ ...issuanceData, tenant_id: tenantId });
     
     if (result.success) {
-      // Emit WebSocket notification for PPE issued
+      // Send realtime notification (WebSocket + Database) for PPE issued
       try {
         const { issuance, issuer, recipient } = result.data;
-        websocketService.emitPPEIssued(issuance, issuer, recipient);
-        console.log(`🛡️ PPE issuance WebSocket notification sent for user: ${recipient._id}`);
-      } catch (wsError) {
-        console.error('Failed to emit PPE issued WebSocket notification:', wsError);
+        const PPENotificationService = require('../services/ppeNotificationService');
+        // Determine notification type based on issuance level
+        if (issuance.issuance_level === 'admin_to_manager') {
+          await PPENotificationService.notifyPPEIssuedToManager({
+            issuance,
+            issuer,
+            recipient,
+            tenantId
+          });
+        } else if (issuance.issuance_level === 'manager_to_employee') {
+          await PPENotificationService.notifyPPEIssuedToEmployee({
+            issuance,
+            issuer,
+            recipient,
+            tenantId
+          });
+        }
+        console.log(`🛡️ PPE issuance notification sent (realtime + database) for user: ${recipient._id}`);
+      } catch (notifError) {
+        console.error('Failed to send PPE issued notification:', notifError);
       }
       
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -982,13 +1067,30 @@ class PPEController {
     const result = await ppeService.returnIssuance(id, returnData);
     
     if (result.success) {
-      // Emit WebSocket notification for PPE returned
+      // Send realtime notification (WebSocket + Database) for PPE returned
       try {
         const { issuance, returner } = result.data;
-        websocketService.emitPPEReturned(issuance, returner);
-        console.log(`🛡️ PPE return WebSocket notification sent for user: ${returner._id}`);
-      } catch (wsError) {
-        console.error('Failed to emit PPE returned WebSocket notification:', wsError);
+        const RealtimeNotificationService = require('../services/realtimeNotificationService');
+        await RealtimeNotificationService.sendToUser({
+          userId: returner._id || returner.id,
+          title: 'PPE đã được trả lại',
+          message: `PPE "${issuance.item_id?.item_name || issuance.itemName}" đã được trả lại`,
+          type: 'info',
+          category: 'ppe',
+          priority: 'low',
+          tenantId: req.user.tenant_id,
+          data: {
+            issuanceId: issuance._id,
+            itemName: issuance.item_id?.item_name || issuance.itemName,
+            returnedDate: issuance.returned_date || new Date()
+          },
+          eventName: 'ppe_notification',
+          saveToDatabase: true,
+          sendWebSocket: true
+        });
+        console.log(`🛡️ PPE return notification sent (realtime + database) for user: ${returner._id}`);
+      } catch (notifError) {
+        console.error('Failed to send PPE returned notification:', notifError);
       }
       
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -1015,13 +1117,30 @@ class PPEController {
     const result = await ppeService.returnIssuanceEmployee(id, returnData, employeeId);
     
     if (result.success) {
-      // Emit WebSocket notification for PPE returned by employee
+      // Send realtime notification (WebSocket + Database) for PPE returned by employee
       try {
         const { issuance, returner } = result.data;
-        websocketService.emitPPEReturned(issuance, returner);
-        console.log(`🛡️ PPE employee return WebSocket notification sent for user: ${returner._id}`);
-      } catch (wsError) {
-        console.error('Failed to emit PPE employee return WebSocket notification:', wsError);
+        const RealtimeNotificationService = require('../services/realtimeNotificationService');
+        await RealtimeNotificationService.sendToUser({
+          userId: returner._id || returner.id,
+          title: 'PPE đã được trả lại',
+          message: `Bạn đã trả PPE "${issuance.item_id?.item_name || issuance.itemName}"`,
+          type: 'info',
+          category: 'ppe',
+          priority: 'low',
+          tenantId: req.user.tenant_id,
+          data: {
+            issuanceId: issuance._id,
+            itemName: issuance.item_id?.item_name || issuance.itemName,
+            returnedDate: issuance.returned_date || new Date()
+          },
+          eventName: 'ppe_notification',
+          saveToDatabase: true,
+          sendWebSocket: true
+        });
+        console.log(`🛡️ PPE employee return notification sent (realtime + database) for user: ${returner._id}`);
+      } catch (notifError) {
+        console.error('Failed to send PPE employee return notification:', notifError);
       }
       
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

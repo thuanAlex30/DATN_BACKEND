@@ -126,11 +126,28 @@ class ProjectRiskController {
   static getAllRisks = ErrorMiddleware.asyncHandler(async (req, res) => {
     const filters = {
       project_id: req.query.project_id,
+      owner_id: req.query.owner_id,
       risk_level: req.query.risk_level,
       status: req.query.status,
       search: req.query.search,
       is_active: req.query.is_active
     };
+
+    // Security: non-privileged users can only query their own risks (owner_id)
+    const roleCode = String(req.user?.role_code || req.user?.role?.role_code || '').toLowerCase();
+    const isPrivileged = ['system_admin', 'company_admin', 'department_header'].includes(roleCode);
+
+    if (!isPrivileged) {
+      const currentUserId = String(req.user?.id || req.user?._id || '');
+      const requestedOwnerId = filters.owner_id ? String(filters.owner_id) : '';
+
+      if (requestedOwnerId && requestedOwnerId !== currentUserId) {
+        return ApiResponse.forbidden(res, 'Không được phép xem rủi ro của người dùng khác');
+      }
+
+      // Force to self to prevent accidental leakage
+      filters.owner_id = currentUserId;
+    }
     
     const result = await projectRiskService.getAllRisks(filters);
     

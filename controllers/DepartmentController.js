@@ -20,26 +20,7 @@ class DepartmentController {
 
     const result = await DepartmentRepository.findAll(options);
 
-    // Calculate employees_count for each department
-    const User = require('../models/user');
-    const departmentsWithCounts = await Promise.all(
-      result.departments.map(async (dept) => {
-        const deptJson = dept.toJSON ? dept.toJSON({ virtuals: true }) : dept;
-        const employeeCount = await User.countDocuments({ 
-          department_id: dept._id 
-        });
-        return {
-          ...deptJson,
-          id: deptJson._id || deptJson.id || dept._id?.toString(),
-          employees_count: employeeCount
-        };
-      })
-    );
-
-    return ApiResponse.success(res, {
-      departments: departmentsWithCounts,
-      pagination: result.pagination
-    }, 'Departments retrieved successfully');
+    return ApiResponse.success(res, result, 'Departments retrieved successfully');
   });
 
   static getDepartmentById = ErrorMiddleware.asyncHandler(async (req, res) => {
@@ -72,29 +53,7 @@ class DepartmentController {
       return ApiResponse.error(res, 'Department name already exists', 409);
     }
 
-    // Validate manager_ids if provided
-    if (departmentData.manager_ids && Array.isArray(departmentData.manager_ids)) {
-      // Remove duplicates
-      departmentData.manager_ids = [...new Set(departmentData.manager_ids)];
-      
-      // Validate max 5 managers
-      if (departmentData.manager_ids.length > 5) {
-        return ApiResponse.error(res, 'Một phòng ban chỉ có thể có tối đa 5 quản lý', 400);
-      }
-
-      // Validate each manager
-      for (const managerId of departmentData.manager_ids) {
-        const manager = await UserRepository.findById(managerId);
-        if (!manager) {
-          return ApiResponse.error(res, `Manager với ID ${managerId} không tồn tại`, 404);
-        }
-        if (!manager.is_active) {
-          return ApiResponse.error(res, `Tài khoản manager ${manager.full_name || manager.username} không hoạt động`, 400);
-        }
-      }
-    }
-
-    // Validate manager_id (legacy support) if provided
+    // Validate manager if provided
     if (departmentData.manager_id) {
       const manager = await UserRepository.findById(departmentData.manager_id);
       if (!manager) {
@@ -104,16 +63,15 @@ class DepartmentController {
         return ApiResponse.error(res, 'Manager account is not active', 400);
       }
 
-      // If manager_ids is not provided, convert manager_id to manager_ids array
-      if (!departmentData.manager_ids || !Array.isArray(departmentData.manager_ids)) {
-        departmentData.manager_ids = [departmentData.manager_id];
-      } else if (!departmentData.manager_ids.includes(departmentData.manager_id)) {
-        // Add manager_id to manager_ids if not already present
-        departmentData.manager_ids.push(departmentData.manager_id);
-        departmentData.manager_ids = [...new Set(departmentData.manager_ids)];
-        if (departmentData.manager_ids.length > 5) {
-          return ApiResponse.error(res, 'Một phòng ban chỉ có thể có tối đa 5 quản lý', 400);
-        }
+      // Check if manager is already managing another department
+      const existingManagement = await DepartmentRepository.findAll({
+        manager_id: departmentData.manager_id,
+        is_active: true,
+        limit: 1
+      });
+      
+      if (existingManagement.departments.length > 0) {
+        return ApiResponse.error(res, 'User is already managing another department', 409);
       }
     }
 
@@ -172,29 +130,7 @@ class DepartmentController {
       }
     }
 
-    // Validate manager_ids if being updated
-    if (updateData.manager_ids && Array.isArray(updateData.manager_ids)) {
-      // Remove duplicates
-      updateData.manager_ids = [...new Set(updateData.manager_ids)];
-      
-      // Validate max 5 managers
-      if (updateData.manager_ids.length > 5) {
-        return ApiResponse.error(res, 'Một phòng ban chỉ có thể có tối đa 5 quản lý', 400);
-      }
-
-      // Validate each manager
-      for (const managerId of updateData.manager_ids) {
-        const manager = await UserRepository.findById(managerId);
-        if (!manager) {
-          return ApiResponse.error(res, `Manager với ID ${managerId} không tồn tại`, 404);
-        }
-        if (!manager.is_active) {
-          return ApiResponse.error(res, `Tài khoản manager ${manager.full_name || manager.username} không hoạt động`, 400);
-        }
-      }
-    }
-
-    // Validate manager_id (legacy support) if being updated
+    // Validate manager if being updated
     if (updateData.manager_id) {
       const manager = await UserRepository.findById(updateData.manager_id);
       if (!manager) {
@@ -204,16 +140,20 @@ class DepartmentController {
         return ApiResponse.error(res, 'Manager account is not active', 400);
       }
 
-      // If manager_ids is not provided, convert manager_id to manager_ids array
-      if (!updateData.manager_ids || !Array.isArray(updateData.manager_ids)) {
-        updateData.manager_ids = [updateData.manager_id];
-      } else if (!updateData.manager_ids.includes(updateData.manager_id)) {
-        // Add manager_id to manager_ids if not already present
-        updateData.manager_ids.push(updateData.manager_id);
-        updateData.manager_ids = [...new Set(updateData.manager_ids)];
-        if (updateData.manager_ids.length > 5) {
-          return ApiResponse.error(res, 'Một phòng ban chỉ có thể có tối đa 5 quản lý', 400);
-        }
+      // Check if manager is already managing another department (excluding current)
+      const existingManagement = await DepartmentRepository.findAll({
+        manager_id: updateData.manager_id,
+        is_active: true,
+        limit: 10,
+        tenant_id: tenantId || undefined
+      });
+      
+      const otherManagement = existingManagement.departments.filter(
+        dept => dept._id.toString() !== id
+      );
+      
+      if (otherManagement.length > 0) {
+        return ApiResponse.error(res, 'User is already managing another department', 409);
       }
     }
 
@@ -239,67 +179,22 @@ class DepartmentController {
 
   static deleteDepartment = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { password } = req.body; // Password for verification when department has employees
     const tenantId = req.user?.tenant_id || null;
-    const currentUser = req.user;
 
     const department = await DepartmentRepository.findById(id, tenantId);
     if (!department) {
       return ApiResponse.notFound(res, 'Department not found');
     }
 
-    const User = require('../models/user');
-    
-    // Check if department has any employees (active or inactive)
-    const totalEmployeeCount = await User.countDocuments({ 
-      department_id: department._id
-    });
-
-    // For active departments, check if there are active employees
-    if (department.is_active) {
-      const activeEmployeeCount = await User.countDocuments({ 
-        department_id: department._id,
-        is_active: true 
-      });
-      
-      if (activeEmployeeCount > 0) {
-        return ApiResponse.error(res, 
-          `Không thể xóa phòng ban đang hoạt động có ${activeEmployeeCount} nhân viên đang hoạt động. Vui lòng chuyển nhân viên sang phòng ban khác trước.`, 
-          400
-        );
-      }
-    }
-
-    // For inactive departments with employees, require password verification
-    if (!department.is_active && totalEmployeeCount > 0) {
-      if (!password) {
+    // Check if department has active employees
+    const employeeCount = department.employees_count || 0;
+    if (employeeCount > 0) {
       return ApiResponse.error(res, 
-          `Phòng ban này còn ${totalEmployeeCount} nhân viên. Vui lòng nhập mật khẩu để xác nhận xóa.`, 
-          400
-        );
-      }
-
-      // Verify password of current user
-      const user = await UserRepository.findById(currentUser.id || currentUser._id);
-      if (!user) {
-        return ApiResponse.unauthorized(res, 'User not found');
-      }
-
-      const isPasswordValid = await user.comparePassword(password);
-      if (!isPasswordValid) {
-        return ApiResponse.error(res, 'Mật khẩu không đúng. Vui lòng thử lại.', 401);
-      }
-    }
-
-    // If department had employees, remove department_id from all users BEFORE deleting
-    if (totalEmployeeCount > 0) {
-      await User.updateMany(
-        { department_id: department._id },
-        { $unset: { department_id: 1 } }
+        `Cannot delete department with ${employeeCount} active employees`, 
+        400
       );
     }
 
-    // Hard delete - actually remove from database
     await DepartmentRepository.deleteById(id);
 
     // Emit department deleted event
@@ -519,28 +414,15 @@ class DepartmentController {
     // Convert to JSON to include virtual fields
     const departmentJson = department.toJSON();
 
-    // Get managers from manager_ids array or fallback to manager_id
-    let managers = [];
-    if (departmentJson.manager_ids && Array.isArray(departmentJson.manager_ids) && departmentJson.manager_ids.length > 0) {
-      managers = departmentJson.manager_ids.map((m) => ({
-        id: m.id || m._id,
-        name: m.full_name || m.username,
-        email: m.email
-      })).filter((m) => m.id);
-    } else if (departmentJson.manager_id) {
-      managers = [{
-        id: departmentJson.manager_id.id || departmentJson.manager_id._id,
-        name: departmentJson.manager_id.full_name || departmentJson.manager_id.username,
-        email: departmentJson.manager_id.email
-      }];
-    }
-
     const summary = {
       id: departmentJson.id,
       name: departmentJson.department_name,
       description: departmentJson.description,
-      manager: managers.length > 0 ? managers[0] : null, // Keep for backward compatibility
-      managers: managers.length > 0 ? managers : [], // New field for multiple managers
+      manager: departmentJson.manager_id ? {
+        id: departmentJson.manager_id.id || departmentJson.manager_id._id,
+        name: departmentJson.manager_id.full_name || departmentJson.manager_id.username,
+        email: departmentJson.manager_id.email
+      } : null,
       employee_count: employeeCount,
       is_active: departmentJson.is_active,
       created_at: departmentJson.created_at,
@@ -562,9 +444,6 @@ class DepartmentController {
 
     console.log('getDepartmentEmployees called with:', { id, is_active, sort_by, sort_order, include_inactive });
 
-    const currentUser = req.user;
-    const isManager = currentUser?.role?.role_level >= 70;
-    
     // Check if department exists
     const department = await DepartmentRepository.findById(id);
     if (!department) {
@@ -572,78 +451,36 @@ class DepartmentController {
       return ApiResponse.notFound(res, 'Department not found');
     }
 
-    // For Manager, ensure they can only access their own department
-    if (isManager && currentUser.department_id) {
-      const currentDeptId = currentUser.department_id?.toString() || currentUser.department_id;
-      const targetDeptId = department._id?.toString() || department.id?.toString() || id;
-      
-      console.log('🔍 getDepartmentEmployees - Manager department check:', {
-        currentDeptId,
-        targetDeptId,
-        isManager
-      });
-      
-      if (currentDeptId !== targetDeptId) {
-        console.log('❌ getDepartmentEmployees - Department mismatch');
-        return ApiResponse.forbidden(
-          res,
-          'Bạn chỉ có thể xem nhân viên trong phòng ban của mình'
-        );
-      }
-    }
-
     console.log('Department found:', department.department_name);
 
     // Prepare options for UserRepository
-    // Nếu include_inactive là 'true' hoặc true, thì lấy tất cả (is_active = undefined)
-    // Nếu không, chỉ lấy nhân viên đang hoạt động (is_active = true)
-    const shouldIncludeInactive = include_inactive === 'true' || include_inactive === true;
     const options = {
-      is_active: shouldIncludeInactive ? undefined : true, // Lấy tất cả nếu include inactive
+      is_active: include_inactive === 'true' ? undefined : (is_active === 'true'),
       sort_by,
       sort_order
     };
 
     console.log('UserRepository options:', options);
-    console.log('include_inactive value:', include_inactive, 'type:', typeof include_inactive);
 
     // Get all users from the department
     const allUsers = await UserRepository.findByDepartment(id, options);
     console.log('Found all users:', allUsers.length);
 
-    // Filter out managers and admins, keep all other users (employees and other roles)
-    // Không filter theo is_active ở đây, để hiển thị cả nhân viên đã ngừng hoạt động
+    // Filter out managers, only keep employees
     const employees = allUsers.filter(user => {
-      const roleName = user.role_id?.role_name?.toLowerCase() || '';
-      const roleCode = user.role_id?.role_code?.toLowerCase() || '';
-      const roleLevel = user.role_id?.role_level || 0;
+      const roleName = user.role_id?.role_name;
+      const roleCode = user.role_id?.role_code;
+      const isEmployee = (roleCode || roleName)?.toLowerCase() === 'employee';
       
-      // Loại bỏ các role quản lý và admin (role_level >= 70)
-      // Chỉ giữ lại employee và các role khác có level thấp hơn
-      const isManagerOrAdmin = roleLevel >= 70 || 
-                               roleCode === 'manager' || 
-                               roleCode === 'department_header' || 
-                               roleCode === 'department_manager' ||
-                               roleCode === 'company_admin' ||
-                               roleCode === 'system_admin' ||
-                               roleName === 'manager' ||
-                               roleName === 'department header' ||
-                               roleName === 'department manager' ||
-                               roleName === 'company admin' ||
-                               roleName === 'system admin';
-      
-      if (isManagerOrAdmin) {
-        console.log('Filtered out manager/admin:', {
+      if (!isEmployee) {
+        console.log('Filtered out non-employee:', {
           name: user.full_name,
-          role_name: user.role_id?.role_name,
-          role_code: user.role_id?.role_code,
-          role_level: roleLevel
+          role_name: roleName,
+          role_code: roleCode
         });
-        return false;
       }
       
-      // Giữ lại tất cả user không phải manager/admin (bao gồm employee và các role khác)
-      return true;
+      return isEmployee;
     });
     
     console.log('Found employees after filtering:', employees.length);
@@ -655,6 +492,11 @@ class DepartmentController {
       full_name: employee.full_name,
       email: employee.email,
       phone: employee.phone,
+      position: employee.position_id ? {
+        id: employee.position_id._id,
+        name: employee.position_id.position_name,
+        level: employee.position_id.level
+      } : null,
       role: employee.role_id ? {
         id: employee.role_id._id,
         name: employee.role_id.role_name

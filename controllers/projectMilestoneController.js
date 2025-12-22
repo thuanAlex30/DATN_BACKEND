@@ -12,6 +12,23 @@ class ProjectMilestoneController {
       status: req.query.status,
       responsible_user_id: req.query.responsible_user_id
     };
+
+    // Security: non-privileged users can only query their own milestones
+    const roleCode = String(req.user?.role_code || req.user?.role?.role_code || '').toLowerCase();
+    const isPrivileged = ['system_admin', 'company_admin', 'department_header'].includes(roleCode);
+
+    if (!isPrivileged) {
+      const currentUserId = String(req.user?.id || req.user?._id || '');
+      const requestedUserId = filters.responsible_user_id ? String(filters.responsible_user_id) : '';
+
+      if (requestedUserId && requestedUserId !== currentUserId) {
+        return ApiResponse.forbidden(res, 'Không được phép xem cột mốc của người dùng khác');
+      }
+
+      // Force to self to prevent accidental data leakage even if query param is missing
+      filters.responsible_user_id = currentUserId;
+    }
+
     const result = await projectMilestoneService.getAllMilestones(filters);
     
     if (result.success) {

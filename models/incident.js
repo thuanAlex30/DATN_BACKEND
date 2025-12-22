@@ -5,7 +5,8 @@ const IncidentHistorySchema = new mongoose.Schema({
   action: String,
   performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   timestamp: { type: Date, default: Date.now },
-  note: String
+  note: String,
+  findingsImages: { type: [String], default: [] } // Hình ảnh minh chứng cho action "Điều tra"
 });
 
 const IncidentSchema = new mongoose.Schema({

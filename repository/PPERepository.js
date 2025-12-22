@@ -563,6 +563,7 @@ class PPERepository {
           total_received: 1,
           total_returned: 1,
           remaining_in_hand: 1,  // ✅ Thêm field này
+          // ✅ TỔNG số đã phát cho employees = SUM tất cả quantity (kể cả đã trả)
           total_issued_to_employees: {
             $sum: {
               $reduce: {
@@ -575,10 +576,40 @@ class PPERepository {
                 },
                 initialValue: 0,
                 in: {
+                  // ✅ Tính TẤT CẢ quantity, không filter status
+                  $add: ['$$value', { $ifNull: ['$$this.quantity', 0] }]
+                }
+              }
+            }
+          },
+          // ✅ Tổng số employees đã trả lại cho manager
+          total_returned_by_employees: {
+            $sum: {
+              $reduce: {
+                input: {
+                  $reduce: {
+                    input: '$employee_issuances_all',
+                    initialValue: [],
+                    in: { $concatArrays: ['$$value', '$$this'] }
+                  }
+                },
+                initialValue: 0,
+                in: {
+                  // Tính số đã trả = quantity - remaining_quantity (nếu có)
                   $cond: [
-                    { $ne: ['$$this.status', 'returned'] },
-                    { $add: ['$$value', '$$this.quantity'] },
-                    '$$value'
+                    { $eq: ['$$this.status', 'returned'] },
+                    { $add: ['$$value', { $ifNull: ['$$this.quantity', 0] }] },
+                    {
+                      $add: [
+                        '$$value',
+                        {
+                          $subtract: [
+                            { $ifNull: ['$$this.quantity', 0] },
+                            { $ifNull: ['$$this.remaining_quantity', 0] }
+                          ]
+                        }
+                      ]
+                    }
                   ]
                 }
               }
@@ -589,11 +620,21 @@ class PPERepository {
     ];
 
     const result = await PPEIssuance.aggregate(pipeline);
-    return result.length > 0 ? result[0] : { 
+    const stats = result.length > 0 ? result[0] : { 
       total_received: 0, 
       total_returned: 0, 
-      remaining_in_hand: 0,  // ✅ Thêm field này
-      total_issued_to_employees: 0 
+      remaining_in_hand: 0,
+      total_issued_to_employees: 0,
+      total_returned_by_employees: 0
+    };
+    
+    // ✅ Đảm bảo các giá trị không null/undefined
+    return {
+      total_received: stats.total_received || 0,
+      total_returned: stats.total_returned || 0,
+      remaining_in_hand: stats.remaining_in_hand || 0,
+      total_issued_to_employees: stats.total_issued_to_employees || 0,
+      total_returned_by_employees: stats.total_returned_by_employees || 0
     };
   }
 

@@ -759,12 +759,33 @@ class KafkaConsumer {
           break;
 
         case eventTypes.DEPARTMENT_MANAGER_ASSIGNED:
+          // Send realtime notification (WebSocket + Database)
+          try {
+            const DepartmentNotificationService = require('./departmentNotificationService');
+            const User = require('../models/user');
+            const tenantId = data.tenant_id || metadata.tenantId;
+            
+            if (tenantId && data.manager && data.manager.managerId) {
+              const manager = await User.findById(data.manager.managerId).select('_id full_name').lean();
+              const assigner = metadata.userId ? await User.findById(metadata.userId).select('_id full_name').lean() : null;
+              
+              await DepartmentNotificationService.notifyManagerAssigned({
+                department: data,
+                manager: manager || { _id: data.manager.managerId, full_name: data.manager.managerName },
+                assigner: assigner || { _id: metadata.userId, full_name: metadata.userFullName },
+                tenantId
+              });
+            }
+          } catch (notifError) {
+            console.error('Failed to send manager assigned notification:', notifError);
+          }
+          
+          // Also send WebSocket for backward compatibility
           websocketService.emitToAll('department_manager_assigned', {
             department: data,
             assigner: metadata,
             timestamp: eventData.timestamp
           });
-          // Notify the new manager
           if (data.manager && data.manager.managerId) {
             websocketService.emitToUser(data.manager.managerId, 'manager_assigned', {
               department: data,
@@ -775,12 +796,33 @@ class KafkaConsumer {
           break;
 
         case eventTypes.DEPARTMENT_MANAGER_REMOVED:
+          // Send realtime notification (WebSocket + Database)
+          try {
+            const DepartmentNotificationService = require('./departmentNotificationService');
+            const User = require('../models/user');
+            const tenantId = data.tenant_id || metadata.tenantId;
+            
+            if (tenantId && data.manager && data.manager.managerId) {
+              const manager = await User.findById(data.manager.managerId).select('_id full_name').lean();
+              const remover = metadata.userId ? await User.findById(metadata.userId).select('_id full_name').lean() : null;
+              
+              await DepartmentNotificationService.notifyManagerRemoved({
+                department: data,
+                manager: manager || { _id: data.manager.managerId, full_name: data.manager.managerName },
+                remover: remover || { _id: metadata.userId, full_name: metadata.userFullName },
+                tenantId
+              });
+            }
+          } catch (notifError) {
+            console.error('Failed to send manager removed notification:', notifError);
+          }
+          
+          // Also send WebSocket for backward compatibility
           websocketService.emitToAll('department_manager_removed', {
             department: data,
             remover: metadata,
             timestamp: eventData.timestamp
           });
-          // Notify the removed manager
           if (data.manager && data.manager.managerId) {
             websocketService.emitToUser(data.manager.managerId, 'manager_removed', {
               department: data,
@@ -791,12 +833,33 @@ class KafkaConsumer {
           break;
 
         case eventTypes.EMPLOYEE_TRANSFERRED_TO_DEPARTMENT:
+          // Send realtime notification (WebSocket + Database)
+          try {
+            const DepartmentNotificationService = require('./departmentNotificationService');
+            const User = require('../models/user');
+            const tenantId = data.tenant_id || metadata.tenantId;
+            
+            if (tenantId && data.employee && data.employee.employeeId) {
+              const employee = await User.findById(data.employee.employeeId).select('_id full_name').lean();
+              const transferrer = metadata.userId ? await User.findById(metadata.userId).select('_id full_name').lean() : null;
+              
+              await DepartmentNotificationService.notifyEmployeeTransferred({
+                department: data,
+                employee: employee || { _id: data.employee.employeeId, full_name: data.employee.employeeName },
+                transferrer: transferrer || { _id: metadata.userId, full_name: metadata.userFullName },
+                tenantId
+              });
+            }
+          } catch (notifError) {
+            console.error('Failed to send employee transferred notification:', notifError);
+          }
+          
+          // Also send WebSocket for backward compatibility
           websocketService.emitToAll('employee_transferred_to_department', {
             department: data,
             transferrer: metadata,
             timestamp: eventData.timestamp
           });
-          // Notify the employee
           if (data.employee && data.employee.employeeId) {
             websocketService.emitToUser(data.employee.employeeId, 'employee_transferred', {
               department: data,
@@ -807,12 +870,33 @@ class KafkaConsumer {
           break;
 
         case eventTypes.EMPLOYEE_REMOVED_FROM_DEPARTMENT:
+          // Send realtime notification (WebSocket + Database)
+          try {
+            const DepartmentNotificationService = require('./departmentNotificationService');
+            const User = require('../models/user');
+            const tenantId = data.tenant_id || metadata.tenantId;
+            
+            if (tenantId && data.employee && data.employee.employeeId) {
+              const employee = await User.findById(data.employee.employeeId).select('_id full_name').lean();
+              const remover = metadata.userId ? await User.findById(metadata.userId).select('_id full_name').lean() : null;
+              
+              await DepartmentNotificationService.notifyEmployeeRemoved({
+                department: data,
+                employee: employee || { _id: data.employee.employeeId, full_name: data.employee.employeeName },
+                remover: remover || { _id: metadata.userId, full_name: metadata.userFullName },
+                tenantId
+              });
+            }
+          } catch (notifError) {
+            console.error('Failed to send employee removed notification:', notifError);
+          }
+          
+          // Also send WebSocket for backward compatibility
           websocketService.emitToAll('employee_removed_from_department', {
             department: data,
             remover: metadata,
             timestamp: eventData.timestamp
           });
-          // Notify the employee
           if (data.employee && data.employee.employeeId) {
             websocketService.emitToUser(data.employee.employeeId, 'employee_removed_from_department', {
               department: data,

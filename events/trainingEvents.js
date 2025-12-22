@@ -36,7 +36,22 @@ class TrainingEvents {
       // Send to Kafka
       await kafkaProducer.sendTrainingEvent('course_set.created', eventData);
 
-      // Send WebSocket notification
+      // Send realtime notification (WebSocket + Database)
+      const TrainingNotificationService = require('../services/trainingNotificationService');
+      const tenantId = courseSet.tenant_id || metadata.tenantId;
+      
+      if (tenantId) {
+        await TrainingNotificationService.notifyCourseSetCreated({
+          courseSet,
+          creator: {
+            _id: metadata.userId,
+            full_name: metadata.userFullName
+          },
+          tenantId
+        });
+      }
+      
+      // Also send WebSocket for backward compatibility
       await WebSocketService.broadcastToAll('course_set_created', {
         message: `New course set "${courseSet.name}" has been created`,
         courseSet: eventData.courseSet,
@@ -93,7 +108,22 @@ class TrainingEvents {
       // Send to Kafka
       await kafkaProducer.sendTrainingEvent('course_set.updated', eventData);
 
-      // Send WebSocket notification
+      // Send realtime notification (WebSocket + Database)
+      const TrainingNotificationService = require('../services/trainingNotificationService');
+      const tenantId = newCourseSet.tenant_id || metadata.tenantId;
+      
+      if (tenantId) {
+        await TrainingNotificationService.notifyCourseSetUpdated({
+          courseSet: newCourseSet,
+          updater: {
+            _id: metadata.userId,
+            full_name: metadata.userFullName
+          },
+          tenantId
+        });
+      }
+      
+      // Also send WebSocket for backward compatibility
       await WebSocketService.broadcastToAll('course_set_updated', {
         message: `Course set "${newCourseSet.name}" has been updated`,
         courseSet: eventData.courseSet,
@@ -180,7 +210,22 @@ class TrainingEvents {
       // Send to Kafka
       await kafkaProducer.sendTrainingEvent('training_session.created', eventData);
 
-      // Send WebSocket notification
+      // Send realtime notification (WebSocket + Database)
+      const TrainingNotificationService = require('../services/trainingNotificationService');
+      const tenantId = session.tenant_id || metadata.tenantId;
+      
+      if (tenantId) {
+        await TrainingNotificationService.notifyTrainingSessionCreated({
+          session,
+          creator: {
+            _id: metadata.userId,
+            full_name: metadata.userFullName
+          },
+          tenantId
+        });
+      }
+      
+      // Also send WebSocket for backward compatibility
       await WebSocketService.broadcastToAll('training_session_created', {
         message: `New training session "${session.name}" has been created`,
         session: eventData.session,

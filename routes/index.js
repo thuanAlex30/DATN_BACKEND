@@ -1,4 +1,5 @@
 const express = require('express');
+
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
 const roleRoutes = require('./roleRoutes');
@@ -16,7 +17,7 @@ const safetyOfficerRoutes = require('./safetyOfficerRoutes');
 const warehouseModuleRoutes = require('./warehouseModuleRoutes');
 const maintenanceModuleRoutes = require('./maintenanceModuleRoutes');
 
-// Advanced Project Management Routes
+// Advanced Project Management
 const projectTaskRoutes = require('./projectTaskRoutes');
 const projectMilestoneRoutes = require('./projectMilestoneRoutes');
 const siteRoutes = require('./siteRoutes');
@@ -28,13 +29,21 @@ const projectChangeRequestRoutes = require('./projectChangeRequestRoutes');
 const projectStatusReportRoutes = require('./projectStatusReportRoutes');
 const qualityCheckpointRoutes = require('./qualityCheckpointRoutes');
 const projectCommunicationRoutes = require('./projectCommunicationRoutes');
+
+// Tenant / Admin
 const tenantRoutes = require('./tenantRoutes');
 const adminRoutes = require('./adminRoutes');
 const companyAdminRoutes = require('./companyAdminRoutes');
+
+// Integrations / Others
 const hikvisionRoutes = require('./hikvisionRoutes');
 const chatbotRoutes = require('./chatbotRoutes');
 const pricingRoutes = require('./pricingRoutes');
+const timeDeviceRoutes = require('./timeDeviceRoutes');
+const weatherRoutes = require('./weatherRoutes');
 const contractRoutes = require('./contractRoutes');
+const certificateRoutes = require('./certificateRoutes');
+const uploadRoutes = require('./uploadRoutes');
 
 console.log('Loading kafkaMonitor...');
 const kafkaMonitor = require('../services/kafkaMonitor');
@@ -42,12 +51,15 @@ console.log('kafkaMonitor loaded:', typeof kafkaMonitor);
 
 const router = express.Router();
 
-// Health check endpoint
+/**
+ * =====================
+ * Health check
+ * =====================
+ */
 router.get('/health', (req, res) => {
   try {
-    console.log('Health check called, kafkaMonitor:', typeof kafkaMonitor);
     const kafkaMetrics = kafkaMonitor.getMetrics();
-    console.log('Kafka metrics:', kafkaMetrics);
+
     res.json({
       success: true,
       message: 'Safety Management System API is running',
@@ -58,7 +70,7 @@ router.get('/health', (req, res) => {
       services: {
         database: 'connected',
         websocket: 'active',
-        kafka: kafkaMetrics.isMonitoring ? 'monitoring' : 'inactive'
+        kafka: kafkaMetrics.isMonitoring ? 'monitoring' : 'inactive',
       },
       kafka: {
         monitoring: kafkaMetrics.isMonitoring,
@@ -66,77 +78,33 @@ router.get('/health', (req, res) => {
           connected: kafkaMetrics.producer.isConnected,
           messagesSent: kafkaMetrics.producer.messagesSent,
           errors: kafkaMetrics.producer.errors,
-          averageLatency: kafkaMetrics.producer.averageLatency
+          averageLatency: kafkaMetrics.producer.averageLatency,
         },
         consumer: {
           connected: kafkaMetrics.consumer.isConnected,
           messagesProcessed: kafkaMetrics.consumer.messagesProcessed,
-          errors: kafkaMetrics.consumer.errors
+          errors: kafkaMetrics.consumer.errors,
         },
         dlq: {
-          messagesInDLQ: kafkaMetrics.dlq.messagesInDLQ
-        }
+          messagesInDLQ: kafkaMetrics.dlq.messagesInDLQ,
+        },
       },
-      endpoints: {
-        auth: '/api/auth',
-        users: '/api/users',
-        roles: '/api/roles',
-        departments: '/api/departments',
-        systemLogs: '/api/system-logs',
-        notifications: '/api/notifications',
-        ppe: '/api/ppe',
-        ppeAdvanced: '/api/ppe-advanced',
-        projects: '/api/projects',
-        training: '/api/training',
-        sites: '/api/sites',
-        siteAreas: '/api/site-areas',
-        workLocations: '/api/work-locations',
-        projectTasks: '/api/project-tasks',
-        projectMilestones: '/api/project-milestones',
-        projectResources: '/api/project-resources',
-        projectRisks: '/api/project-risks',
-        projectChangeRequests: '/api/project-change-requests',
-        projectStatusReports: '/api/project-status-reports',
-        qualityCheckpoints: '/api/quality-checkpoints',
-        projectCommunication: '/api/project-communication'
-      }
     });
   } catch (error) {
     console.error('Health check error:', error);
     res.json({
       success: true,
       message: 'Safety Management System API is running',
-      timestamp: new Date().toISOString(),
-      version: '1.0.0',
       error: error.message,
-      endpoints: {
-        auth: '/api/auth',
-        users: '/api/users',
-        roles: '/api/roles',
-        departments: '/api/departments',
-        systemLogs: '/api/system-logs',
-        notifications: '/api/notifications',
-        ppe: '/api/ppe',
-        ppeAdvanced: '/api/ppe-advanced',
-        projects: '/api/projects',
-        training: '/api/training',
-        sites: '/api/sites',
-        siteAreas: '/api/site-areas',
-        workLocations: '/api/work-locations',
-        projectTasks: '/api/project-tasks',
-        projectMilestones: '/api/project-milestones',
-        projectResources: '/api/project-resources',
-        projectRisks: '/api/project-risks',
-        projectChangeRequests: '/api/project-change-requests',
-        projectStatusReports: '/api/project-status-reports',
-        qualityCheckpoints: '/api/quality-checkpoints',
-        projectCommunication: '/api/project-communication'
-      }
     });
   }
 });
 
-// API routes
+/**
+ * =====================
+ * API Routes
+ * =====================
+ */
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/roles', roleRoutes);
@@ -153,7 +121,7 @@ router.use('/safety-officer', safetyOfficerRoutes);
 router.use('/warehouse', warehouseModuleRoutes);
 router.use('/maintenance', maintenanceModuleRoutes);
 
-// Advanced Project Management Routes
+// Advanced Project Management
 router.use('/project-tasks', projectTaskRoutes);
 router.use('/project-milestones', projectMilestoneRoutes);
 router.use('/sites', siteRoutes);
@@ -166,84 +134,39 @@ router.use('/project-status-reports', projectStatusReportRoutes);
 router.use('/quality-checkpoints', qualityCheckpointRoutes);
 router.use('/project-communication', projectCommunicationRoutes);
 
-// Task workflow (Dept Header → Manager → Leader → Employee)
+// Task workflow
 router.use('/task-workflows', taskWorkflowRoutes);
 
-// Admin and Tenant Management Routes
+// Admin & Tenant
 router.use('/admin', adminRoutes);
 router.use('/tenants', tenantRoutes);
-console.log('✅ Tenant routes mounted at /tenants');
-console.log('   - GET /tenants/customers/participating');
 router.use('/company-admin', companyAdminRoutes);
 
-// Hikvision Integration Routes
+// Integrations
 router.use('/hikvision', hikvisionRoutes);
-// Chatbot Routes
 router.use('/chatbot', chatbotRoutes);
-
-// Pricing Routes (Public - không cần authentication)
 router.use('/pricing', pricingRoutes);
+router.use('/time_devices', timeDeviceRoutes);
 
 // Contract Routes
 router.use('/contracts', contractRoutes);
+// Certificate Routes
+router.use('/certificates', certificateRoutes);
+// Weather Integration Routes
+router.use('/integrations/weather', weatherRoutes);
+router.use('/upload', uploadRoutes);
 
-// Global 404 handler for API routes
+/**
+ * =====================
+ * Global 404 for API
+ * =====================
+ */
 router.use('*', (req, res) => {
   res.status(404).json({
     success: false,
     message: 'API endpoint not found',
-    error: {
-      code: 'ENDPOINT_NOT_FOUND',
-      details: `The requested endpoint ${req.method} ${req.originalUrl} does not exist`,
-      available_endpoints: [
-        'GET /api/health',
-        'POST /api/auth/login',
-        'POST /api/auth/logout',
-        'GET /api/users',
-        'GET /api/roles',
-        'GET /api/departments',
-        'GET /api/system-logs',
-        'GET /api/notifications',
-        'GET /api/ppe/categories',
-        'GET /api/ppe/items',
-        'GET /api/ppe/inventory',
-        'GET /api/ppe/issuances',
-        'GET /api/ppe/dashboard',
-        'GET /api/projects',
-        'GET /api/projects/stats',
-        'GET /api/projects/sites',
-        'GET /api/training/courses',
-        'GET /api/training/sessions',
-        'GET /api/training/enrollments',
-        'POST /api/training/enrollments',
-        'GET /api/training/question-banks',
-        'GET /api/training/dashboard/stats',
-        'GET /api/sites',
-        'POST /api/sites',
-        'GET /api/sites/:id',
-        'PUT /api/sites/:id',
-        'DELETE /api/sites/:id',
-        'GET /api/site-areas/site/:siteId/areas',
-        'GET /api/site-areas/areas',
-        'POST /api/site-areas/areas',
-        'GET /api/site-areas/areas/:id',
-        'PUT /api/site-areas/areas/:id',
-        'DELETE /api/site-areas/areas/:id',
-        'GET /api/work-locations',
-        'GET /api/project-tasks',
-        'GET /api/project-milestones',
-        'GET /api/project-resources',
-        'GET /api/project-risks',
-        'GET /api/project-change-requests',
-        'GET /api/project-status-reports',
-        'GET /api/quality-checkpoints',
-        'GET /api/tenants',
-        'GET /api/tenants/customers/participating',
-        'GET /api/tenants/:id',
-        'GET /api/tenants/:id/stats'
-      ]
-    },
-    timestamp: new Date().toISOString()
+    path: `${req.method} ${req.originalUrl}`,
+    timestamp: new Date().toISOString(),
   });
 });
 

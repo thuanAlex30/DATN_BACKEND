@@ -6,21 +6,107 @@ const { createResponse } = require('../utils/response');
 const CertificateEvents = require('../events/certificateEvents');
 
 class CertificateService {
-  // Get all certificates with pagination (role-based filtering)
-  async getAllCertificates(filters = {}, options = {}, userRole = null) {
+  // Helper method to check if user has department_header/manager role
+  _hasAdminOrManagerRole(userRole) {
+    if (!userRole) return false;
+    
+    const roleStr = typeof userRole === 'string' ? userRole.toLowerCase() : '';
+    const roleCode = userRole?.role_code?.toLowerCase() || '';
+    const roleName = userRole?.role_name?.toLowerCase() || '';
+    const roleLevel = userRole?.role_level || 0;
+    
+    // Check role_code, role_name, or role_level
+    return roleCode === 'department_header' || roleCode === 'manager' ||
+           roleName === 'department header' || roleName === 'manager' ||
+           roleStr === 'department_header' || roleStr === 'manager' ||
+           roleLevel >= 70; // Manager level (70) or Department Header level (80) or above
+  }
+
+  // Helper method to check if user has department_header role (for delete operations)
+  _hasAdminRole(userRole) {
+    if (!userRole) return false;
+    
+    const roleStr = typeof userRole === 'string' ? userRole.toLowerCase() : '';
+    const roleCode = userRole?.role_code?.toLowerCase() || '';
+    const roleName = userRole?.role_name?.toLowerCase() || '';
+    const roleLevel = userRole?.role_level || 0;
+    
+    return roleCode === 'department_header' ||
+           roleName === 'department header' ||
+           roleStr === 'department_header' ||
+           roleLevel >= 80; // Department Header level (80) or above
+  }
+
+  // Get all certificates with pagination (role-based and tenant-based filtering)
+  async getAllCertificates(filters = {}, options = {}, userRole = null, tenantId = null) {
     try {
+      // Extract search query from filters if present
+      const searchQuery = filters.q || filters.search;
+      
+      // Clean filters: remove non-DB fields and undefined/null/empty values
+      const dbFilters = {};
+      Object.keys(filters).forEach(key => {
+        // Skip search query fields
+        if (key === 'q' || key === 'search') return;
+        
+        // Only include valid values
+        const value = filters[key];
+        if (value !== undefined && value !== null && value !== '') {
+          dbFilters[key] = value;
+        }
+      });
+      
+      // Apply tenant filtering (always apply if tenantId exists)
+      if (tenantId) {
+        dbFilters.tenant_id = tenantId;
+      }
+      
       // Apply role-based filtering
       let roleFilters = {};
+      const isAdminOrManager = userRole && this._hasAdminOrManagerRole(userRole);
       
-      // Non-admin users can only see active certificates
-      if (userRole && userRole !== 'admin' && userRole !== 'manager') {
-        roleFilters.status = 'ACTIVE';
+      // Non-admin/manager users can only see active certificates
+      if (userRole && !isAdminOrManager) {
+        // Only apply ACTIVE filter if user didn't explicitly filter by status
+        // This allows users to see all their active certificates
+        if (!dbFilters.status) {
+          roleFilters.status = 'ACTIVE';
+        }
+        // If user filtered by status, respect their filter (for their own data)
       }
       
       // Merge role filters with existing filters
-      const finalFilters = { ...filters, ...roleFilters };
+      // If status is specified in dbFilters, it takes precedence
+      const finalFilters = { ...dbFilters };
+      if (roleFilters.status && !finalFilters.status) {
+        finalFilters.status = roleFilters.status;
+      }
       
-      const result = await certificateRepository.getAll(finalFilters, options);
+      console.log('🔍 CertificateService.getAllCertificates:', {
+        searchQuery,
+        dbFilters,
+        roleFilters,
+        finalFilters,
+        options,
+        tenantId,
+        userRole: userRole?.role_name || userRole?.role_code,
+        isAdminOrManager
+      });
+      
+      // If search query exists, use search method; otherwise use getAll
+      let result;
+      if (searchQuery && searchQuery.trim()) {
+        result = await certificateRepository.search(searchQuery.trim(), finalFilters, options);
+      } else {
+        result = await certificateRepository.getAll(finalFilters, options);
+      }
+      
+      console.log('✅ CertificateService result:', {
+        dataCount: result?.data?.length || 0,
+        pagination: result?.pagination,
+        total: result?.pagination?.total || 0
+      });
+      
       return createResponse(200, 'Lấy danh sách chứng chỉ thành công', result);
     } catch (error) {
       console.error('Error getting certificates:', error);
@@ -28,8 +114,8 @@ class CertificateService {
     }
   }
 
-  // Get certificate by ID
-  async getCertificateById(id) {
+  // Get certificate by ID (with tenant check)
+  async getCertificateById(id, tenantId = null) {
     try {
       if (!mongoose.Types.ObjectId.isValid(id)) {
         return createResponse(400, 'ID chứng chỉ không hợp lệ');
@@ -40,6 +126,11 @@ class CertificateService {
         return createResponse(404, 'Không tìm thấy chứng chỉ');
       }
       
+      // Check tenant access if tenantId is provided
+      if (tenantId && certificate.tenant_id && certificate.tenant_id.toString() !== tenantId.toString()) {
+        return createResponse(403, 'Bạn không có quyền truy cập chứng chỉ này');
+      }
+      
       return createResponse(200, 'Lấy thông tin chứng chỉ thành công', certificate);
     } catch (error) {
       console.error('Error getting certificate by ID:', error);
@@ -48,11 +139,26 @@ class CertificateService {
   }
 
   // Create new certificate (role validation)
-  async createCertificate(certificateData, userId, userRole) {
+  async createCertificate(certificateData, userId, userRole, tenantId = null) {
     try {
       // Role validation - only admin and manager can create certificates
-      if (userRole !== 'admin' && userRole !== 'manager') {
+      if (!this._hasAdminOrManagerRole(userRole)) {
         return createResponse(403, 'Bạn không có quyền tạo chứng chỉ');
+      }
+      
+      // Set tenant_id from parameter or certificateData
+      if (tenantId) {
+        certificateData.tenant_id = tenantId;
+      } else if (!certificateData.tenant_id) {
+        // Try to get from user if available
+        try {
+          const user = await User.findById(userId).select('tenant_id');
+          if (user && user.tenant_id) {
+            certificateData.tenant_id = user.tenant_id;
+          }
+        } catch (err) {
+          console.warn('Could not get tenant_id from user:', err.message);
+        }
       }
       
       // Validate required fields
@@ -68,15 +174,19 @@ class CertificateService {
         return createResponse(400, 'Cơ quan cấp phát là bắt buộc');
       }
 
-      // Check if certificate name already exists
-      const existingByName = await certificateRepository.findByName(certificateData.certificateName);
+      // Check if certificate name already exists (within same tenant)
+      const nameFilter = { certificateName: certificateData.certificateName };
+      if (certificateData.tenant_id) {
+        nameFilter.tenant_id = certificateData.tenant_id;
+      }
+      const existingByName = await certificateRepository.findByName(certificateData.certificateName, certificateData.tenant_id);
       if (existingByName) {
         return createResponse(400, 'Tên chứng chỉ đã tồn tại');
       }
 
-      // Check if certificate code already exists (if provided)
+      // Check if certificate code already exists (within same tenant)
       if (certificateData.certificateCode) {
-        const existingByCode = await certificateRepository.findByCode(certificateData.certificateCode);
+        const existingByCode = await certificateRepository.findByCode(certificateData.certificateCode, certificateData.tenant_id);
         if (existingByCode) {
           return createResponse(400, 'Mã chứng chỉ đã tồn tại');
         }
@@ -110,16 +220,7 @@ class CertificateService {
 
       const certificate = await certificateRepository.create(certificateData);
       
-      // Emit certificate created event
-      try {
-        const creator = await User.findById(certificateData.createdBy).select('_id role full_name');
-        if (creator) {
-          await CertificateEvents.emitCertificateCreated(certificate, creator);
-        }
-      } catch (eventError) {
-        console.error('Error emitting certificate created event:', eventError);
-        // Don't fail the operation if event emission fails
-      }
+      // Note: Event emission is handled in controller to avoid duplication
       
       return createResponse(201, 'Tạo chứng chỉ thành công', certificate);
     } catch (error) {
@@ -128,8 +229,8 @@ class CertificateService {
     }
   }
 
-  // Update certificate
-  async updateCertificate(id, updateData) {
+  // Update certificate (with tenant check)
+  async updateCertificate(id, updateData, tenantId = null) {
     try {
       if (!mongoose.Types.ObjectId.isValid(id)) {
         return createResponse(400, 'ID chứng chỉ không hợp lệ');
@@ -141,18 +242,25 @@ class CertificateService {
         return createResponse(404, 'Không tìm thấy chứng chỉ');
       }
 
-      // Check for duplicate name (excluding current certificate)
+      // Check tenant access if tenantId is provided
+      if (tenantId && existingCertificate.tenant_id && existingCertificate.tenant_id.toString() !== tenantId.toString()) {
+        return createResponse(403, 'Bạn không có quyền cập nhật chứng chỉ này');
+      }
+
+      // Check for duplicate name (excluding current certificate, within same tenant)
       if (updateData.certificateName) {
-        const existingByName = await certificateRepository.findByName(updateData.certificateName);
-        if (existingByName && existingByName._id !== id) {
+        const checkTenantId = tenantId || existingCertificate.tenant_id;
+        const existingByName = await certificateRepository.findByName(updateData.certificateName, checkTenantId);
+        if (existingByName && existingByName._id.toString() !== id.toString()) {
           return createResponse(400, 'Tên chứng chỉ đã tồn tại');
         }
       }
 
-      // Check for duplicate code (excluding current certificate)
+      // Check for duplicate code (excluding current certificate, within same tenant)
       if (updateData.certificateCode) {
-        const existingByCode = await certificateRepository.findByCode(updateData.certificateCode);
-        if (existingByCode && existingByCode._id !== id) {
+        const checkTenantId = tenantId || existingCertificate.tenant_id;
+        const existingByCode = await certificateRepository.findByCode(updateData.certificateCode, checkTenantId);
+        if (existingByCode && existingByCode._id.toString() !== id.toString()) {
           return createResponse(400, 'Mã chứng chỉ đã tồn tại');
         }
       }
@@ -174,16 +282,7 @@ class CertificateService {
 
       const certificate = await certificateRepository.updateById(id, updateData);
       
-      // Emit certificate updated event
-      try {
-        const updater = await User.findById(updateData.updatedBy).select('_id role full_name');
-        if (updater) {
-          await CertificateEvents.emitCertificateUpdated(certificate, updater, updateData);
-        }
-      } catch (eventError) {
-        console.error('Error emitting certificate updated event:', eventError);
-        // Don't fail the operation if event emission fails
-      }
+      // Note: Event emission is handled in controller to avoid duplication
       
       return createResponse(200, 'Cập nhật chứng chỉ thành công', certificate);
     } catch (error) {
@@ -192,8 +291,8 @@ class CertificateService {
     }
   }
 
-  // Delete certificate
-  async deleteCertificate(id) {
+  // Delete certificate (with tenant check)
+  async deleteCertificate(id, tenantId = null) {
     try {
       if (!mongoose.Types.ObjectId.isValid(id)) {
         return createResponse(400, 'ID chứng chỉ không hợp lệ');
@@ -204,30 +303,29 @@ class CertificateService {
         return createResponse(404, 'Không tìm thấy chứng chỉ');
       }
 
+      // Check tenant access if tenantId is provided
+      if (tenantId && certificate.tenant_id && certificate.tenant_id.toString() !== tenantId.toString()) {
+        return createResponse(403, 'Bạn không có quyền xóa chứng chỉ này');
+      }
+
       const result = await certificateRepository.deleteById(id);
       if (!result) {
         return createResponse(500, 'Lỗi khi xóa chứng chỉ');
       }
 
-      // Emit certificate deleted event
-      try {
-        await CertificateEvents.emitCertificateDeleted(certificate, { _id: 'system', role: 'system', full_name: 'System' });
-      } catch (eventError) {
-        console.error('Error emitting certificate deleted event:', eventError);
-        // Don't fail the operation if event emission fails
-      }
-
-      return createResponse(200, 'Xóa chứng chỉ thành công');
+      // Note: Event emission is handled in controller to avoid duplication
+      // Return certificate data for event emission in controller
+      return createResponse(200, 'Xóa chứng chỉ thành công', certificate);
     } catch (error) {
       console.error('Error deleting certificate:', error);
       return createResponse(500, 'Lỗi khi xóa chứng chỉ', null, error.message);
     }
   }
 
-  // Get certificates by category
-  async getCertificatesByCategory(category, subCategory = null) {
+  // Get certificates by category (with tenant filter)
+  async getCertificatesByCategory(category, subCategory = null, tenantId = null) {
     try {
-      const certificates = await certificateRepository.getByCategory(category, subCategory);
+      const certificates = await certificateRepository.getByCategory(category, subCategory, tenantId);
       return createResponse(200, 'Lấy chứng chỉ theo danh mục thành công', certificates);
     } catch (error) {
       console.error('Error getting certificates by category:', error);
@@ -235,10 +333,10 @@ class CertificateService {
     }
   }
 
-  // Get expiring certificates
-  async getExpiringCertificates(days = 30) {
+  // Get expiring certificates (with tenant filter)
+  async getExpiringCertificates(days = 30, tenantId = null) {
     try {
-      const certificates = await certificateRepository.getExpiring(days);
+      const certificates = await certificateRepository.getExpiring(days, tenantId);
       return createResponse(200, 'Lấy chứng chỉ sắp hết hạn thành công', certificates);
     } catch (error) {
       console.error('Error getting expiring certificates:', error);
@@ -257,11 +355,16 @@ class CertificateService {
     }
   }
 
-  // Search certificates
-  async searchCertificates(query, filters = {}, options = {}) {
+  // Search certificates (with tenant filter)
+  async searchCertificates(query, filters = {}, options = {}, tenantId = null) {
     try {
       if (!query || query.trim() === '') {
         return createResponse(400, 'Từ khóa tìm kiếm là bắt buộc');
+      }
+
+      // Add tenant filter if provided
+      if (tenantId) {
+        filters.tenant_id = tenantId;
       }
 
       const result = await certificateRepository.search(query, filters, options);
@@ -272,8 +375,8 @@ class CertificateService {
     }
   }
 
-  // Renew certificate
-  async renewCertificate(id, renewalData = {}) {
+  // Renew certificate (with tenant check)
+  async renewCertificate(id, renewalData = {}, tenantId = null) {
     try {
       if (!mongoose.Types.ObjectId.isValid(id)) {
         return createResponse(400, 'ID chứng chỉ không hợp lệ');
@@ -282,6 +385,11 @@ class CertificateService {
       const certificate = await certificateRepository.getById(id);
       if (!certificate) {
         return createResponse(404, 'Không tìm thấy chứng chỉ');
+      }
+
+      // Check tenant access if tenantId is provided
+      if (tenantId && certificate.tenant_id && certificate.tenant_id.toString() !== tenantId.toString()) {
+        return createResponse(403, 'Bạn không có quyền gia hạn chứng chỉ này');
       }
 
       const updateData = {
@@ -298,14 +406,7 @@ class CertificateService {
 
       const renewedCertificate = await certificateRepository.updateById(id, updateData);
       
-      // Emit certificate renewed event
-      try {
-        const renewer = { _id: 'system', role: 'system', full_name: 'System' };
-        await CertificateEvents.emitCertificateRenewed(renewedCertificate, renewer, renewalData);
-      } catch (eventError) {
-        console.error('Error emitting certificate renewed event:', eventError);
-        // Don't fail the operation if event emission fails
-      }
+      // Note: Event emission is handled in controller to avoid duplication
       
       return createResponse(200, 'Gia hạn chứng chỉ thành công', renewedCertificate);
     } catch (error) {
@@ -314,8 +415,8 @@ class CertificateService {
     }
   }
 
-  // Update reminder settings
-  async updateReminderSettings(id, reminderSettings) {
+  // Update reminder settings (with tenant check)
+  async updateReminderSettings(id, reminderSettings, tenantId = null) {
     try {
       if (!mongoose.Types.ObjectId.isValid(id)) {
         return createResponse(400, 'ID chứng chỉ không hợp lệ');
@@ -326,17 +427,15 @@ class CertificateService {
         return createResponse(404, 'Không tìm thấy chứng chỉ');
       }
 
+      // Check tenant access if tenantId is provided
+      if (tenantId && certificate.tenant_id && certificate.tenant_id.toString() !== tenantId.toString()) {
+        return createResponse(403, 'Bạn không có quyền cập nhật cài đặt nhắc nhở cho chứng chỉ này');
+      }
+
       const updateData = { reminderSettings };
       const updatedCertificate = await certificateRepository.updateById(id, updateData);
       
-      // Emit reminder settings updated event
-      try {
-        const updater = { _id: 'system', role: 'system', full_name: 'System' };
-        await CertificateEvents.emitReminderSettingsUpdated(updatedCertificate, updater, reminderSettings);
-      } catch (eventError) {
-        console.error('Error emitting reminder settings updated event:', eventError);
-        // Don't fail the operation if event emission fails
-      }
+      // Note: Event emission is handled in controller to avoid duplication
       
       return createResponse(200, 'Cập nhật cài đặt nhắc nhở thành công', updatedCertificate);
     } catch (error) {
@@ -388,6 +487,26 @@ class CertificateService {
     const now = new Date();
     
     return expiry < now;
+  }
+
+  // Find certificate by name (for duplicate checking)
+  async findByName(name, tenantId = null) {
+    try {
+      return await certificateRepository.findByName(name, tenantId);
+    } catch (error) {
+      console.error('Error finding certificate by name:', error);
+      return null;
+    }
+  }
+
+  // Find certificate by code (for duplicate checking)
+  async findByCode(code, tenantId = null) {
+    try {
+      return await certificateRepository.findByCode(code, tenantId);
+    } catch (error) {
+      console.error('Error finding certificate by code:', error);
+      return null;
+    }
   }
 }
 

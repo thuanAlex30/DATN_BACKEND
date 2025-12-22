@@ -61,6 +61,10 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Department' 
   },
+  position_id: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Position' 
+  },
   is_active: { 
     type: Boolean, 
     default: true 
@@ -77,13 +81,13 @@ const userSchema = new mongoose.Schema({
 });
 
 // Add indexes
-userSchema.index({ user_id: 1 }, { unique: true, sparse: true });
 userSchema.index({ tenant_id: 1 });
 userSchema.index({ username: 1 });
 userSchema.index({ email: 1 });
 userSchema.index({ role_id: 1 });
 userSchema.index({ is_active: 1 });
 userSchema.index({ department_id: 1 });
+userSchema.index({ position_id: 1 });
 
 // Virtual for getting role details
 userSchema.virtual('role', {
@@ -109,20 +113,6 @@ userSchema.set('toObject', {
     delete ret.__v;
     return ret;
   }
-});
-// Auto-increment user_id before saving (only for new documents)
-userSchema.pre('save', async function(next) {
-  // Only assign user_id if this is a new document and user_id is not already set
-  if (this.isNew && !this.user_id) {
-    try {
-      this.user_id = await CounterService.getNextSequence('user_id');
-      console.log(`✅ Auto-assigned user_id: ${this.user_id} for new user`);
-    } catch (error) {
-      console.error('❌ Error generating user_id:', error);
-      return next(error);
-    }
-  }
-  next();
 });
 
 // Hash password if set directly

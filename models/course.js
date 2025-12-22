@@ -1,6 +1,17 @@
 const mongoose = require('mongoose');
+const { getDefaultTenantObjectId } = require('../utils/tenancy');
 
 const courseSchema = new mongoose.Schema({
+    tenant_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tenant',
+<<<<<<< HEAD
+        required: true,
+=======
+        required: false,
+>>>>>>> ThuanDH30
+        default: getDefaultTenantObjectId
+    },
     course_set_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'CourseSet',
@@ -40,6 +51,11 @@ const courseSchema = new mongoose.Schema({
     deployed_by: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
+    },
+    prerequisite_course_ids: {
+        type: [mongoose.Schema.Types.ObjectId],
+        ref: 'Course',
+        default: []
     }
 }, {
     timestamps: {
@@ -50,10 +66,12 @@ const courseSchema = new mongoose.Schema({
 });
 
 // Add indexes
+courseSchema.index({ tenant_id: 1 });
 courseSchema.index({ course_set_id: 1 });
 courseSchema.index({ course_name: 1 });
 courseSchema.index({ is_mandatory: 1 });
 courseSchema.index({ is_deployed: 1 });
+courseSchema.index({ tenant_id: 1, course_set_id: 1 });
 
 const Course = mongoose.model('Course', courseSchema);
 

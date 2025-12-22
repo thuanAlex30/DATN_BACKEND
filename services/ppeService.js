@@ -451,6 +451,19 @@ class PPEService {
         throw new Error(`Manager không đủ PPE để phát. Hiện có: ${availableQuantity}, cần phát: ${issuanceData.quantity}`);
       }
 
+      // Kiểm tra duplicate: không cho phép tạo issuance trùng lặp cho cùng user, item, và status pending
+      const existingIssuance = await PPEIssuance.findOne({
+        user_id: issuanceData.user_id,
+        item_id: issuanceData.item_id,
+        issuance_level: 'manager_to_employee',
+        status: { $in: ['pending_confirmation', 'issued'] },
+        issued_by: issuanceData.issued_by
+      });
+
+      if (existingIssuance) {
+        throw new Error('Đã tồn tại PPE đang chờ xác nhận hoặc đang sử dụng cho nhân viên này. Vui lòng kiểm tra lại.');
+      }
+
       // Get issuer and recipient info for WebSocket
       const issuer = await User.findById(issuanceData.issued_by);
       const recipient = await User.findById(issuanceData.user_id);
@@ -850,11 +863,15 @@ class PPEService {
         const stats = await ppeRepository.getManagerPPEStats(managerId, itemId);
         console.log(`[DEBUG] getManagerPPEStats for item ${itemId}:`, JSON.stringify(stats, null, 2));
         
-        ppeSummary[itemId].total_received = stats.total_received;  // ✅ Lấy từ DB để chính xác
-        ppeSummary[itemId].total_returned = stats.total_returned;
-        ppeSummary[itemId].remaining_in_hand = stats.remaining_in_hand;  // ✅ Số còn giữ sau khi trả Admin
-        ppeSummary[itemId].total_issued_to_employees = stats.total_issued_to_employees;
-        ppeSummary[itemId].remaining = stats.remaining_in_hand - stats.total_issued_to_employees;  // ✅ Số còn lại thực tế
+        ppeSummary[itemId].total_received = stats.total_received || 0;  // ✅ Lấy từ DB để chính xác
+        ppeSummary[itemId].total_returned = stats.total_returned || 0;
+        ppeSummary[itemId].remaining_in_hand = stats.remaining_in_hand || 0;  // ✅ Số còn giữ sau khi trả Admin
+        ppeSummary[itemId].total_issued_to_employees = stats.total_issued_to_employees || 0;  // ✅ TỔNG số đã phát (kể cả đã trả)
+        ppeSummary[itemId].total_returned_by_employees = stats.total_returned_by_employees || 0;  // ✅ Tổng số employees đã trả lại
+        // ✅ Số còn lại = remaining_in_hand - (số đang giữ bởi employees)
+        // Số đang giữ bởi employees = total_issued_to_employees - total_returned_by_employees
+        const currentlyHeldByEmployees = (stats.total_issued_to_employees || 0) - (stats.total_returned_by_employees || 0);
+        ppeSummary[itemId].remaining = Math.max(0, (stats.remaining_in_hand || 0) - currentlyHeldByEmployees);
         
         // Transform issuances IDs from _id to id
         ppeSummary[itemId].issuances = transformDocumentsId(ppeSummary[itemId].issuances, POPULATED_FIELDS.PPE_ISSUANCE);
@@ -982,32 +999,26 @@ class PPEService {
           throw new Error('Chỉ được phát PPE cho người có vai trò Manager hoặc Warehouse Staff');
         }
         
-        // For manager role, check if they are department head of "AN TOÀN LAO ĐỘNG"
+        // For manager role, check if they are from "AN TOÀN LAO ĐỘNG" department
         if (isManager && !isWarehouseStaff) {
           if (!recipientUser.department_id) {
             throw new Error('Manager chưa được gán phòng ban');
           }
           
           const departmentId = recipientUser.department_id._id || recipientUser.department_id;
-          const recipientUserId = recipientUser._id;
           
-          // Tìm department và kiểm tra xem user có trong manager_ids hoặc manager_id không
-          const dept = await Department.findOne({ 
-            _id: departmentId,
-            $or: [
-              { manager_id: recipientUserId }, // Legacy: kiểm tra manager_id
-              { manager_ids: recipientUserId } // Mới: kiểm tra manager_ids array
-            ]
-          });
+          // Tìm department để kiểm tra tên phòng ban
+          const dept = await Department.findById(departmentId);
           
           if (!dept) {
-            throw new Error('Chỉ được phát PPE cho Trưởng phòng (department head)');
+            throw new Error('Không tìm thấy phòng ban của Manager');
           }
           
-          // Check if department is "AN TOÀN LAO ĐỘNG"
+          // Check if department is "AN TOÀN LAO ĐỘNG" or "PHÒNG AN TOÀN LAO ĐỘNG"
           const deptName = dept.department_name || '';
-          if (deptName.toUpperCase() !== 'AN TOÀN LAO ĐỘNG') {
-            throw new Error('Chỉ được phát PPE cho Trưởng phòng của phòng AN TOÀN LAO ĐỘNG');
+          const normalizedDeptName = deptName.toUpperCase().trim();
+          if (normalizedDeptName !== 'AN TOÀN LAO ĐỘNG' && normalizedDeptName !== 'PHÒNG AN TOÀN LAO ĐỘNG') {
+            throw new Error('Chỉ được phát PPE cho Manager của phòng An Toàn Lao Động');
           }
         }
         // For warehouse_staff, no department head check required
@@ -1050,7 +1061,19 @@ class PPEService {
       // Create issuance (stock was already updated atomically above)
       const issuance = await ppeRepository.createIssuance(issuanceData);
       
-      return { issuance, issuer, recipient };
+      // Populate item_id before returning for notification
+      const PPEIssuance = require('../models/ppeIssuance');
+      const populatedIssuance = await PPEIssuance.findById(issuance._id)
+        .populate('item_id', 'item_name item_code')
+        .populate('user_id', 'full_name')
+        .populate('issued_by', 'full_name')
+        .lean();
+      
+      return { 
+        issuance: populatedIssuance || issuance, 
+        issuer, 
+        recipient 
+      };
     };
 
     // Try to use transaction, fallback to non-transaction if not supported

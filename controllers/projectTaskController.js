@@ -8,7 +8,34 @@ class ProjectTaskController {
   // ========== PROJECT TASK MANAGEMENT ==========
 
   static getAllTasks = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const filters = req.query;
+    const filters = { ...req.query };
+
+    // Security: non-privileged users can only query their own tasks
+    // Supported params: user_id (OR responsible/assigned), responsible_user_id, assigned_to
+    const roleCode = String(req.user?.role_code || req.user?.role?.role_code || '').toLowerCase();
+    const isPrivileged = ['system_admin', 'company_admin', 'department_header'].includes(roleCode);
+
+    if (!isPrivileged) {
+      const currentUserId = String(req.user?.id || req.user?._id || '');
+
+      const requestedUserId = filters.user_id ? String(filters.user_id) : '';
+      const requestedResponsibleId = filters.responsible_user_id ? String(filters.responsible_user_id) : '';
+      const requestedAssignedTo = filters.assigned_to ? String(filters.assigned_to) : '';
+
+      const isTryingOtherUser =
+        (requestedUserId && requestedUserId !== currentUserId) ||
+        (requestedResponsibleId && requestedResponsibleId !== currentUserId) ||
+        (requestedAssignedTo && requestedAssignedTo !== currentUserId);
+
+      if (isTryingOtherUser) {
+        return ApiResponse.forbidden(res, 'Không được phép xem công việc của người dùng khác');
+      }
+
+      // Force to self (best effort)
+      filters.user_id = currentUserId;
+      delete filters.responsible_user_id;
+      delete filters.assigned_to;
+    }
     const result = await projectTaskService.getAllTasks(filters);
     
     if (result.success) {

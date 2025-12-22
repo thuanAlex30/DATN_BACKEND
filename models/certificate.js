@@ -1,6 +1,15 @@
 const mongoose = require('mongoose');
+const { getDefaultTenantObjectId } = require('../utils/tenancy');
 
 const certificateSchema = new mongoose.Schema({
+    // Tenant isolation
+    tenant_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tenant',
+        required: true,
+        default: getDefaultTenantObjectId
+    },
+    
     // Thông tin cơ bản
     certificateName: {
         type: String,
@@ -11,7 +20,6 @@ const certificateSchema = new mongoose.Schema({
     certificateCode: {
         type: String,
         required: true,
-        unique: true,
         trim: true,
         uppercase: true,
         maxlength: 50
@@ -77,6 +85,21 @@ const certificateSchema = new mongoose.Schema({
         type: String,
         enum: ['MONTHS', 'YEARS'],
         default: 'MONTHS'
+    },
+    issueDate: {
+        type: Date,
+        default: Date.now
+    },
+    expiryDate: {
+        type: Date
+    },
+    lastRenewalDate: {
+        type: Date
+    },
+    renewalNotes: {
+        type: String,
+        trim: true,
+        maxlength: 2000
     },
     
     // Thông tin gia hạn
@@ -221,12 +244,15 @@ const certificateSchema = new mongoose.Schema({
 });
 
 // Indexes
+certificateSchema.index({ tenant_id: 1 });
 certificateSchema.index({ certificateCode: 1 });
+certificateSchema.index({ tenant_id: 1, certificateCode: 1 }, { unique: true });
 certificateSchema.index({ category: 1, subCategory: 1 });
 certificateSchema.index({ status: 1 });
 certificateSchema.index({ createdBy: 1 });
 certificateSchema.index({ tags: 1 });
 certificateSchema.index({ createdAt: -1 });
+certificateSchema.index({ tenant_id: 1, status: 1 });
 
 // Virtual fields
 certificateSchema.virtual('validityPeriodInMonths').get(function() {
@@ -237,12 +263,17 @@ certificateSchema.virtual('validityPeriodInMonths').get(function() {
 });
 
 certificateSchema.virtual('isExpiringSoon').get(function() {
-    if (!this.reminderSettings.enabled || !this.reminderSettings.reminderDays.length) {
+    if (!this.reminderSettings || !this.reminderSettings.enabled || !this.reminderSettings.reminderDays || !this.reminderSettings.reminderDays.length) {
+        return false;
+    }
+    
+    if (!this.expiryDate) {
         return false;
     }
     
     const now = new Date();
-    const daysUntilExpiry = Math.ceil((this.updatedAt.getTime() + (this.validityPeriodInMonths * 30 * 24 * 60 * 60 * 1000) - now.getTime()) / (1000 * 60 * 60 * 24));
+    const expiry = new Date(this.expiryDate);
+    const daysUntilExpiry = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
     
     return this.reminderSettings.reminderDays.some(day => daysUntilExpiry <= day && daysUntilExpiry > 0);
 });
@@ -272,14 +303,13 @@ certificateSchema.statics.findByCategory = function(category) {
 certificateSchema.statics.findExpiringSoon = function(days = 30) {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() + days);
+    const now = new Date();
     
     return this.find({
         status: 'ACTIVE',
-        $expr: {
-            $lte: [
-                { $add: ['$updatedAt', { $multiply: ['$validityPeriodInMonths', 30, 24, 60, 60, 1000] }] },
-                cutoffDate
-            ]
+        expiryDate: {
+            $gte: now,
+            $lte: cutoffDate
         }
     });
 };
@@ -293,14 +323,21 @@ certificateSchema.statics.findByTags = function(tags) {
 
 // Instance methods
 certificateSchema.methods.isExpired = function() {
-    const expiryDate = new Date(this.updatedAt.getTime() + (this.validityPeriodInMonths * 30 * 24 * 60 * 60 * 1000));
-    return new Date() > expiryDate;
+    if (!this.expiryDate) {
+        return false;
+    }
+    const expiry = new Date(this.expiryDate);
+    const now = new Date();
+    return now > expiry;
 };
 
 certificateSchema.methods.getDaysUntilExpiry = function() {
-    const expiryDate = new Date(this.updatedAt.getTime() + (this.validityPeriodInMonths * 30 * 24 * 60 * 60 * 1000));
+    if (!this.expiryDate) {
+        return null;
+    }
+    const expiry = new Date(this.expiryDate);
     const now = new Date();
-    const diffTime = expiryDate - now;
+    const diffTime = expiry - now;
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 

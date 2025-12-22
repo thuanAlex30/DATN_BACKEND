@@ -1,6 +1,8 @@
 const hikvisionService = require('../services/hikvisionService');
 const { createResponse } = require('../utils/response');
 const UserRepository = require('../repository/UserRepository');
+const ProjectAssignmentRepository = require('../repository/projectAssignmentRepository');
+const ProjectRepository = require('../repository/projectRepository');
 
 /**
  * Get Access Control Events
@@ -96,7 +98,8 @@ exports.getAccessControlEvents = async (req, res) => {
         
         if (employeeNos.length > 0) {
           console.log('🔍 Enriching events with user info for employeeNos:', employeeNos);
-          const users = await UserRepository.findByUserIds(employeeNos);
+          // Scope user lookup to current tenant to avoid cross-tenant enrichment
+          const users = await UserRepository.findByUserIds(employeeNos, [], req.user?.tenant_id);
           
           // Create a map for quick lookup
           const userMap = new Map();
@@ -189,7 +192,8 @@ exports.searchAccessControlEvents = async (req, res) => {
           .filter(no => no && no !== '' && no !== 'undefined');
         
         if (employeeNos.length > 0) {
-          const users = await UserRepository.findByUserIds(employeeNos);
+        // Scope user lookup to current tenant to avoid cross-tenant enrichment
+        const users = await UserRepository.findByUserIds(employeeNos, [], req.user?.tenant_id);
           const userMap = new Map();
           users.forEach(user => {
             if (user.user_id) {
@@ -236,6 +240,263 @@ exports.searchAccessControlEvents = async (req, res) => {
     console.error('Error in searchAccessControlEvents:', error);
     return res.status(500).json(
       createResponse(500, 'Lỗi server khi tìm kiếm dữ liệu từ Hikvision', null, error.message)
+    );
+  }
+};
+
+/**
+ * Get Access Control Events filtered by Project
+ * GET /api/hikvision/events/project/:projectId
+ */
+exports.getAccessControlEventsByProject = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const {
+      searchID,
+      searchResultPosition,
+      maxResults,
+      major,
+      minor,
+      startTime,
+      endTime,
+      getAll = false
+    } = req.query;
+
+    console.log('📥 Hikvision Project Events Request:', {
+      projectId,
+      query: req.query,
+      method: req.method,
+      url: req.originalUrl
+    });
+
+    // Get project user IDs (Mongo) và user_id (employee number) (từ assignments và leader)
+    const projectUserIds = new Set(); // Mongo _id
+    const projectEmployeeNos = new Set(); // user.user_id (number/string)
+    let projectAssignments = [];
+    
+    try {
+      // Get project assignments (đã populate user_id với user_id số)
+      const assignments = await ProjectAssignmentRepository.getProjectAssignments(projectId);
+      projectAssignments = assignments;
+      
+      assignments.forEach(assignment => {
+        if (assignment.user_id) {
+          const userObj = assignment.user_id;
+          const userId = typeof userObj === 'object'
+            ? (userObj._id || userObj.id)
+            : userObj;
+          if (userId) {
+            projectUserIds.add(String(userId));
+          }
+          const empNo = typeof userObj === 'object'
+            ? userObj.user_id
+            : undefined;
+          if (empNo !== undefined && empNo !== null && empNo !== '') {
+            projectEmployeeNos.add(String(empNo));
+          }
+        }
+      });
+
+      // Get project leader
+      const project = await ProjectRepository.getProjectById(projectId);
+      if (project && project.leader_id) {
+        const leaderId = typeof project.leader_id === 'object'
+          ? (project.leader_id._id || project.leader_id.id)
+          : project.leader_id;
+        if (leaderId) {
+          projectUserIds.add(String(leaderId));
+        }
+        const leaderEmpNo = typeof project.leader_id === 'object'
+          ? project.leader_id.user_id
+          : undefined;
+        if (leaderEmpNo !== undefined && leaderEmpNo !== null && leaderEmpNo !== '') {
+          projectEmployeeNos.add(String(leaderEmpNo));
+        }
+      }
+
+      console.log('👥 Project user IDs:', Array.from(projectUserIds));
+      console.log('👤 Project employeeNos:', Array.from(projectEmployeeNos));
+      console.log('📦 Assignments count:', assignments.length);
+
+      // Fallback: nếu chưa có employeeNo nhưng có danh sách userIds, tra cứu user để lấy user_id
+      if (projectEmployeeNos.size === 0 && projectUserIds.size > 0) {
+        try {
+          // Scope the lookup to current tenant to avoid cross-tenant matches
+          const usersById = await UserRepository.findByIds(Array.from(projectUserIds), [], req.user?.tenant_id);
+          usersById.forEach(u => {
+            if (u && u.user_id !== undefined && u.user_id !== null && u.user_id !== '') {
+              projectEmployeeNos.add(String(u.user_id));
+            }
+          });
+          console.log('🔄 Fallback employeeNos from user lookup:', Array.from(projectEmployeeNos));
+        } catch (fallbackErr) {
+          console.warn('⚠️ Fallback lookup user_id by _id failed:', fallbackErr.message);
+        }
+      }
+    } catch (projectError) {
+      console.error('⚠️ Error getting project users:', projectError);
+      // Continue even if we can't get project users - will return empty result
+    }
+
+    // If no project users, return empty result
+    if (projectUserIds.size === 0 && projectEmployeeNos.size === 0) {
+      return res.status(200).json(
+        createResponse(200, 'Dự án chưa có nhân viên được phân công', {
+          events: [],
+          total: 0,
+          projectUserIds: []
+        })
+      );
+    }
+
+    // Employee numbers để lọc (dùng trực tiếp từ assignments/leader)
+    const employeeNos = Array.from(projectEmployeeNos).map(String);
+
+    console.log('🔍 Employee numbers for project (from assignments/leader):', employeeNos);
+
+    // Limit maxResults to 100
+    const parsedMaxResults = maxResults !== undefined ? parseInt(maxResults) : 100;
+    const limitedMaxResults = parsedMaxResults > 100 ? 100 : parsedMaxResults;
+
+    const searchParams = {
+      ...(searchID && { searchID }),
+      ...(searchResultPosition !== undefined && { searchResultPosition: parseInt(searchResultPosition) }),
+      maxResults: limitedMaxResults,
+      ...(major !== undefined && { major: parseInt(major) }),
+      ...(minor !== undefined && minor !== null && minor !== '0' && minor !== 0 && { minor: parseInt(minor) }),
+      ...(startTime && { startTime }),
+      ...(endTime && { endTime })
+    };
+
+    // Get devices assigned to this project (and implicitly tenant)
+    const TimeDevice = require('../models/timeDevice');
+    // Ensure devices are filtered by tenant to avoid cross-tenant device access
+    const tenantIdForQuery = req.user?.tenant_id || null;
+    const deviceQuery = tenantIdForQuery ? { project_id: projectId, tenant_id: tenantIdForQuery } : { project_id: projectId };
+    const devices = await TimeDevice.find(deviceQuery).lean();
+    if (!devices || devices.length === 0) {
+      console.log('⚠️ No devices configured for project', projectId);
+      return res.status(200).json(
+        createResponse(200, 'Dự án chưa gán máy chấm công', { events: [], total: 0, projectUserIds: Array.from(projectUserIds) })
+      );
+    }
+
+    // For each device, call Hikvision API with device-specific config and collect events
+    const shouldGetAll = getAll === 'true' || getAll === true || getAll === '1' || getAll === 1;
+
+    // Process devices in batches to avoid sending too many concurrent requests (which can trigger 429)
+    const batchSize = 3; // conservative parallelism; adjust if needed
+    const allEvents = [];
+    for (let i = 0; i < devices.length; i += batchSize) {
+      const batch = devices.slice(i, i + batchSize);
+      const batchPromises = batch.map(async (device) => {
+        try {
+          const DeviceHikvisionService = hikvisionService.HikvisionService;
+          const svc = new DeviceHikvisionService({
+            baseURL: device.baseURL || (device.ip ? `http://${device.ip}:${device.port || 80}` : undefined),
+            username: device.username,
+            password: device.password,
+            timeout: 30000
+          });
+
+          let result;
+          if (shouldGetAll) result = await svc.getAllAccessControlEvents(searchParams);
+          else result = await svc.getAccessControlEvents(searchParams);
+
+          if (!result.success) {
+            console.warn('⚠️ Device fetch failed for', device.device_id, result.error);
+            return [];
+          }
+
+          const events = result.data?.events || result.data?.AcsEvent?.InfoList || [];
+          return events.map(e => ({ ...e, _device_id: device.device_id }));
+        } catch (err) {
+          console.error('❌ Error fetching events for device', device.device_id, err.message);
+          return [];
+        }
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      allEvents.push(...batchResults.flat());
+
+      // small delay between batches to reduce burst load
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
+    // Filter events by project employee numbers
+    const filteredEvents = allEvents.filter(event => {
+      if (!event.employeeNoString) return false;
+      return employeeNos.includes(String(event.employeeNoString));
+    });
+
+    console.log(`✅ Collected ${filteredEvents.length} filtered events from ${allEvents.length} total events across ${devices.length} devices for project ${projectId}`);
+
+    // Enrich filtered events với thông tin user từ assignments/leader
+    let enrichedEvents = filteredEvents;
+    try {
+      const userMap = new Map();
+
+      // Từ assignments
+      projectAssignments.forEach((assignment) => {
+        const u = assignment.user_id;
+        if (u && u.user_id !== undefined && u.user_id !== null) {
+          userMap.set(String(u.user_id), {
+            id: u._id || u.id,
+            user_id: u.user_id,
+            username: u.username,
+            full_name: u.full_name,
+            email: u.email
+          });
+        }
+      });
+
+      // Từ leader (nếu chưa có trong map)
+      try {
+        const project = await ProjectRepository.getProjectById(projectId);
+        if (project && project.leader_id && project.leader_id.user_id !== undefined && project.leader_id.user_id !== null) {
+          const lid = project.leader_id;
+          userMap.set(String(lid.user_id), {
+            id: lid._id || lid.id,
+            user_id: lid.user_id,
+            username: lid.username,
+            full_name: lid.full_name,
+            email: lid.email
+          });
+        }
+      } catch (errLeader) {
+        console.warn('⚠️ Cannot enrich leader info:', errLeader.message);
+      }
+
+      enrichedEvents = filteredEvents.map(event => {
+        if (event.employeeNoString && userMap.has(String(event.employeeNoString))) {
+          return {
+            ...event,
+            user: userMap.get(String(event.employeeNoString))
+          };
+        }
+        return event;
+      });
+    } catch (enrichError) {
+      console.error('⚠️ Error enriching events with user info:', enrichError);
+    }
+
+    return res.status(200).json(
+      createResponse(200, 'Lấy dữ liệu sự kiện kiểm soát truy cập theo dự án thành công', {
+        events: enrichedEvents,
+        total: enrichedEvents.length,
+        projectUserIds: Array.from(projectUserIds),
+        employeeNos: employeeNos
+      })
+    );
+
+  } catch (error) {
+    console.error('❌ Error in getAccessControlEventsByProject:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    return res.status(500).json(
+      createResponse(500, 'Lỗi server khi lấy dữ liệu sự kiện theo dự án', null, error.message)
     );
   }
 };

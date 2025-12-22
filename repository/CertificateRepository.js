@@ -51,10 +51,14 @@ class CertificateRepository {
     }
   }
 
-  // Find certificate by name
-  async findByName(name) {
+  // Find certificate by name (with optional tenant filter)
+  async findByName(name, tenantId = null) {
     try {
-      const certificate = await Certificate.findOne({ certificateName: name });
+      const filter = { certificateName: name };
+      if (tenantId) {
+        filter.tenant_id = tenantId;
+      }
+      const certificate = await Certificate.findOne(filter);
       return certificate ? transformDocumentId(certificate) : null;
     } catch (error) {
       console.error('Error finding certificate by name:', error);
@@ -62,10 +66,14 @@ class CertificateRepository {
     }
   }
 
-  // Find certificate by code
-  async findByCode(code) {
+  // Find certificate by code (with optional tenant filter)
+  async findByCode(code, tenantId = null) {
     try {
-      const certificate = await Certificate.findOne({ certificateCode: code });
+      const filter = { certificateCode: code };
+      if (tenantId) {
+        filter.tenant_id = tenantId;
+      }
+      const certificate = await Certificate.findOne(filter);
       return certificate ? transformDocumentId(certificate) : null;
     } catch (error) {
       console.error('Error finding certificate by code:', error);
@@ -84,6 +92,12 @@ class CertificateRepository {
 
       const skip = (page - 1) * limit;
 
+      console.log('🔍 CertificateRepository.getAll:', {
+        filters,
+        options: { page, limit, sort },
+        skip
+      });
+
       const certificates = await Certificate.find(filters)
         .sort(sort)
         .skip(skip)
@@ -91,6 +105,12 @@ class CertificateRepository {
         .lean();
 
       const total = await Certificate.countDocuments(filters);
+
+      console.log('✅ CertificateRepository.getAll result:', {
+        found: certificates.length,
+        total,
+        filters: JSON.stringify(filters)
+      });
 
       return {
         data: transformDocumentsId(certificates),
@@ -132,12 +152,15 @@ class CertificateRepository {
     }
   }
 
-  // Find certificates by category
-  async getByCategory(category, subCategory = null) {
+  // Find certificates by category (with optional tenant filter)
+  async getByCategory(category, subCategory = null, tenantId = null) {
     try {
       const filter = { category };
       if (subCategory) {
         filter.subCategory = subCategory;
+      }
+      if (tenantId) {
+        filter.tenant_id = tenantId;
       }
       
       const certificates = await Certificate.find(filter).lean();
@@ -148,16 +171,22 @@ class CertificateRepository {
     }
   }
 
-  // Find expiring certificates
-  async getExpiring(days = 30) {
+  // Find expiring certificates (with optional tenant filter)
+  async getExpiring(days = 30, tenantId = null) {
     try {
       const expiryDate = new Date();
       expiryDate.setDate(expiryDate.getDate() + days);
 
-      const certificates = await Certificate.find({
+      const filter = {
         status: 'ACTIVE',
         expiryDate: { $lte: expiryDate }
-      }).lean();
+      };
+      
+      if (tenantId) {
+        filter.tenant_id = tenantId;
+      }
+
+      const certificates = await Certificate.find(filter).lean();
 
       return transformDocumentsId(certificates);
     } catch (error) {

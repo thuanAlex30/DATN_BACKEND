@@ -4,6 +4,65 @@ const path = require('path');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
 const fontkit = require('@pdf-lib/fontkit');
+const cloudinary = require('cloudinary').v2;
+
+// Resolve a writable uploads/contracts directory.
+// Uses env UPLOADS_DIR or project uploads folder, falls back to /tmp/uploads.
+const DEFAULT_UPLOADS_DIR = process.env.UPLOADS_DIR
+  ? path.resolve(process.env.UPLOADS_DIR)
+  : path.resolve(__dirname, '../uploads');
+const FALLBACK_UPLOADS_DIR = path.resolve('/tmp/uploads');
+let resolvedContractsDir = null;
+
+// Template directory (read‑only is fine – used only for reading the base PDF)
+// Always points to the project uploads/contracts folder inside the image.
+const TEMPLATE_CONTRACTS_DIR = path.resolve(__dirname, '../uploads/contracts');
+
+// Cloudinary configuration (optional)
+const CLOUDINARY_CONFIG = {
+  cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+  apiKey: process.env.CLOUDINARY_API_KEY,
+  apiSecret: process.env.CLOUDINARY_API_SECRET,
+  folder: process.env.CLOUDINARY_CONTRACT_FOLDER || 'contracts'
+};
+const CLOUDINARY_ENABLED = Boolean(
+  CLOUDINARY_CONFIG.cloudName &&
+  CLOUDINARY_CONFIG.apiKey &&
+  CLOUDINARY_CONFIG.apiSecret
+);
+
+if (CLOUDINARY_ENABLED) {
+  cloudinary.config({
+    cloud_name: CLOUDINARY_CONFIG.cloudName,
+    api_key: CLOUDINARY_CONFIG.apiKey,
+    api_secret: CLOUDINARY_CONFIG.apiSecret
+  });
+}
+
+async function getContractsUploadDir() {
+  if (resolvedContractsDir) return resolvedContractsDir;
+
+  const candidates = [
+    path.join(DEFAULT_UPLOADS_DIR, 'contracts'),
+    path.join(FALLBACK_UPLOADS_DIR, 'contracts')
+  ];
+
+  for (const dir of candidates) {
+    try {
+      await fsPromises.mkdir(dir, { recursive: true });
+      await fsPromises.access(dir, fs.constants.W_OK);
+      if (dir !== candidates[0]) {
+        console.warn(`⚠️ [ContractPreview] Using fallback upload dir: ${dir}`);
+      }
+      resolvedContractsDir = dir;
+      return dir;
+    } catch (err) {
+      console.warn(`⚠️ [ContractPreview] Cannot use upload dir ${dir}: ${err.message}`);
+    }
+  }
+
+  throw new Error('Không tìm thấy thư mục uploads/contracts có thể ghi');
+}
 
 class ContractService {
   /**
@@ -78,6 +137,57 @@ class ContractService {
       .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
       .replace(/đ/g, 'd')
       .replace(/Đ/g, 'D');
+  }
+
+  /**
+   * Upload PDF to Cloudinary (if configured). Returns secure URL or null on failure/disabled.
+   */
+  async uploadPdfToCloudinary(filePath, publicId, folder) {
+    if (!CLOUDINARY_ENABLED) return null;
+    try {
+      const uploadFolder = folder || CLOUDINARY_CONFIG.folder || 'contracts';
+      const res = await cloudinary.uploader.upload(filePath, {
+        resource_type: 'raw', // allow PDFs
+        type: 'upload',       // make it publicly accessible
+        access_mode: 'public',
+        folder: uploadFolder,
+        public_id: publicId,
+        overwrite: true,
+        format: 'pdf' // ensure pdf extension for delivery
+      });
+      console.log(`✅ [Cloudinary] Uploaded PDF: ${res.secure_url}`);
+      return {
+        secureUrl: res.secure_url,
+        publicId: res.public_id // already includes folder prefix
+      };
+    } catch (err) {
+      console.error('⚠️ [Cloudinary] Upload failed:', err.message);
+      return null;
+    }
+  }
+
+  /**
+   * Generate a signed download URL for Cloudinary raw PDF.
+   */
+  getCloudinaryDownloadUrl(publicIdWithPath) {
+    if (!CLOUDINARY_ENABLED || !publicIdWithPath) return null;
+    try {
+      // Prefer signed URL; if fails, caller should fall back to secureUrl.
+      const expiresAt = Math.floor(Date.now() / 1000) + 3600; // 1h
+      const url = cloudinary.utils.private_download_url(
+        publicIdWithPath,
+        'pdf',
+        {
+          resource_type: 'raw',
+          expires_at: expiresAt,
+          attachment: false
+        }
+      );
+      return url;
+    } catch (err) {
+      console.error('⚠️ [Cloudinary] Cannot create signed URL:', err.message);
+      return null;
+    }
   }
 
   async createContract(contractData) {
@@ -155,10 +265,9 @@ class ContractService {
         throw new Error('Contract không hợp lệ');
       }
 
-      const uploadsDir = path.join(__dirname, '../uploads/contracts');
-      await fsPromises.mkdir(uploadsDir, { recursive: true });
-
-      const templatePath = path.join(uploadsDir, 'CHMS_HopDongThanhToan.pdf');
+      const uploadsDir = await getContractsUploadDir();
+      // Always read template from the project template folder (can be read‑only in production)
+      const templatePath = path.join(TEMPLATE_CONTRACTS_DIR, 'CHMS_HopDongThanhToan.pdf');
       
       if (!await fsPromises.access(templatePath).then(() => true).catch(() => false)) {
         throw new Error('Template PDF không tồn tại: CHMS_HopDongThanhToan.pdf');
@@ -437,9 +546,17 @@ class ContractService {
 
       const relativePath = `/uploads/contracts/${fileName}`;
       const fullUrl = `${process.env.BACKEND_URL || 'http://localhost:3000'}${relativePath}`;
+      const remoteUpload = await this.uploadPdfToCloudinary(
+        filePath,
+        `contract-${contract.contractId}`,
+        process.env.CLOUDINARY_CONTRACT_FOLDER || 'contracts'
+      );
+      const remoteUrl =
+        remoteUpload?.secureUrl ||
+        this.getCloudinaryDownloadUrl(remoteUpload?.publicId);
       
       console.log(`✅ PDF generated from template: ${fileName}`);
-      return fullUrl;
+      return remoteUrl || fullUrl;
     } catch (error) {
       console.error('Error generating PDF from template:', error);
       throw error;
@@ -553,10 +670,9 @@ class ContractService {
         throw new Error('Thiếu thông tin để tạo preview hợp đồng');
       }
 
-      const uploadsDir = path.join(__dirname, '../uploads/contracts');
-      await fsPromises.mkdir(uploadsDir, { recursive: true });
-
-      const templatePath = path.join(uploadsDir, 'CHMS_HopDongThanhToan.pdf');
+      const uploadsDir = await getContractsUploadDir();
+      // Always read template from the project template folder (can be read‑only in production)
+      const templatePath = path.join(TEMPLATE_CONTRACTS_DIR, 'CHMS_HopDongThanhToan.pdf');
       
       if (!await fsPromises.access(templatePath).then(() => true).catch(() => false)) {
         throw new Error('Template PDF không tồn tại: CHMS_HopDongThanhToan.pdf');
@@ -743,50 +859,6 @@ class ContractService {
         console.log('📝 [ContractPreview] Drawing text overlay on PDF...');
         console.log(`📐 [ContractPreview] Page size: ${width} x ${height} points`);
         
-        // Test: Draw markers to verify coordinates work
-        try {
-          // Test 1: ASCII text
-          firstPage.drawText('TEST ASCII', {
-            x: 50,
-            y: 800,
-            size: 12,
-            font: font,
-          });
-          console.log('✅ [ContractPreview] Test ASCII marker drawn at (50, 800)');
-          
-          // Test 2: At exact coordinates
-          firstPage.drawText('TEST 110,505', {
-            x: 110,
-            y: 505,
-            size: 10,
-            font: font,
-          });
-          console.log('✅ [ContractPreview] Test marker at exact coordinates (110, 505)');
-          
-          // Test 3: Draw numbers to verify position
-          firstPage.drawText('505', {
-            x: 90,
-            y: 505,
-            size: 8,
-            font: font,
-          });
-          firstPage.drawText('485', {
-            x: 90,
-            y: 485,
-            size: 8,
-            font: font,
-          });
-          firstPage.drawText('465', {
-            x: 90,
-            y: 465,
-            size: 8,
-            font: font,
-          });
-          console.log('✅ [ContractPreview] Test coordinate markers drawn');
-        } catch (testError) {
-          console.error('❌ [ContractPreview] Error drawing test markers:', testError.message);
-        }
-        
         // Coordinates are in points (1/72 inch)
         // A4 page: 595 x 842 points (width x height)
         // Y coordinate starts from bottom (0) to top (height)
@@ -954,6 +1026,16 @@ class ContractService {
       const relativePath = `/uploads/contracts/${fileName}`;
       const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
       const fullUrl = `${backendUrl}${relativePath}`;
+      const remoteUpload = await this.uploadPdfToCloudinary(
+        filePath,
+        previewContractId,
+        process.env.CLOUDINARY_CONTRACT_FOLDER
+          ? `${process.env.CLOUDINARY_CONTRACT_FOLDER}/previews`
+          : 'contracts/previews'
+      );
+      const remoteUrl =
+        remoteUpload?.secureUrl ||
+        this.getCloudinaryDownloadUrl(remoteUpload?.publicId);
       
       console.log(`✅ Preview PDF generated: ${fileName}`);
       console.log(`📄 PDF URL: ${fullUrl}`);
@@ -964,6 +1046,12 @@ class ContractService {
         throw new Error(`PDF file không tồn tại sau khi tạo: ${filePath}`);
       }
       
+      // Upload lên Cloudinary để lưu trữ, nhưng luôn serve qua backend.
+      if (remoteUrl) {
+        console.log(`🌐 Cloudinary URL (preview, stored only): ${remoteUrl}`);
+      } else {
+        console.warn('⚠️ Cloudinary upload unavailable, only backend URL will be used');
+      }
       return fullUrl;
     } catch (error) {
       console.error('Error generating preview PDF:', error);
@@ -973,8 +1061,9 @@ class ContractService {
 
   async listPdfFormFields() {
     try {
-      const uploadsDir = path.join(__dirname, '../uploads/contracts');
-      const templatePath = path.join(uploadsDir, 'CHMS_HopDongThanhToan.pdf');
+      const uploadsDir = await getContractsUploadDir();
+      // Always read template from the project template folder (can be read‑only in production)
+      const templatePath = path.join(TEMPLATE_CONTRACTS_DIR, 'CHMS_HopDongThanhToan.pdf');
       
       if (!await fsPromises.access(templatePath).then(() => true).catch(() => false)) {
         throw new Error('Template PDF không tồn tại: CHMS_HopDongThanhToan.pdf');
@@ -1027,10 +1116,10 @@ class ContractService {
    */
   async testTextOverlay(options = {}) {
     try {
-      const uploadsDir = path.join(__dirname, '../uploads/contracts');
-      await fsPromises.mkdir(uploadsDir, { recursive: true });
+      const uploadsDir = await getContractsUploadDir();
 
-      const templatePath = path.join(uploadsDir, 'CHMS_HopDongThanhToan.pdf');
+      // Always read template from the project template folder (can be read‑only in production)
+      const templatePath = path.join(TEMPLATE_CONTRACTS_DIR, 'CHMS_HopDongThanhToan.pdf');
       
       if (!await fsPromises.access(templatePath).then(() => true).catch(() => false)) {
         throw new Error('Template PDF không tồn tại: CHMS_HopDongThanhToan.pdf');
@@ -1063,12 +1152,7 @@ class ContractService {
         contactPosition: 'Giám đốc'
       };
 
-      console.log(`🔧 [Debug] Testing text overlay with:`);
-      console.log(`   - baseY: ${baseY}`);
-      console.log(`   - textX: ${textX}`);
-      console.log(`   - lineHeight: ${lineHeight}`);
-      console.log(`   - fontSize: ${fontSize}`);
-      console.log(`   - Page size: ${width} x ${height}`);
+      // Debug-only helper; avoid verbose console logging in production.
 
       let currentY = baseY;
 
@@ -1111,7 +1195,6 @@ class ContractService {
           size: fontSize,
           font: font,
         });
-        console.log(`✅ Drew company name at (${textX}, ${currentY})`);
       }
       currentY -= lineHeight;
 
@@ -1123,7 +1206,6 @@ class ContractService {
           size: fontSize,
           font: font,
         });
-        console.log(`✅ Drew company email at (${textX}, ${currentY})`);
       }
       currentY -= lineHeight;
 
@@ -1152,7 +1234,6 @@ class ContractService {
           });
         });
         currentY -= (addressLines.length * lineHeight);
-        console.log(`✅ Drew company address (${addressLines.length} lines) starting at y=${currentY + (addressLines.length * lineHeight)}`);
       } else {
         currentY -= lineHeight;
       }
@@ -1165,7 +1246,6 @@ class ContractService {
           size: fontSize,
           font: font,
         });
-        console.log(`✅ Drew company phone at (${textX}, ${currentY})`);
       }
       currentY -= lineHeight;
 
@@ -1177,7 +1257,6 @@ class ContractService {
           size: fontSize,
           font: font,
         });
-        console.log(`✅ Drew company tax code at (${textX}, ${currentY})`);
       }
       currentY -= lineHeight;
 
@@ -1189,7 +1268,6 @@ class ContractService {
           size: fontSize,
           font: font,
         });
-        console.log(`✅ Drew contact name at (${textX}, ${currentY})`);
       }
       currentY -= lineHeight;
 
@@ -1201,7 +1279,6 @@ class ContractService {
           size: fontSize,
           font: font,
         });
-        console.log(`✅ Drew contact position at (${textX}, ${currentY})`);
       }
 
       const fileName = `debug-test-${Date.now()}.pdf`;

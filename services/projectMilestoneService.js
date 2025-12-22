@@ -467,7 +467,8 @@ class ProjectMilestoneService {
         progress_percentage: progressValue,
         work_description: progressData.work_description || progressData.note || '',
         hours_worked: progressData.hours_worked || 0,
-        log_date: progressData.log_date ? new Date(progressData.log_date) : new Date()
+        log_date: progressData.log_date ? new Date(progressData.log_date) : new Date(),
+        images: progressData.images || [] // Array of Cloudinary image URLs
       };
       
       console.log('addMilestoneProgressLog - Creating progress log:', logData);

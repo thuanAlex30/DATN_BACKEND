@@ -465,13 +465,21 @@ class UserController {
         return ApiResponse.error(res, 'Tenant ID not found in user context', 400);
       }
 
-      const result = await UserService.importUsersFromExcel(req.file, tenantId);
+      // Optional: attach imported users to a specific project
+      const projectId = req.body?.project_id || req.query?.project_id || null;
+      const importedBy = req.user?._id || req.user?.id || null;
+
+      const result = await UserService.importUsersFromExcel(req.file, tenantId, {
+        projectId,
+        importedBy
+      });
       return ApiResponse.success(res, result.data || result, 'Users imported successfully');
     } catch (error) {
       console.error('Import error:', error.message);
       return ApiResponse.error(res, `Import failed: ${error.message}`, 500);
     }
   });
+
 }
 
 module.exports = UserController;
