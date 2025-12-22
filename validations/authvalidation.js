@@ -145,6 +145,67 @@ const authValidation = {
         'any.only': 'Confirm new password must match new password',
         'any.required': 'Confirm new password is required'
       })
+  }),
+
+  forgotPassword: Joi.object({
+    email: Joi.string()
+      .email()
+      .required()
+      .trim()
+      .lowercase()
+      .messages({
+        'string.email': 'Please enter a valid email address',
+        'any.required': 'Email is required'
+      })
+  }),
+
+  verifyOTP: Joi.object({
+    email: Joi.string()
+      .email()
+      .required()
+      .trim()
+      .lowercase()
+      .messages({
+        'string.email': 'Please enter a valid email address',
+        'any.required': 'Email is required'
+      }),
+    otp: Joi.string()
+      .length(6)
+      .pattern(/^\d+$/)
+      .required()
+      .messages({
+        'string.length': 'OTP must be 6 digits',
+        'string.pattern.base': 'OTP must contain only numbers',
+        'any.required': 'OTP is required'
+      })
+  }),
+
+  resetPasswordWithOTP: Joi.object({
+    email: Joi.string()
+      .email()
+      .required()
+      .trim()
+      .lowercase()
+      .messages({
+        'string.email': 'Please enter a valid email address',
+        'any.required': 'Email is required'
+      }),
+    newPassword: Joi.string()
+      .min(6)
+      .max(128)
+      .required()
+      .pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\$%\^&\*])'))
+      .messages({
+        'string.min': 'New password must be at least 6 characters long',
+        'string.max': 'New password must not exceed 128 characters',
+        'string.pattern.base': 'New password must contain at least one lowercase letter, one uppercase letter, one number, and one special character',
+        'any.required': 'New password is required'
+      }),
+    otpToken: Joi.string()
+      .required()
+      .messages({
+        'any.required': 'OTP token is required'
+      })
   })
 };
 

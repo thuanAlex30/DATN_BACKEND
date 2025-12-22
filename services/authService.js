@@ -269,22 +269,37 @@ class AuthService {
   // Change password
   static async changePassword(userId, currentPassword, newPassword) {
     try {
+      console.log('🔐 [AuthService] changePassword called for userId:', userId);
+      
       const user = await UserRepository.findById(userId);
       if (!user) {
+        console.log('❌ [AuthService] User not found:', userId);
         return createResponse(404, 'User not found');
       }
 
+      console.log('✅ [AuthService] User found:', user.username);
+      
       const isCurrentPasswordValid = await user.comparePassword(currentPassword);
       if (!isCurrentPasswordValid) {
+        console.log('❌ [AuthService] Current password is incorrect');
         return createResponse(400, 'Current password is incorrect');
       }
 
+      console.log('✅ [AuthService] Current password is valid');
+      
       const password_hash = await HashUtils.hashPassword(newPassword);
-      await UserRepository.updateById(userId, { password_hash });
-
+      console.log('✅ [AuthService] New password hashed');
+      
+      const updatedUser = await UserRepository.updateById(userId, { password_hash });
+      if (!updatedUser) {
+        console.log('❌ [AuthService] Failed to update password');
+        return createResponse(500, 'Failed to update password');
+      }
+      
+      console.log('✅ [AuthService] Password updated successfully for user:', updatedUser.username);
       return createResponse(200, 'Password changed successfully');
     } catch (error) {
-      console.error('Error changing password:', error);
+      console.error('❌ [AuthService] Error changing password:', error);
       return createResponse(500, 'Lỗi khi đổi mật khẩu', null, error.message);
     }
   }

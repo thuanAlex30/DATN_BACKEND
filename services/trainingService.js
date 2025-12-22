@@ -3,18 +3,18 @@ const { createResponse } = require('../utils/response');
 
 class TrainingService {
     // ========== Course Set Services ==========
-    async getAllCourseSets(tenantId = null) {
+    async getAllCourseSets() {
         try {
-            const courseSets = await trainingRepository.getAllCourseSets(tenantId);
+            const courseSets = await trainingRepository.getAllCourseSets();
             return createResponse(200, 'Course sets retrieved successfully', courseSets);
         } catch (error) {
             throw error;
         }
     }
 
-    async getCourseSetById(courseSetId, tenantId = null) {
+    async getCourseSetById(courseSetId) {
         try {
-            const courseSet = await trainingRepository.getCourseSetById(courseSetId, tenantId);
+            const courseSet = await trainingRepository.getCourseSetById(courseSetId);
             if (!courseSet) {
                 return createResponse(404, 'Course set not found');
             }
@@ -24,18 +24,18 @@ class TrainingService {
         }
     }
 
-    async createCourseSet(courseSetData, tenantId = null) {
+    async createCourseSet(courseSetData) {
         try {
-            const courseSet = await trainingRepository.createCourseSet(courseSetData, tenantId);
+            const courseSet = await trainingRepository.createCourseSet(courseSetData);
             return createResponse(201, 'Course set created successfully', courseSet);
         } catch (error) {
             throw error;
         }
     }
 
-    async updateCourseSet(courseSetId, courseSetData, tenantId = null) {
+    async updateCourseSet(courseSetId, courseSetData) {
         try {
-            const courseSet = await trainingRepository.updateCourseSet(courseSetId, courseSetData, tenantId);
+            const courseSet = await trainingRepository.updateCourseSet(courseSetId, courseSetData);
             return createResponse(200, 'Course set updated successfully', courseSet);
         } catch (error) {
             if (error.message === 'Course set not found') {
@@ -45,9 +45,9 @@ class TrainingService {
         }
     }
 
-    async deleteCourseSet(courseSetId, tenantId = null) {
+    async deleteCourseSet(courseSetId) {
         try {
-            await trainingRepository.deleteCourseSet(courseSetId, tenantId);
+            await trainingRepository.deleteCourseSet(courseSetId);
             return createResponse(200, 'Course set deleted successfully');
         } catch (error) {
             if (error.message === 'Course set not found') {
@@ -116,10 +116,6 @@ class TrainingService {
         } catch (error) {
             if (error.message === 'Course not found') {
                 return createResponse(404, error.message);
-            }
-            // Handle constraint violation errors
-            if (error.message.includes('Không thể xóa khóa học này')) {
-                return createResponse(400, error.message);
             }
             throw error;
         }
@@ -269,9 +265,9 @@ class TrainingService {
         }
     }
 
-    async getTrainingEnrollmentById(enrollmentId, tenantId = null) {
+    async getTrainingEnrollmentById(enrollmentId) {
         try {
-            const enrollment = await trainingRepository.getTrainingEnrollmentById(enrollmentId, tenantId);
+            const enrollment = await trainingRepository.getTrainingEnrollmentById(enrollmentId);
             if (!enrollment) {
                 return createResponse(404, 'Training enrollment not found');
             }
@@ -281,63 +277,23 @@ class TrainingService {
         }
     }
 
-    async createTrainingEnrollment(enrollmentData, tenantId = null) {
+    async createTrainingEnrollment(enrollmentData) {
         try {
-            // If tenantId not provided, get it from course
-            if (!tenantId && enrollmentData.course_id) {
-                const course = await trainingRepository.getCourseById(enrollmentData.course_id);
-                if (course && course.tenant_id) {
-                    tenantId = course.tenant_id;
-                }
-            }
-
-            // Verify course exists
-            const course = await trainingRepository.getCourseById(enrollmentData.course_id, tenantId);
-            if (!course) {
-                return createResponse(400, 'Course not found');
-            }
-
-            // Check prerequisites if course has any
-            const prerequisiteCheck = await trainingRepository.checkPrerequisites(
-                enrollmentData.user_id,
-                enrollmentData.course_id,
-                tenantId
-            );
-
-            if (!prerequisiteCheck.passed) {
-                // Get course names for missing prerequisites
-                const missingCourses = await Promise.all(
-                    prerequisiteCheck.missing.map(courseId => 
-                        trainingRepository.getCourseById(courseId, tenantId)
-                    )
-                );
-                const missingCourseNames = missingCourses
-                    .filter(c => c)
-                    .map(c => c.course_name)
-                    .join(', ');
-
-                return createResponse(
-                    400,
-                    `Prerequisites not met. Please complete the following courses first: ${missingCourseNames}`,
-                    { missing_prerequisites: prerequisiteCheck.missing }
-                );
-            }
-            
-            const enrollment = await trainingRepository.createTrainingEnrollment(enrollmentData, tenantId);
+            const enrollment = await trainingRepository.createTrainingEnrollment(enrollmentData);
             return createResponse(201, 'Training enrollment created successfully', enrollment);
         } catch (error) {
-            if (error.message === 'User is already enrolled in this course' || 
-                error.message === 'Course not found' ||
-                error.message === 'Course is not deployed yet') {
+            if (error.message === 'User is already enrolled in this session' || 
+                error.message === 'Session is full' ||
+                error.message === 'Training session not found') {
                 return createResponse(400, error.message);
             }
             throw error;
         }
     }
 
-    async updateTrainingEnrollment(enrollmentId, enrollmentData, tenantId = null) {
+    async updateTrainingEnrollment(enrollmentId, enrollmentData) {
         try {
-            const enrollment = await trainingRepository.updateTrainingEnrollment(enrollmentId, enrollmentData, tenantId);
+            const enrollment = await trainingRepository.updateTrainingEnrollment(enrollmentId, enrollmentData);
             return createResponse(200, 'Training enrollment updated successfully', enrollment);
         } catch (error) {
             if (error.message === 'Training enrollment not found') {
@@ -347,9 +303,9 @@ class TrainingService {
         }
     }
 
-    async deleteTrainingEnrollment(enrollmentId, tenantId = null) {
+    async deleteTrainingEnrollment(enrollmentId) {
         try {
-            await trainingRepository.deleteTrainingEnrollment(enrollmentId, tenantId);
+            await trainingRepository.deleteTrainingEnrollment(enrollmentId);
             return createResponse(200, 'Training enrollment deleted successfully');
         } catch (error) {
             if (error.message === 'Training enrollment not found') {
@@ -495,23 +451,10 @@ class TrainingService {
 
     async importQuestionsFromExcel(bankId, file) {
         try {
-            // Validate bankId exists
-            const questionBank = await trainingRepository.getQuestionBankById(bankId);
-            if (!questionBank) {
-                return createResponse(404, 'Question bank not found');
-            }
-
-            const result = await trainingRepository.importQuestionsFromExcel(bankId, file);
-            
-            let message = `Đã import thành công ${result.importedRows} câu hỏi`;
-            if (result.errors && result.errors.length > 0) {
-                message += `. Có ${result.failedRows} dòng bị lỗi.`;
-            }
-            
-            return createResponse(201, message, result);
+            const questions = await trainingRepository.importQuestionsFromExcel(bankId, file);
+            return createResponse(201, 'Questions imported successfully', questions);
         } catch (error) {
-            console.error('Error in importQuestionsFromExcel service:', error);
-            return createResponse(500, error.message || 'Failed to import questions from Excel');
+            throw error;
         }
     }
 
@@ -669,66 +612,70 @@ class TrainingService {
         }
     }
 
-    // ========== Start Course Quiz Services ==========
-    async startCourseQuiz(courseId, userId, tenantId = null) {
+    // ========== Start Training Services ==========
+    async startTraining(sessionId, userId) {
         try {
-            // Check if user is enrolled in this course
-            const enrollment = await trainingRepository.getEnrollmentByUserAndCourse(userId, courseId, tenantId);
+            // Check if session exists and is active
+            const session = await trainingRepository.getTrainingSessionById(sessionId);
+            if (!session) {
+                return createResponse(404, 'Training session not found');
+            }
+
+            // Update session status based on current time
+            await this.updateSessionStatus(session);
+
+            // Get updated session
+            const updatedSession = await trainingRepository.getTrainingSessionById(sessionId);
+
+            // Check if session is in correct status
+            if (updatedSession.status_code !== 'ONGOING') {
+                return createResponse(400, 'Training session is not currently active');
+            }
+
+            // Check if user is enrolled in this session
+            const enrollment = await trainingRepository.getEnrollmentByUserAndSession(userId, sessionId);
             if (!enrollment) {
-                return createResponse(403, 'You are not enrolled in this course');
+                return createResponse(403, 'You are not enrolled in this training session');
             }
 
             // Check if enrollment status allows starting
-            if (enrollment.status !== 'enrolled' && enrollment.status !== 'failed') {
-                return createResponse(400, `Cannot start quiz. Current status: ${enrollment.status}`);
+            if (enrollment.status !== 'enrolled') {
+                return createResponse(400, `Cannot start training. Current status: ${enrollment.status}`);
             }
 
-<<<<<<< HEAD
-            // Get course information
-            const course = await trainingRepository.getCourseById(courseId, tenantId);
-=======
             // Get course information and question bank (ensure tenant scoping)
             const course = await trainingRepository.getCourseById(session.course_id, session.tenant_id || null);
->>>>>>> ThuanDH30
             if (!course) {
                 return createResponse(404, 'Course not found');
             }
 
-            if (!course.is_deployed) {
-                return createResponse(400, 'Course is not deployed yet');
-            }
-
             // Get question bank for this course
-            const questionBank = await trainingRepository.getQuestionBankByCourseId(courseId);
+            const questionBank = await trainingRepository.getQuestionBankByCourseId(session.course_id);
             if (!questionBank) {
                 return createResponse(404, 'No question bank found for this course');
             }
 
-            // Get questions for the quiz
+            // Get questions for the training
             const questions = await trainingRepository.getQuestionsByBankId(questionBank._id);
 
-            if (questions.length === 0) {
-                return createResponse(400, 'No questions available in the question bank');
-            }
-
-            // Update enrollment status to in_progress and set started_at
-            await trainingRepository.updateTrainingEnrollment(enrollment._id, {
-                status: 'in_progress',
-                started_at: new Date()
-            }, tenantId);
-
-            return createResponse(200, 'Quiz started successfully', {
+            return createResponse(200, 'Training started successfully', {
+                session: {
+                    _id: session._id,
+                    session_name: session.session_name,
+                    start_time: session.start_time,
+                    end_time: session.end_time,
+                    location: session.location
+                },
                 course: {
                     _id: course._id,
                     course_name: course.course_name,
                     description: course.description,
-                    duration_hours: course.duration_hours
+                    duration_minutes: course.duration_minutes
                 },
                 enrollment: {
                     _id: enrollment._id,
-                    status: 'in_progress',
-                    enrolled_at: enrollment.enrolled_at,
-                    started_at: new Date()
+                    status: enrollment.status,
+                    enrolled_at: enrollment.enrolled_at
                 },
                 questionBank: {
                     _id: questionBank._id,
@@ -750,27 +697,26 @@ class TrainingService {
         }
     }
 
-    async submitCourseQuiz(courseId, userId, answers, tenantId = null) {
+    async submitTraining(sessionId, userId, answers, score, completionTime) {
         try {
-            // Check if user is enrolled in this course
-            const enrollment = await trainingRepository.getEnrollmentByUserAndCourse(userId, courseId, tenantId);
+            // Check if user is enrolled in this session
+            const enrollment = await trainingRepository.getEnrollmentByUserAndSession(userId, sessionId);
             if (!enrollment) {
-                return createResponse(403, 'You are not enrolled in this course');
+                return createResponse(403, 'You are not enrolled in this training session');
             }
 
             // Check if enrollment status allows submission
-            if (enrollment.status !== 'in_progress') {
-                return createResponse(400, `Cannot submit quiz. Current status: ${enrollment.status}`);
+            if (enrollment.status !== 'enrolled') {
+                return createResponse(400, `Cannot submit training. Current status: ${enrollment.status}`);
             }
 
-            // Get course to verify
-            const course = await trainingRepository.getCourseById(courseId, tenantId);
-            if (!course) {
-                return createResponse(404, 'Course not found');
+            // Get questions to validate answers and calculate correct score
+            const session = await trainingRepository.getTrainingSessionById(sessionId);
+            if (!session) {
+                return createResponse(404, 'Training session not found');
             }
 
-            // Get question bank for this course
-            const questionBank = await trainingRepository.getQuestionBankByCourseId(courseId);
+            const questionBank = await trainingRepository.getQuestionBankByCourseId(session.course_id);
             if (!questionBank) {
                 return createResponse(404, 'Question bank not found');
             }
@@ -791,26 +737,24 @@ class TrainingService {
 
             const totalPossibleScore = questions.reduce((sum, q) => sum + q.points, 0);
             const passThreshold = 70; // 70% to pass
-            const percentage = totalPossibleScore > 0 ? (actualScore / totalPossibleScore) * 100 : 0;
-            const passed = percentage >= passThreshold;
+            const passed = (actualScore / totalPossibleScore) * 100 >= passThreshold;
 
             // Update enrollment with results
             const updatedEnrollment = await trainingRepository.updateTrainingEnrollment(enrollment._id, {
                 status: passed ? 'completed' : 'failed',
                 score: actualScore,
                 passed: passed,
-                completion_date: new Date(),
-                submitted_at: new Date()
-            }, tenantId);
+                completion_date: completionTime
+            });
 
-            return createResponse(200, 'Quiz submitted successfully', {
+            return createResponse(200, 'Training submitted successfully', {
                 enrollment: updatedEnrollment,
                 results: {
                     totalQuestions: questions.length,
                     correctAnswers: correctAnswers,
                     score: actualScore,
                     totalPossibleScore: totalPossibleScore,
-                    percentage: Math.round(percentage),
+                    percentage: Math.round((actualScore / totalPossibleScore) * 100),
                     passed: passed,
                     passThreshold: passThreshold
                 }
@@ -822,15 +766,8 @@ class TrainingService {
 
     async retakeTraining(sessionId, userId) {
         try {
-            // Get session to get tenant_id
-            const session = await trainingRepository.getTrainingSessionById(sessionId);
-            if (!session) {
-                return createResponse(404, 'Training session not found');
-            }
-            const sessionTenantId = session.tenant_id;
-            
             // Check if user is enrolled in this session
-            const enrollment = await trainingRepository.getEnrollmentByUserAndSession(userId, sessionId, sessionTenantId);
+            const enrollment = await trainingRepository.getEnrollmentByUserAndSession(userId, sessionId);
             if (!enrollment) {
                 return createResponse(403, 'You are not enrolled in this training session');
             }
@@ -840,14 +777,16 @@ class TrainingService {
                 return createResponse(400, `Cannot retake training. Current status: ${enrollment.status}. Only failed trainings can be retaken.`);
             }
 
-            // Get course information
-            const course = await trainingRepository.getCourseById(courseId, tenantId);
-            if (!course) {
-                return createResponse(404, 'Course not found');
+            // Get session details
+            const session = await trainingRepository.getTrainingSessionById(sessionId);
+            if (!session) {
+                return createResponse(404, 'Training session not found');
             }
 
-            if (!course.is_deployed) {
-                return createResponse(400, 'Course is not deployed yet');
+            // Check if session is still active
+            const now = new Date();
+            if (now > session.end_time) {
+                return createResponse(400, 'Training session has expired. Cannot retake.');
             }
 
             // Reset enrollment status to 'enrolled' for retake
@@ -855,25 +794,26 @@ class TrainingService {
                 status: 'enrolled',
                 score: null,
                 passed: null,
-                completion_date: null,
-                started_at: null,
-                submitted_at: null
-            }, tenantId);
+                completion_date: null
+            });
+
+            // Get course information
+            const course = await trainingRepository.getCourseById(session.course_id);
+            if (!course) {
+                return createResponse(404, 'Course not found');
+            }
 
             // Get question bank and questions for the retake
-            const questionBank = await trainingRepository.getQuestionBankByCourseId(courseId);
+            const questionBank = await trainingRepository.getQuestionBankByCourseId(session.course_id);
             if (!questionBank) {
                 return createResponse(404, 'Question bank not found');
             }
 
             const questions = await trainingRepository.getQuestionsByBankId(questionBank._id);
             
-            if (questions.length === 0) {
-                return createResponse(400, 'No questions available in the question bank');
-            }
-            
-            // Return quiz data for retake
-            return createResponse(200, 'Quiz retake initiated successfully', {
+            // Return training data for retake
+            return createResponse(200, 'Training retake initiated successfully', {
+                session: session,
                 course: course,
                 enrollment: updatedEnrollment,
                 questions: questions,

@@ -22,6 +22,30 @@ router.post('/refresh-token',
   AuthController.refreshToken
 );
 
+// Forgot password routes (public)
+router.post('/forgot-password', (req, res, next) => {
+  console.log('🔐 [authRoutes] POST /forgot-password - Request received');
+  console.log('🔐 [authRoutes] Headers:', {
+    authorization: req.headers.authorization ? 'present' : 'missing',
+    'content-type': req.headers['content-type']
+  });
+  console.log('🔐 [authRoutes] Body:', { email: req.body.email });
+  next();
+}, 
+  ValidationMiddleware.validateBody(authValidation.forgotPassword),
+  AuthController.forgotPassword
+);
+
+router.post('/verify-otp',
+  ValidationMiddleware.validateBody(authValidation.verifyOTP),
+  AuthController.verifyOTP
+);
+
+router.post('/reset-password',
+  ValidationMiddleware.validateBody(authValidation.resetPasswordWithOTP),
+  AuthController.resetPasswordWithOTP
+);
+
 // Protected routes (require authentication)
 router.use(AuthMiddleware.authenticate);
 

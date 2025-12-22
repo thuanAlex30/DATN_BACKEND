@@ -9,43 +9,28 @@ const mongoose = require('mongoose');
 
 class TrainingRepository {
     // ========== Course Set Operations ==========
-    async getAllCourseSets(tenantId = null) {
-        const query = {};
-        if (tenantId) {
-            query.tenant_id = tenantId;
-        }
-        return await CourseSet.find(query).sort({ name: 1 });
+    async getAllCourseSets() {
+        return await CourseSet.find().sort({ name: 1 });
     }
 
-    async getCourseSetById(courseSetId, tenantId = null) {
+    async getCourseSetById(courseSetId) {
         if (!mongoose.Types.ObjectId.isValid(courseSetId)) {
             return null;
         }
-        const filter = { _id: courseSetId };
-        if (tenantId) {
-            filter.tenant_id = tenantId;
-        }
-        return await CourseSet.findOne(filter);
+        return await CourseSet.findById(courseSetId);
     }
 
-    async createCourseSet(courseSetData, tenantId = null) {
-        const courseSet = new CourseSet({
-            ...courseSetData,
-            ...(tenantId ? { tenant_id: tenantId } : {})
-        });
+    async createCourseSet(courseSetData) {
+        const courseSet = new CourseSet(courseSetData);
         return await courseSet.save();
     }
 
-    async updateCourseSet(courseSetId, courseSetData, tenantId = null) {
+    async updateCourseSet(courseSetId, courseSetData) {
         if (!mongoose.Types.ObjectId.isValid(courseSetId)) {
             throw new Error('Course set not found');
         }
-        const filter = { _id: courseSetId };
-        if (tenantId) {
-            filter.tenant_id = tenantId;
-        }
-        const courseSet = await CourseSet.findOneAndUpdate(
-            filter, 
+        const courseSet = await CourseSet.findByIdAndUpdate(
+            courseSetId, 
             courseSetData, 
             { new: true, runValidators: true }
         );
@@ -55,15 +40,11 @@ class TrainingRepository {
         return courseSet;
     }
 
-    async deleteCourseSet(courseSetId, tenantId = null) {
+    async deleteCourseSet(courseSetId) {
         if (!mongoose.Types.ObjectId.isValid(courseSetId)) {
             throw new Error('Course set not found');
         }
-        const filter = { _id: courseSetId };
-        if (tenantId) {
-            filter.tenant_id = tenantId;
-        }
-        const courseSet = await CourseSet.findOneAndDelete(filter);
+        const courseSet = await CourseSet.findByIdAndDelete(courseSetId);
         if (!courseSet) {
             throw new Error('Course set not found');
         }
@@ -74,10 +55,7 @@ class TrainingRepository {
     async getAllCourses(filters = {}, tenantId = null) {
         const query = {};
         
-<<<<<<< HEAD
-=======
         // ✅ Tenant filter cho courses
->>>>>>> ThuanDH30
         if (tenantId) {
             query.tenant_id = tenantId;
         }
@@ -115,18 +93,10 @@ class TrainingRepository {
                 department_id: departmentId,
                 status: 'active'
             };
-<<<<<<< HEAD
-            
-            if (tenantId) {
-                assignmentQuery.tenant_id = tenantId;
-            }
-            
-=======
             // ✅ Tenant filter
             if (tenantId) {
                 assignmentQuery.tenant_id = tenantId;
             }
->>>>>>> ThuanDH30
             const assignments = await TrainingAssignment.find(assignmentQuery).populate('course_id');
 
             // Filter courses that are deployed and belong to tenant
@@ -165,16 +135,6 @@ class TrainingRepository {
         if (!mongoose.Types.ObjectId.isValid(courseId)) {
             return null;
         }
-<<<<<<< HEAD
-        const filter = { _id: courseId };
-        if (tenantId) {
-            filter.tenant_id = tenantId;
-        }
-        return await Course.findOne(filter).populate('course_set_id', 'name');
-    }
-
-    async createCourse(courseData, tenantId = null) {
-=======
         const query = { _id: courseId };
         // ✅ Tenant filter
         if (tenantId) {
@@ -185,7 +145,6 @@ class TrainingRepository {
 
     async createCourse(courseData, tenantId = null) {
         // ✅ Tự động set tenant_id nếu có
->>>>>>> ThuanDH30
         const course = new Course({
             ...courseData,
             ...(tenantId ? { tenant_id: tenantId } : {})
@@ -197,14 +156,6 @@ class TrainingRepository {
         if (!mongoose.Types.ObjectId.isValid(courseId)) {
             throw new Error('Course not found');
         }
-<<<<<<< HEAD
-        const filter = { _id: courseId };
-        if (tenantId) {
-            filter.tenant_id = tenantId;
-        }
-        const course = await Course.findOneAndUpdate(
-            filter, 
-=======
         const query = { _id: courseId };
         // ✅ Tenant filter
         if (tenantId) {
@@ -216,7 +167,6 @@ class TrainingRepository {
         }
         const course = await Course.findOneAndUpdate(
             query, 
->>>>>>> ThuanDH30
             courseData, 
             { new: true, runValidators: true }
         ).populate('course_set_id', 'name');
@@ -230,60 +180,16 @@ class TrainingRepository {
         if (!mongoose.Types.ObjectId.isValid(courseId)) {
             throw new Error('Course not found');
         }
-<<<<<<< HEAD
-        
-        const filter = { _id: courseId };
-        if (tenantId) {
-            filter.tenant_id = tenantId;
-        }
-        
-        // Check if course exists
-        const course = await Course.findOne(filter);
-=======
         const query = { _id: courseId };
         // ✅ Tenant filter
         if (tenantId) {
             query.tenant_id = tenantId;
         }
         const course = await Course.findOneAndDelete(query);
->>>>>>> ThuanDH30
         if (!course) {
             throw new Error('Course not found');
         }
-
-        // Check for related data
-        const sessionQuery = { course_id: courseId };
-        const questionBankQuery = { course_id: courseId }; // QuestionBank doesn't have tenant_id
-        const assignmentQuery = { course_id: courseId };
-        const prerequisiteQuery = { prerequisite_course_ids: courseId };
-        
-        if (tenantId) {
-            sessionQuery.tenant_id = tenantId;
-            assignmentQuery.tenant_id = tenantId;
-            prerequisiteQuery.tenant_id = tenantId;
-        }
-
-        const [sessions, questionBanks, assignments, coursesWithPrerequisite] = await Promise.all([
-            TrainingSession.countDocuments(sessionQuery),
-            QuestionBank.countDocuments(questionBankQuery),
-            TrainingAssignment.countDocuments(assignmentQuery),
-            Course.countDocuments(prerequisiteQuery)
-        ]);
-
-        // Build error message if there are related data
-        const relatedData = [];
-        if (sessions > 0) relatedData.push(`${sessions} buổi đào tạo`);
-        if (questionBanks > 0) relatedData.push(`${questionBanks} ngân hàng câu hỏi`);
-        if (assignments > 0) relatedData.push(`${assignments} gán khóa học`);
-        if (coursesWithPrerequisite > 0) relatedData.push(`${coursesWithPrerequisite} khóa học khác đang sử dụng làm prerequisite`);
-
-        if (relatedData.length > 0) {
-            throw new Error(`Không thể xóa khóa học này vì đang được sử dụng bởi: ${relatedData.join(', ')}. Vui lòng xóa các dữ liệu liên quan trước.`);
-        }
-
-        // If no related data, proceed with deletion
-        const deletedCourse = await Course.findOneAndDelete(filter);
-        return deletedCourse;
+        return course;
     }
 
     // ========== Training Session Operations ==========
@@ -459,12 +365,8 @@ class TrainingRepository {
     async getAllEnrollments(filters = {}, tenantId = null) {
         const query = {};
         
-        if (tenantId) {
-            query.tenant_id = tenantId;
-        }
-        
-        if (filters.courseId) {
-            query.course_id = filters.courseId;
+        if (filters.sessionId) {
+            query.session_id = filters.sessionId;
         }
         
         if (filters.userId) {
@@ -475,16 +377,6 @@ class TrainingRepository {
             query.status = filters.status;
         }
 
-<<<<<<< HEAD
-        if (filters.assignedBy) {
-            query.assigned_by = filters.assignedBy;
-        }
-
-        return await TrainingEnrollment.find(query)
-            .populate({
-                path: 'course_id',
-                select: 'course_name description duration_hours is_mandatory validity_months course_set_id is_deployed'
-=======
         // ✅ Tenant filter cho enrollment qua session.tenant_id
         let enrollmentQuery = TrainingEnrollment.find(query);
         
@@ -510,10 +402,8 @@ class TrainingRepository {
                     path: 'course_id',
                     select: 'course_name description duration_hours is_mandatory validity_months course_set_id'
                 }
->>>>>>> ThuanDH30
             })
             .populate('user_id', 'full_name email')
-            .populate('assigned_by', 'full_name email')
             .sort({ enrolled_at: -1 });
     }
 
@@ -521,98 +411,61 @@ class TrainingRepository {
         return await this.getAllEnrollments(filters, tenantId);
     }
 
-    async getEnrollmentById(enrollmentId, tenantId = null) {
+    async getEnrollmentById(enrollmentId) {
         if (!mongoose.Types.ObjectId.isValid(enrollmentId)) {
             return null;
         }
-        const filter = { _id: enrollmentId };
-        if (tenantId) {
-            filter.tenant_id = tenantId;
-        }
-        return await TrainingEnrollment.findOne(filter)
-            .populate('course_id', 'course_name description duration_hours is_mandatory validity_months')
-            .populate('user_id', 'full_name email')
-            .populate('assigned_by', 'full_name email');
+        return await TrainingEnrollment.findById(enrollmentId)
+            .populate('session_id', 'session_name start_time end_time')
+            .populate('user_id', 'full_name email');
     }
 
-    async getTrainingEnrollmentById(enrollmentId, tenantId = null) {
-        return await this.getEnrollmentById(enrollmentId, tenantId);
+    async getTrainingEnrollmentById(enrollmentId) {
+        return await this.getEnrollmentById(enrollmentId);
     }
 
-    async createEnrollment(enrollmentData, tenantId = null) {
-        const enrollment = new TrainingEnrollment({
-            ...enrollmentData,
-            ...(tenantId ? { tenant_id: tenantId } : {})
-        });
+    async createEnrollment(enrollmentData) {
+        const enrollment = new TrainingEnrollment(enrollmentData);
         return await enrollment.save();
     }
 
-    async createTrainingEnrollment(enrollmentData, tenantId = null) {
-        // Check if user is already enrolled in this course
-        const existingEnrollment = await this.getEnrollmentByUserAndCourse(
-            enrollmentData.user_id,
-            enrollmentData.course_id,
-            tenantId
-        );
-        if (existingEnrollment) {
-            throw new Error('User is already enrolled in this course');
-        }
-
-        // Verify course exists and is deployed
-        const course = await this.getCourseById(enrollmentData.course_id, tenantId);
-        if (!course) {
-            throw new Error('Course not found');
-        }
-
-        if (!course.is_deployed) {
-            throw new Error('Course is not deployed yet');
-        }
-
-        return await this.createEnrollment(enrollmentData, tenantId);
+    async createTrainingEnrollment(enrollmentData) {
+        return await this.createEnrollment(enrollmentData);
     }
 
-    async updateEnrollment(enrollmentId, enrollmentData, tenantId = null) {
+    async updateEnrollment(enrollmentId, enrollmentData) {
         if (!mongoose.Types.ObjectId.isValid(enrollmentId)) {
             throw new Error('Training enrollment not found');
         }
-        const filter = { _id: enrollmentId };
-        if (tenantId) {
-            filter.tenant_id = tenantId;
-        }
-        const enrollment = await TrainingEnrollment.findOneAndUpdate(
-            filter, 
+        const enrollment = await TrainingEnrollment.findByIdAndUpdate(
+            enrollmentId, 
             enrollmentData, 
             { new: true, runValidators: true }
-        ).populate('course_id', 'course_name description duration_hours is_mandatory validity_months')
-         .populate('user_id', 'full_name email')
-         .populate('assigned_by', 'full_name email');
+        ).populate('session_id', 'session_name start_time end_time')
+         .populate('user_id', 'full_name email');
         if (!enrollment) {
             throw new Error('Training enrollment not found');
         }
         return enrollment;
     }
 
-    async updateTrainingEnrollment(enrollmentId, enrollmentData, tenantId = null) {
-        return await this.updateEnrollment(enrollmentId, enrollmentData, tenantId);
+    async updateTrainingEnrollment(enrollmentId, enrollmentData) {
+        return await this.updateEnrollment(enrollmentId, enrollmentData);
     }
 
-    async deleteEnrollment(enrollmentId, tenantId = null) {
+    async deleteEnrollment(enrollmentId) {
         if (!mongoose.Types.ObjectId.isValid(enrollmentId)) {
             throw new Error('Training enrollment not found');
         }
-        const filter = { _id: enrollmentId };
-        if (tenantId) {
-            filter.tenant_id = tenantId;
-        }
-        const enrollment = await TrainingEnrollment.findOneAndDelete(filter);
+        const enrollment = await TrainingEnrollment.findByIdAndDelete(enrollmentId);
         if (!enrollment) {
             throw new Error('Training enrollment not found');
         }
         return enrollment;
     }
 
-    async deleteTrainingEnrollment(enrollmentId, tenantId = null) {
-        return await this.deleteEnrollment(enrollmentId, tenantId);
+    async deleteTrainingEnrollment(enrollmentId) {
+        return await this.deleteEnrollment(enrollmentId);
     }
 
     // ========== Question Bank Operations ==========
@@ -719,11 +572,6 @@ class TrainingRepository {
         try {
             const XLSX = require('xlsx');
             
-            // Validate file exists
-            if (!file || !file.path) {
-                throw new Error('File not found or invalid');
-            }
-
             console.log('File info:', {
                 path: file.path,
                 originalname: file.originalname,
@@ -731,118 +579,56 @@ class TrainingRepository {
                 size: file.size
             });
             
-            // Validate file extension
-            const allowedExtensions = ['.xlsx', '.xls'];
-            const fileExtension = file.originalname.toLowerCase().substring(file.originalname.lastIndexOf('.'));
-            if (!allowedExtensions.includes(fileExtension)) {
-                throw new Error(`Invalid file type. Only ${allowedExtensions.join(', ')} files are allowed.`);
-            }
-            
             // Read Excel file
-            let workbook;
-            try {
-                workbook = XLSX.readFile(file.path);
-            } catch (error) {
-                throw new Error(`Failed to read Excel file: ${error.message}`);
-            }
-
-            if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-                throw new Error('Excel file has no sheets');
-            }
-
+            const workbook = XLSX.readFile(file.path);
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
             const data = XLSX.utils.sheet_to_json(worksheet);
 
-            if (!data || data.length === 0) {
-                throw new Error('Excel file is empty or has no data');
-            }
-
-            console.log(`Found ${data.length} rows in Excel file`);
+            console.log('Excel data:', data);
 
             const questions = [];
-            const errors = [];
-            let rowNumber = 2; // Start from row 2 (row 1 is header)
             
             for (const row of data) {
-                try {
-                    // Expected columns: question_text, question_type, options, correct_answer, explanation, difficulty_level, points
-                    if (!row.question_text || !row.options || !row.correct_answer) {
-                        errors.push(`Dòng ${rowNumber}: Thiếu thông tin bắt buộc (question_text, options, correct_answer)`);
-                        rowNumber++;
-                        continue;
-                    }
-
-                    // Parse options from pipe-separated string
-                    const optionsString = String(row.options).trim();
-                    const options = optionsString.split('|').map(option => option.trim()).filter(option => option !== '');
-                    
-                    if (options.length < 2) {
-                        errors.push(`Dòng ${rowNumber}: Cần ít nhất 2 lựa chọn (options)`);
-                        rowNumber++;
-                        continue;
-                    }
-
-                    // Validate correct_answer is one of the options
-                    const correctAnswer = String(row.correct_answer).trim();
-                    if (!options.includes(correctAnswer)) {
-                        errors.push(`Dòng ${rowNumber}: Đáp án đúng "${correctAnswer}" không khớp với bất kỳ lựa chọn nào`);
-                        rowNumber++;
-                        continue;
-                    }
-
-                    // Validate difficulty_level
-                    const difficultyLevel = row.difficulty_level ? String(row.difficulty_level).toUpperCase() : 'MEDIUM';
-                    if (!['EASY', 'MEDIUM', 'HARD'].includes(difficultyLevel)) {
-                        errors.push(`Dòng ${rowNumber}: Mức độ khó không hợp lệ (phải là EASY, MEDIUM, hoặc HARD)`);
-                        rowNumber++;
-                        continue;
-                    }
-
-                    // Validate points
-                    const points = parseInt(row.points) || 1;
-                    if (points < 1 || points > 10) {
-                        errors.push(`Dòng ${rowNumber}: Điểm số phải từ 1 đến 10`);
-                        rowNumber++;
-                        continue;
-                    }
-
-                    const questionData = {
-                        bank_id: bankId,
-                        content: String(row.question_text).trim(),
-                        question_type: row.question_type || 'MULTIPLE_CHOICE',
-                        options: options,
-                        correct_answer: correctAnswer,
-                        explanation: row.explanation ? String(row.explanation).trim() : '',
-                        difficulty_level: difficultyLevel,
-                        points: points
-                    };
-
-                    const question = new Question(questionData);
-                    await question.save();
-                    questions.push(question);
-                } catch (rowError) {
-                    errors.push(`Dòng ${rowNumber}: ${rowError.message || 'Lỗi không xác định'}`);
+                // Expected columns: question_text, question_type, options, correct_answer, explanation, difficulty_level, points
+                if (!row.question_text || !row.options || !row.correct_answer) {
+                    console.log('Skipping invalid row:', row);
+                    continue; // Skip invalid rows
                 }
-                rowNumber++;
-            }
 
-            if (questions.length === 0 && errors.length > 0) {
-                throw new Error(`Không thể import câu hỏi nào. Lỗi:\n${errors.join('\n')}`);
-            }
+                // Parse options from pipe-separated string
+                const options = row.options.split('|').map(option => option.trim()).filter(option => option !== '');
+                
+                if (options.length < 2) {
+                    console.log('Skipping row with less than 2 options:', row);
+                    continue; // Skip if less than 2 options
+                }
 
-            if (errors.length > 0) {
-                console.warn(`Import completed with ${errors.length} errors:\n${errors.join('\n')}`);
+                // Validate correct_answer is one of the options
+                const correctAnswer = row.correct_answer.trim();
+                if (!options.includes(correctAnswer)) {
+                    console.warn(`Correct answer "${correctAnswer}" not found in options for question: ${row.question_text}`);
+                    continue; // Skip if correct answer doesn't match any option
+                }
+
+                const questionData = {
+                    bank_id: bankId,
+                    content: row.question_text,
+                    question_type: row.question_type || 'MULTIPLE_CHOICE',
+                    options: options,
+                    correct_answer: correctAnswer,
+                    explanation: row.explanation || '',
+                    difficulty_level: row.difficulty_level || 'MEDIUM',
+                    points: parseInt(row.points) || 1
+                };
+
+                const question = new Question(questionData);
+                await question.save();
+                questions.push(question);
             }
 
             console.log(`Successfully imported ${questions.length} questions`);
-            return {
-                questions,
-                errors: errors.length > 0 ? errors : undefined,
-                totalRows: data.length,
-                importedRows: questions.length,
-                failedRows: errors.length
-            };
+            return questions;
         } catch (error) {
             console.error('Error in importQuestionsFromExcel:', error);
             throw error;
@@ -881,23 +667,18 @@ class TrainingRepository {
             throw new Error('Course not found');
         }
 
-        // Count enrollments directly by course_id
-        const enrollmentCount = await TrainingEnrollment.countDocuments({ course_id: courseId });
-        
-        // Count enrollments by status
-        const enrollmentStats = await TrainingEnrollment.aggregate([
-            { $match: { course_id: new mongoose.Types.ObjectId(courseId) } },
-            { $group: { _id: '$status', count: { $sum: 1 } } }
+        const [sessionCount, enrollmentCount] = await Promise.all([
+            TrainingSession.countDocuments({ course_id: courseId }),
+            TrainingEnrollment.countDocuments({ 
+                session_id: { $in: await TrainingSession.find({ course_id: courseId }).distinct('_id') }
+            })
         ]);
 
         return {
             courseId,
             courseName: course.course_name,
-            enrollmentCount,
-            enrollmentStats: enrollmentStats.reduce((acc, stat) => {
-                acc[stat._id] = stat.count;
-                return acc;
-            }, {})
+            sessionCount,
+            enrollmentCount
         };
     }
 
@@ -957,22 +738,8 @@ class TrainingRepository {
             throw new Error('Course not found');
         }
 
-        const questionBanks = await QuestionBank.find({ course_id: courseId })
-            .populate('course_id', 'course_name')
-            .sort({ created_at: -1 });
-        
-        // Get question count for each bank
-        const banksWithCounts = await Promise.all(
-            questionBanks.map(async (bank) => {
-                const questionCount = await Question.countDocuments({ bank_id: bank._id });
-                return {
-                    ...bank.toObject(),
-                    questionCount
-                };
-            })
-        );
-        
-        return banksWithCounts;
+        const questionBanks = await QuestionBank.find({ course_id: courseId });
+        return questionBanks;
     }
 
     async getSessionStats() {
@@ -1012,73 +779,12 @@ class TrainingRepository {
     }
 
     // ========== Start Training Operations ==========
-    async getEnrollmentByUserAndCourse(userId, courseId, tenantId = null) {
-        const query = {
+    async getEnrollmentByUserAndSession(userId, sessionId) {
+        return await TrainingEnrollment.findOne({
             user_id: userId,
-            course_id: courseId
-        };
-        if (tenantId) {
-            query.tenant_id = tenantId;
-        }
-        return await TrainingEnrollment.findOne(query)
-            .populate('course_id', 'course_name description duration_hours is_mandatory validity_months')
-            .populate('user_id', 'full_name email')
-            .populate('assigned_by', 'full_name email');
-    }
-
-    // Keep old method for backward compatibility (deprecated)
-    async getEnrollmentByUserAndSession(userId, sessionId, tenantId = null) {
-        // This method is deprecated - use getEnrollmentByUserAndCourse instead
-        console.warn('getEnrollmentByUserAndSession is deprecated. Use getEnrollmentByUserAndCourse instead.');
-        return null;
-    }
-
-    /**
-     * Check if user has completed all prerequisite courses
-     * @param {String} userId - User ID
-     * @param {String} courseId - Course ID to check prerequisites for
-     * @param {String} tenantId - Optional tenant ID
-     * @returns {Object} { passed: boolean, missing: Array<String> }
-     */
-    async checkPrerequisites(userId, courseId, tenantId = null) {
-        const course = await this.getCourseById(courseId, tenantId);
-        if (!course) {
-            throw new Error('Course not found');
-        }
-
-        // If no prerequisites, return passed
-        if (!course.prerequisite_course_ids || course.prerequisite_course_ids.length === 0) {
-            return { passed: true, missing: [] };
-        }
-
-        // Get completed enrollments for user in prerequisite courses (directly by course_id)
-        const enrollmentQuery = {
-            user_id: userId,
-            course_id: { $in: course.prerequisite_course_ids },
-            status: 'completed',
-            passed: true
-        };
-        if (tenantId) {
-            enrollmentQuery.tenant_id = tenantId;
-        }
-
-        const completedEnrollments = await TrainingEnrollment.find(enrollmentQuery)
-            .select('course_id');
-
-        // Get unique course IDs that user has completed
-        const completedCourseIds = new Set(
-            completedEnrollments.map(e => e.course_id.toString())
-        );
-
-        // Check which prerequisites are missing
-        const missingPrerequisites = course.prerequisite_course_ids.filter(
-            prereqId => !completedCourseIds.has(prereqId.toString())
-        );
-
-        return {
-            passed: missingPrerequisites.length === 0,
-            missing: missingPrerequisites
-        };
+            session_id: sessionId
+        }).populate('session_id', 'session_name start_time end_time status_code location')
+          .populate('user_id', 'full_name email');
     }
 
     async getQuestionBankByCourseId(courseId) {
@@ -1130,18 +836,11 @@ class TrainingRepository {
     }
 
     async createTrainingAssignment(assignmentData) {
-        // Check if assignment already exists (including tenant_id for multi-tenant support)
-        const query = {
+        // Check if assignment already exists
+        const existingAssignment = await TrainingAssignment.findOne({
             course_id: assignmentData.course_id,
             department_id: assignmentData.department_id
-        };
-        
-        // Include tenant_id in duplicate check if provided
-        if (assignmentData.tenant_id) {
-            query.tenant_id = assignmentData.tenant_id;
-        }
-        
-        const existingAssignment = await TrainingAssignment.findOne(query);
+        });
 
         if (existingAssignment) {
             throw new Error('Course is already assigned to this department');
