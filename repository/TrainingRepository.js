@@ -377,19 +377,35 @@ class TrainingRepository {
             query.status = filters.status;
         }
 
+<<<<<<< HEAD
         // ✅ Tenant filter cho enrollment qua session.tenant_id
+=======
+        // ✅ Tenant filter cho enrollment: hỗ trợ cả mô hình cũ (session) và mới (course)
+>>>>>>> feat/Vu
         let enrollmentQuery = TrainingEnrollment.find(query);
         
         if (tenantId) {
-            // Filter enrollments by sessions that belong to the tenant
-            const sessionIds = await TrainingSession.find({ tenant_id: tenantId }).distinct('_id');
+            // Lấy danh sách session và course thuộc tenant
+            const [sessionIds, courseIds] = await Promise.all([
+                TrainingSession.find({ tenant_id: tenantId }).distinct('_id'),
+                Course.find({ tenant_id: tenantId }).distinct('_id'),
+            ]);
+
+            const orConditions = [];
             if (sessionIds.length > 0) {
+                orConditions.push({ session_id: { $in: sessionIds } });
+            }
+            if (courseIds.length > 0) {
+                orConditions.push({ course_id: { $in: courseIds } });
+            }
+
+            if (orConditions.length > 0) {
                 enrollmentQuery = TrainingEnrollment.find({
                     ...query,
-                    session_id: { $in: sessionIds }
+                    $or: orConditions,
                 });
             } else {
-                // No sessions for this tenant, return empty array
+                // Tenant chưa có session/course nào → không có enrollment
                 return [];
             }
         }
@@ -398,12 +414,27 @@ class TrainingRepository {
             .populate({
                 path: 'session_id',
                 select: 'session_name start_time end_time course_id tenant_id',
+                strictPopulate: false,
                 populate: {
                     path: 'course_id',
                     select: 'course_name description duration_hours is_mandatory validity_months course_set_id'
                 }
             })
+<<<<<<< HEAD
             .populate('user_id', 'full_name email')
+=======
+            // Populate course_id directly for course-based enrollments (no session)
+            .populate('course_id', 'course_name description duration_hours is_mandatory validity_months course_set_id')
+            .populate({
+                path: 'user_id',
+                select: 'full_name email department_id',
+                populate: {
+                    path: 'department_id',
+                    select: 'department_name'
+                }
+            })
+            .populate('assigned_by', 'full_name email')
+>>>>>>> feat/Vu
             .sort({ enrolled_at: -1 });
     }
 
