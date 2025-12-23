@@ -7,7 +7,7 @@ const crypto = require('crypto');
  * Implements Digest Auth similar to Python's requests with HTTPDigestAuth
  * 
  * Environment Variables (optional, defaults shown):
- * - HIKVISION_BASE_URL: Base URL of Hikvision device (default: http://192.168.1.19:80)
+ * - HIKVISION_BASE_URL: (was configurable via env) now hardcoded in this file to http://172.20.10.13:80
  * - HIKVISION_USERNAME: Username for Digest Auth (default: admin)
  * - HIKVISION_PASSWORD: Password for Digest Auth (default: 12345678A)
  */
@@ -15,7 +15,8 @@ class HikvisionService {
   constructor(config = {}) {
     // Default Hikvision configuration
     // Can be overridden via constructor config or environment variables
-    this.baseURL = config.baseURL || process.env.HIKVISION_BASE_URL || 'http://192.168.1.3:80';
+    // Hardcode base URL as requested (do not rely on environment variable)
+    this.baseURL = config.baseURL || '172.20.10.13';
     this.username = config.username || process.env.HIKVISION_USERNAME || 'admin';
     this.password = config.password || process.env.HIKVISION_PASSWORD || '12345678A';
     this.timeout = config.timeout || 30000; // 30 seconds
