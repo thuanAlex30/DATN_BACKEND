@@ -15,7 +15,8 @@ class HikvisionService {
   constructor(config = {}) {
     // Default Hikvision configuration
     // Can be overridden via constructor config or environment variables
-    this.baseURL = config.baseURL || process.env.HIKVISION_BASE_URL || 'http://192.168.1.3:80';
+    // Hardcode base URL as requested (do not rely on environment variable)
+    this.baseURL = config.baseURL || 'http://172.20.10.13';
     this.username = config.username || process.env.HIKVISION_USERNAME || 'admin';
     this.password = config.password || process.env.HIKVISION_PASSWORD || '12345678A';
     this.timeout = config.timeout || 30000; // 30 seconds
