@@ -75,18 +75,31 @@ function transformDocumentId(doc, populatedFields = []) {
   if (!doc) return doc;
   
   // Use safe cloning to avoid ObjectId serialization issues
+  // IMPORTANT: Don't use JSON.stringify for populated fields as it will convert objects to strings
   let docObj;
   try {
     docObj = doc.toObject ? doc.toObject() : doc;
+    // Use safeClone but preserve populated objects
     docObj = safeClone(docObj);
+    
+    // Log populated fields before cloning to debug
+    if (populatedFields.length > 0) {
+      populatedFields.forEach(field => {
+        if (docObj[field]) {
+          console.log(`🔍 Before clone - ${field}:`, {
+            type: typeof docObj[field],
+            isObject: typeof docObj[field] === 'object',
+            hasId: docObj[field]._id ? true : false,
+            keys: typeof docObj[field] === 'object' ? Object.keys(docObj[field]) : null
+          });
+        }
+      });
+    }
   } catch (error) {
     console.warn('Error cloning document, using fallback:', error.message);
-    docObj = JSON.parse(JSON.stringify(doc, (key, value) => {
-      if (value && typeof value === 'object' && value.constructor && value.constructor.name === 'ObjectId') {
-        return value.toString();
-      }
-      return value;
-    }));
+    // For populated fields, we need to preserve objects, so use a different approach
+    docObj = doc.toObject ? doc.toObject() : doc;
+    // Don't use JSON.stringify as it will convert populated objects incorrectly
   }
   
   // Transform main _id to id
@@ -107,8 +120,22 @@ function transformDocumentId(doc, populatedFields = []) {
       // Check if it's a populated object (has _id and other fields)
       if (docObj[field]._id && Object.keys(docObj[field]).length > 1) {
         try {
+          // Transform the populated object's _id to id
           docObj[field].id = safeObjectIdToString(docObj[field]._id);
           delete docObj[field]._id;
+          
+          // Recursively transform nested populated fields
+          // For user_id, transform nested role_id and department_id
+          if (field === 'user_id') {
+            if (docObj[field].role_id && typeof docObj[field].role_id === 'object' && docObj[field].role_id._id) {
+              docObj[field].role_id.id = safeObjectIdToString(docObj[field].role_id._id);
+              delete docObj[field].role_id._id;
+            }
+            if (docObj[field].department_id && typeof docObj[field].department_id === 'object' && docObj[field].department_id._id) {
+              docObj[field].department_id.id = safeObjectIdToString(docObj[field].department_id._id);
+              delete docObj[field].department_id._id;
+            }
+          }
         } catch (error) {
           console.error(`Error transforming ${field}._id to string:`, error.message);
           docObj[field].id = 'invalid_id';
@@ -142,9 +169,26 @@ function transformDocumentId(doc, populatedFields = []) {
     if (key.endsWith('_id') && docObj[key] && typeof docObj[key] === 'object') {
       // Skip if this field was already processed as a populated field
       if (populatedFields.includes(key)) {
+        // Double check: if it's a populated field but was converted to string, log warning
+        if (typeof docObj[key] === 'string') {
+          console.warn(`⚠️ Populated field ${key} was converted to string, this should not happen!`);
+        }
         return;
       }
       
+      // Check if it's a populated object (has _id and other fields) - don't convert to string
+      if (docObj[key]._id && Object.keys(docObj[key]).length > 1) {
+        // This is a populated object, transform its _id to id but keep the object
+        try {
+          docObj[key].id = safeObjectIdToString(docObj[key]._id);
+          delete docObj[key]._id;
+        } catch (error) {
+          console.error(`Error transforming ${key}._id to string:`, error.message);
+        }
+        return;
+      }
+      
+      // Only convert to string if it's a plain ObjectId (not populated)
       try {
         docObj[key] = safeObjectIdToString(docObj[key]);
       } catch (error) {

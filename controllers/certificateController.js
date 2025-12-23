@@ -18,12 +18,16 @@ class CertificateController {
                 });
             }
 
+            const tenantId = req.user?.tenant_id;
+            const userRole = req.user?.role || {};
+            const roleName = userRole.role_name || userRole.role_code || null;
+
             const certificateData = {
                 ...req.body,
                 createdBy: req.user.id
             };
 
-            const result = await certificateService.createCertificate(certificateData, req.user.id, req.user.role.role_name);
+            const result = await certificateService.createCertificate(certificateData, req.user.id, userRole, tenantId);
             
             // Emit Kafka event for certificate created
             if (result.statusCode < 400 && result.data) {
@@ -69,7 +73,54 @@ class CertificateController {
     // Lấy danh sách chứng chỉ (role-based)
     static async getCertificates(req, res) {
         try {
-            const result = await certificateService.getAllCertificates(req.query, req.query, req.user.role.role_name);
+            const tenantId = req.user?.tenant_id;
+            const userRole = req.user?.role || {};
+            const roleName = userRole.role_name || userRole.role_code || null;
+            
+            // Separate filters from options
+            const { page, limit, q, category, status, priority, ...otherFilters } = req.query;
+            
+            // Build filters (excluding pagination and search)
+            const filters = {};
+            if (q) filters.q = q; // Search query
+            if (category) filters.category = category;
+            if (status) filters.status = status;
+            if (priority) filters.priority = priority;
+            // Add other filters if needed (but exclude known non-filter fields)
+            // Remove any undefined/null values from otherFilters
+            Object.keys(otherFilters).forEach(key => {
+                if (otherFilters[key] !== undefined && otherFilters[key] !== null && otherFilters[key] !== '') {
+                    filters[key] = otherFilters[key];
+                }
+            });
+            
+            // Build options for pagination
+            const options = {
+                page: page ? parseInt(page) : 1,
+                limit: limit ? parseInt(limit) : 10,
+                sort: { createdAt: -1 }
+            };
+            
+            // Ensure page and limit are positive numbers
+            if (isNaN(options.page) || options.page < 1) options.page = 1;
+            if (isNaN(options.limit) || options.limit < 1) options.limit = 10;
+            
+            console.log('🔍 CertificateController.getCertificates:', {
+                query: req.query,
+                filters,
+                options,
+                tenantId,
+                userRole: roleName
+            });
+            
+            const result = await certificateService.getAllCertificates(filters, options, userRole, tenantId);
+            
+            console.log('✅ CertificateController result:', {
+                statusCode: result.statusCode,
+                dataCount: result.data?.data?.length || 0,
+                total: result.data?.pagination?.total || 0
+            });
+            
             res.status(result.statusCode).json({
                 success: result.statusCode < 400,
                 message: result.message,
@@ -88,7 +139,9 @@ class CertificateController {
     static async getCertificateById(req, res) {
         try {
             const { id } = req.params;
-            const result = await certificateService.getCertificateById(id);
+            const tenantId = req.user?.tenant_id;
+            
+            const result = await certificateService.getCertificateById(id, tenantId);
             res.status(result.statusCode).json({
                 success: result.statusCode < 400,
                 message: result.message,
@@ -116,12 +169,13 @@ class CertificateController {
             }
 
             const { id } = req.params;
+            const tenantId = req.user?.tenant_id;
             const updateData = {
                 ...req.body,
                 updatedBy: req.user.id
             };
 
-            const result = await certificateService.updateCertificate(id, updateData);
+            const result = await certificateService.updateCertificate(id, updateData, tenantId);
             
             // Emit Kafka event for certificate updated
             if (result.statusCode < 400 && result.data) {
@@ -168,19 +222,20 @@ class CertificateController {
     static async deleteCertificate(req, res) {
         try {
             const { id } = req.params;
-            const result = await certificateService.deleteCertificate(id);
+            const tenantId = req.user?.tenant_id;
+            
+            // Get certificate data before deletion for events
+            const certificate = await Certificate.findById(id).lean();
+            
+            const result = await certificateService.deleteCertificate(id, tenantId);
             
             // Emit Kafka event for certificate deleted
-            if (result.statusCode < 400) {
+            if (result.statusCode < 400 && certificate) {
                 try {
                     const deleter = await User.findById(req.user.id).select('_id role full_name');
                     if (deleter) {
-                        // Get certificate data before deletion for Kafka event
-                        const certificate = await Certificate.findById(id).lean();
-                        if (certificate) {
-                            await CertificateEvents.emitCertificateDeleted(certificate, deleter);
-                            console.log(`📜 Certificate deleted Kafka event emitted for user: ${deleter._id}`);
-                        }
+                        await CertificateEvents.emitCertificateDeleted(certificate, deleter);
+                        console.log(`📜 Certificate deleted Kafka event emitted for user: ${deleter._id}`);
                     }
                 } catch (kafkaError) {
                     console.error('Failed to emit certificate deleted Kafka event:', kafkaError);
@@ -188,16 +243,12 @@ class CertificateController {
             }
 
             // Emit WebSocket notification for certificate deleted
-            if (result.statusCode < 400) {
+            if (result.statusCode < 400 && certificate) {
                 try {
                     const deleter = await User.findById(req.user.id).select('_id role full_name');
                     if (deleter) {
-                        // Get certificate data before deletion for WebSocket notification
-                        const certificate = await Certificate.findById(id).lean();
-                        if (certificate) {
-                            websocketService.emitCertificateDeleted(certificate, deleter);
-                            console.log(`📜 Certificate deleted WebSocket notification sent for user: ${deleter._id}`);
-                        }
+                        websocketService.emitCertificateDeleted(certificate, deleter);
+                        console.log(`📜 Certificate deleted WebSocket notification sent for user: ${deleter._id}`);
                     }
                 } catch (wsError) {
                     console.error('Failed to emit certificate deleted WebSocket notification:', wsError);
@@ -222,7 +273,9 @@ class CertificateController {
         try {
             const { category } = req.params;
             const { subCategory } = req.query;
-            const result = await certificateService.getCertificatesByCategory(category, subCategory);
+            const tenantId = req.user?.tenant_id;
+            
+            const result = await certificateService.getCertificatesByCategory(category, subCategory, tenantId);
             res.status(result.statusCode).json({
                 success: result.statusCode < 400,
                 message: result.message,
@@ -241,7 +294,9 @@ class CertificateController {
     static async getExpiringCertificates(req, res) {
         try {
             const { days = 30 } = req.query;
-            const result = await certificateService.getExpiringCertificates(parseInt(days));
+            const tenantId = req.user?.tenant_id;
+            
+            const result = await certificateService.getExpiringCertificates(parseInt(days), tenantId);
             res.status(result.statusCode).json({
                 success: result.statusCode < 400,
                 message: result.message,
@@ -259,7 +314,9 @@ class CertificateController {
     // Lấy thống kê chứng chỉ
     static async getCertificateStats(req, res) {
         try {
-            const result = await certificateService.getCertificateStats();
+            const tenantId = req.user?.tenant_id;
+            
+            const result = await certificateService.getCertificateStats(tenantId);
             res.status(result.statusCode).json({
                 success: result.statusCode < 400,
                 message: result.message,
@@ -278,6 +335,7 @@ class CertificateController {
     static async searchCertificates(req, res) {
         try {
             const { q: query, category, tags, page = 1, limit = 10 } = req.query;
+            const tenantId = req.user?.tenant_id;
             const filters = {};
             if (category) filters.category = category;
             if (tags) filters.tags = tags;
@@ -285,7 +343,7 @@ class CertificateController {
             const result = await certificateService.searchCertificates(query, filters, {
                 page: parseInt(page),
                 limit: parseInt(limit)
-            });
+            }, tenantId);
             res.status(result.statusCode).json({
                 success: result.statusCode < 400,
                 message: result.message,
@@ -305,7 +363,9 @@ class CertificateController {
         try {
             const { id } = req.params;
             const { reminderSettings } = req.body;
-            const result = await certificateService.updateReminderSettings(id, reminderSettings);
+            const tenantId = req.user?.tenant_id;
+            
+            const result = await certificateService.updateReminderSettings(id, reminderSettings, tenantId);
             
             // Emit Kafka event for reminder settings updated
             if (result.statusCode < 400 && result.data) {
@@ -352,7 +412,9 @@ class CertificateController {
         try {
             const { id } = req.params;
             const { renewalDate, notes } = req.body;
-            const result = await certificateService.renewCertificate(id, { renewalDate, notes });
+            const tenantId = req.user?.tenant_id;
+            
+            const result = await certificateService.renewCertificate(id, { renewalDate, notes }, tenantId);
             
             // Emit Kafka event for certificate renewed
             if (result.statusCode < 400 && result.data) {
@@ -545,11 +607,12 @@ class CertificateController {
                 });
             }
 
+            const tenantId = req.user?.tenant_id;
             let isDuplicate = false;
             let duplicateInfo = null;
 
             if (certificateName) {
-                const existing = await certificateService.findByName ? await certificateService.findByName(certificateName) : null;
+                const existing = await certificateService.findByName(certificateName, tenantId);
                 if (existing) {
                     isDuplicate = true;
                     duplicateInfo = { field: 'certificateName', value: certificateName };
@@ -557,7 +620,7 @@ class CertificateController {
             }
 
             if (certificateCode && !isDuplicate) {
-                const existing = await certificateService.findByCode ? await certificateService.findByCode(certificateCode) : null;
+                const existing = await certificateService.findByCode(certificateCode, tenantId);
                 if (existing) {
                     isDuplicate = true;
                     duplicateInfo = { field: 'certificateCode', value: certificateCode };

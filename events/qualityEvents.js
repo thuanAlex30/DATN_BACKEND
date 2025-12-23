@@ -62,7 +62,7 @@ class QualityEvents {
       }
       
       // Also send WebSocket for backward compatibility
-      await WebSocketService.broadcastToAll('quality_checkpoint_created', {
+      await WebSocketService.emitToAll('quality_checkpoint_created', {
         message: `New quality checkpoint "${checkpoint.name}" has been created`,
         checkpoint: eventData.checkpoint,
         createdBy: metadata.userFullName || 'System'
@@ -130,7 +130,7 @@ class QualityEvents {
       await kafkaProducer.sendQualityEvent('quality_checkpoint.updated', eventData);
 
       // Send WebSocket notification
-      await WebSocketService.broadcastToAll('quality_checkpoint_updated', {
+      await WebSocketService.emitToAll('quality_checkpoint_updated', {
         message: `Quality checkpoint "${newCheckpoint.name}" has been updated`,
         checkpoint: eventData.checkpoint,
         changes: Object.keys(changes),
@@ -140,7 +140,7 @@ class QualityEvents {
       // Special notification for status changes
       if (changes.status) {
         const statusMessage = `Quality checkpoint "${newCheckpoint.name}" status changed to ${changes.status.new}`;
-        await WebSocketService.broadcastToAll('quality_checkpoint_status_changed', {
+        await WebSocketService.emitToAll('quality_checkpoint_status_changed', {
           message: statusMessage,
           checkpoint: eventData.checkpoint,
           statusChange: changes.status,
@@ -151,7 +151,7 @@ class QualityEvents {
       // Special notification for assignment changes
       if (changes.assignedTo) {
         const assignmentMessage = `Quality checkpoint "${newCheckpoint.name}" has been reassigned`;
-        await WebSocketService.broadcastToAll('quality_checkpoint_reassigned', {
+        await WebSocketService.emitToAll('quality_checkpoint_reassigned', {
           message: assignmentMessage,
           checkpoint: eventData.checkpoint,
           assignmentChange: changes.assignedTo,
@@ -216,7 +216,7 @@ class QualityEvents {
       await kafkaProducer.sendQualityEvent('quality_checkpoint.deleted', eventData);
 
       // Send WebSocket notification
-      await WebSocketService.broadcastToAll('quality_checkpoint_deleted', {
+      await WebSocketService.emitToAll('quality_checkpoint_deleted', {
         message: `Quality checkpoint "${checkpoint.name}" has been deleted`,
         checkpoint: eventData.checkpoint,
         deletedBy: metadata.userFullName || 'System'
@@ -270,7 +270,7 @@ class QualityEvents {
       await kafkaProducer.sendQualityEvent('quality_checkpoint.completed', eventData);
 
       // Send WebSocket notification
-      await WebSocketService.broadcastToAll('quality_checkpoint_completed', {
+      await WebSocketService.emitToAll('quality_checkpoint_completed', {
         message: `Quality checkpoint "${checkpoint.name}" has been completed`,
         checkpoint: eventData.checkpoint,
         completedBy: metadata.userFullName || 'System'
@@ -325,7 +325,7 @@ class QualityEvents {
 
       // Send WebSocket notification
       const action = this.getStatusAction(newStatus);
-      await WebSocketService.broadcastToAll('quality_checkpoint_status_changed', {
+      await WebSocketService.emitToAll('quality_checkpoint_status_changed', {
         message: `Quality checkpoint "${checkpoint.name}" has been ${action}`,
         checkpoint: eventData.checkpoint,
         statusChange: eventData.statusChange,
@@ -369,7 +369,7 @@ class QualityEvents {
       await kafkaProducer.sendQualityEvent('quality_checkpoint.assigned', eventData);
 
       // Send WebSocket notification
-      await WebSocketService.broadcastToAll('quality_checkpoint_assigned', {
+      await WebSocketService.emitToAll('quality_checkpoint_assigned', {
         message: `Quality checkpoint "${checkpoint.name}" has been assigned`,
         checkpoint: eventData.checkpoint,
         assignedBy: metadata.userFullName || 'System'

@@ -307,6 +307,192 @@ class WebSocketService {
   }
 
   // ========================================
+  // CERTIFICATE NOTIFICATIONS
+  // ========================================
+
+  /**
+   * Emit event when a new certificate is created
+   * @param {Object} certificate - Certificate data
+   * @param {Object} creator - User who created the certificate
+   */
+  emitCertificateCreated(certificate, creator) {
+    if (!this.io || !certificate) return;
+
+    const payload = {
+      type: 'certificate_created',
+      title: 'Chứng chỉ mới được tạo',
+      message: `Chứng chỉ "${certificate.certificateName || certificate.name}" đã được tạo`,
+      certificate: {
+        id: certificate._id || certificate.id,
+        certificateName: certificate.certificateName,
+        certificateCode: certificate.certificateCode,
+        category: certificate.category,
+        status: certificate.status,
+        priority: certificate.priority
+      },
+      createdBy: creator ? {
+        id: creator._id || creator.id,
+        full_name: creator.full_name || creator.username || creator.email
+      } : null,
+      timestamp: new Date()
+    };
+
+    // Gửi cho tất cả người dùng có quyền quản lý chứng chỉ
+    this.emitToRole('department_header', 'certificate_notification', payload);
+    this.emitToRole('manager', 'certificate_notification', payload);
+    this.emitToRole('admin', 'certificate_notification', payload);
+  }
+
+  /**
+   * Emit event when a certificate is updated
+   * @param {Object} certificate - Updated certificate data
+   * @param {Object} updater - User who updated the certificate
+   */
+  emitCertificateUpdated(certificate, updater) {
+    if (!this.io || !certificate) return;
+
+    const payload = {
+      type: 'certificate_updated',
+      title: 'Chứng chỉ đã được cập nhật',
+      message: `Chứng chỉ "${certificate.certificateName || certificate.name}" đã được cập nhật`,
+      certificate: {
+        id: certificate._id || certificate.id,
+        certificateName: certificate.certificateName,
+        certificateCode: certificate.certificateCode,
+        category: certificate.category,
+        status: certificate.status,
+        priority: certificate.priority
+      },
+      updatedBy: updater ? {
+        id: updater._id || updater.id,
+        full_name: updater.full_name || updater.username || updater.email
+      } : null,
+      timestamp: new Date()
+    };
+
+    this.emitToRole('department_header', 'certificate_notification', payload);
+    this.emitToRole('manager', 'certificate_notification', payload);
+    this.emitToRole('admin', 'certificate_notification', payload);
+  }
+
+  /**
+   * Emit event when a certificate is renewed
+   * @param {Object} certificate - Renewed certificate data
+   * @param {Object} renewer - User who renewed the certificate
+   */
+  emitCertificateRenewed(certificate, renewer) {
+    if (!this.io || !certificate) return;
+
+    const payload = {
+      type: 'certificate_renewed',
+      title: 'Chứng chỉ đã được gia hạn',
+      message: `Chứng chỉ "${certificate.certificateName || certificate.name}" đã được gia hạn`,
+      certificate: {
+        id: certificate._id || certificate.id,
+        certificateName: certificate.certificateName,
+        certificateCode: certificate.certificateCode,
+        expiryDate: certificate.expiryDate,
+        lastRenewalDate: certificate.lastRenewalDate
+      },
+      renewedBy: renewer ? {
+        id: renewer._id || renewer.id,
+        full_name: renewer.full_name || renewer.username || renewer.email
+      } : null,
+      timestamp: new Date()
+    };
+
+    this.emitToRole('department_header', 'certificate_notification', payload);
+    this.emitToRole('manager', 'certificate_notification', payload);
+    this.emitToRole('admin', 'certificate_notification', payload);
+  }
+
+  /**
+   * Emit event when a certificate is expiring soon
+   * @param {Object} certificate - Certificate data
+   * @param {number} daysUntilExpiry - Days until expiry
+   */
+  emitCertificateExpiringSoon(certificate, daysUntilExpiry) {
+    if (!this.io || !certificate) return;
+
+    const payload = {
+      type: 'certificate_expiring_soon',
+      title: 'Chứng chỉ sắp hết hạn',
+      message: `Chứng chỉ "${certificate.certificateName || certificate.name}" sẽ hết hạn trong ${daysUntilExpiry} ngày`,
+      certificate: {
+        id: certificate._id || certificate.id,
+        certificateName: certificate.certificateName,
+        certificateCode: certificate.certificateCode,
+        expiryDate: certificate.expiryDate
+      },
+      daysUntilExpiry,
+      timestamp: new Date()
+    };
+
+    this.emitToRole('department_header', 'certificate_notification', payload);
+    this.emitToRole('manager', 'certificate_notification', payload);
+    this.emitToRole('admin', 'certificate_notification', payload);
+  }
+
+  /**
+   * Emit event when a certificate is deleted
+   * @param {Object} certificate - Deleted certificate data
+   * @param {Object} deleter - User who deleted the certificate
+   */
+  emitCertificateDeleted(certificate, deleter) {
+    if (!this.io || !certificate) return;
+
+    const payload = {
+      type: 'certificate_deleted',
+      title: 'Chứng chỉ đã được xóa',
+      message: `Chứng chỉ "${certificate.certificateName || certificate.name}" đã được xóa`,
+      certificate: {
+        id: certificate._id || certificate.id,
+        certificateName: certificate.certificateName,
+        certificateCode: certificate.certificateCode
+      },
+      deletedBy: deleter ? {
+        id: deleter._id || deleter.id,
+        full_name: deleter.full_name || deleter.username || deleter.email
+      } : null,
+      timestamp: new Date()
+    };
+
+    this.emitToRole('department_header', 'certificate_notification', payload);
+    this.emitToRole('manager', 'certificate_notification', payload);
+    this.emitToRole('admin', 'certificate_notification', payload);
+  }
+
+  /**
+   * Emit event when certificate reminder settings are updated
+   * @param {Object} certificate - Certificate data
+   * @param {Object} updater - User who updated the reminder settings
+   */
+  emitCertificateReminderSettingsUpdated(certificate, updater) {
+    if (!this.io || !certificate) return;
+
+    const payload = {
+      type: 'certificate_reminder_settings_updated',
+      title: 'Cài đặt nhắc nhở chứng chỉ đã được cập nhật',
+      message: `Cài đặt nhắc nhở cho chứng chỉ "${certificate.certificateName || certificate.name}" đã được cập nhật`,
+      certificate: {
+        id: certificate._id || certificate.id,
+        certificateName: certificate.certificateName,
+        certificateCode: certificate.certificateCode,
+        reminderSettings: certificate.reminderSettings
+      },
+      updatedBy: updater ? {
+        id: updater._id || updater.id,
+        full_name: updater.full_name || updater.username || updater.email
+      } : null,
+      timestamp: new Date()
+    };
+
+    this.emitToRole('department_header', 'certificate_notification', payload);
+    this.emitToRole('manager', 'certificate_notification', payload);
+    this.emitToRole('admin', 'certificate_notification', payload);
+  }
+
+  // ========================================
   // PROJECT NOTIFICATIONS (generic)
   // ========================================
 

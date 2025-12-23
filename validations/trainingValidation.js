@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 
 // Custom validator for MongoDB ObjectId
 const isValidObjectId = (value) => {
+    if (!value) return false;
     return mongoose.Types.ObjectId.isValid(value);
 };
 
@@ -61,19 +62,23 @@ const trainingValidation = {
             .isLength({ max: 1000 })
             .withMessage('Description must not exceed 1000 characters'),
         body('duration_hours')
-            .isNumeric()
-            .withMessage('Duration must be a number')
-            .custom((value) => value >= 1)
-            .withMessage('Duration must be at least 1 hour'),
+            .isFloat({ min: 1 })
+            .withMessage('Duration must be a number and at least 1 hour'),
         body('is_mandatory')
             .isBoolean()
             .withMessage('is_mandatory must be a boolean value'),
         body('validity_months')
             .optional()
-            .isNumeric()
-            .withMessage('Validity months must be a number')
-            .custom((value) => value >= 1)
-            .withMessage('Validity months must be at least 1')
+            .isInt({ min: 1 })
+            .withMessage('Validity months must be an integer and at least 1'),
+        body('prerequisite_course_ids')
+            .optional()
+            .isArray()
+            .withMessage('prerequisite_course_ids must be an array'),
+        body('prerequisite_course_ids.*')
+            .optional()
+            .custom(isValidObjectId)
+            .withMessage('Each prerequisite course ID must be a valid ObjectId')
     ],
 
     updateCourse: [
@@ -94,18 +99,24 @@ const trainingValidation = {
             .withMessage('Description must not exceed 1000 characters'),
         body('duration_hours')
             .optional()
-            .custom(isValidObjectId)
-            .withMessage('Duration must be at least 1 hour'),
+            .isFloat({ min: 1 })
+            .withMessage('Duration must be a number and at least 1 hour'),
         body('is_mandatory')
             .optional()
             .isBoolean()
             .withMessage('is_mandatory must be a boolean value'),
         body('validity_months')
             .optional()
-            .isNumeric()
-            .withMessage('Validity months must be a number')
-            .custom((value) => value >= 1)
-            .withMessage('Validity months must be at least 1')
+            .isInt({ min: 1 })
+            .withMessage('Validity months must be an integer and at least 1'),
+        body('prerequisite_course_ids')
+            .optional()
+            .isArray()
+            .withMessage('prerequisite_course_ids must be an array'),
+        body('prerequisite_course_ids.*')
+            .optional()
+            .custom(isValidObjectId)
+            .withMessage('Each prerequisite course ID must be a valid ObjectId')
     ],
 
     getCourseById: [
@@ -147,8 +158,8 @@ const trainingValidation = {
             .custom(isValidObjectId)
             .withMessage('Valid instructor ID is required'),
         body('max_participants')
-            .custom(isValidObjectId)
-            .withMessage('Max participants must be at least 1'),
+            .isInt({ min: 1 })
+            .withMessage('Max participants must be an integer and at least 1'),
         body('location')
             .optional()
             .isLength({ max: 255 })
@@ -184,8 +195,8 @@ const trainingValidation = {
             .withMessage('Valid instructor ID is required'),
         body('max_participants')
             .optional()
-            .custom(isValidObjectId)
-            .withMessage('Max participants must be at least 1'),
+            .isInt({ min: 1 })
+            .withMessage('Max participants must be an integer and at least 1'),
         body('location')
             .optional()
             .isLength({ max: 255 })
@@ -216,15 +227,20 @@ const trainingValidation = {
 
     // Training Enrollment Validations
     createTrainingEnrollment: [
-        body('session_id')
+        body('course_id')
             .custom(isValidObjectId)
-            .withMessage('Valid session ID is required'),
+            .withMessage('Valid course ID is required'),
         body('user_id')
+            .optional()
             .custom(isValidObjectId)
             .withMessage('Valid user ID is required'),
+        body('assigned_by')
+            .optional()
+            .custom(isValidObjectId)
+            .withMessage('Valid assigned_by user ID is required'),
         body('status')
             .optional()
-            .isIn(['enrolled', 'completed', 'failed', 'cancelled'])
+            .isIn(['enrolled', 'in_progress', 'completed', 'failed', 'cancelled'])
             .withMessage('Invalid status')
     ],
 
@@ -481,24 +497,41 @@ const trainingValidation = {
             .withMessage('Limit must be between 1 and 100'),
         query('page')
             .optional()
-            .custom(isValidObjectId)
-            .withMessage('Page must be at least 1')
+            .isInt({ min: 1 })
+            .withMessage('Page must be an integer and at least 1')
     ],
 
-    importQuestionsFromExcel: [
-        body('bank_id')
+    // ========== Course Quiz Validations (New - replaces session-based training) ==========
+    startCourseQuiz: [
+        param('courseId')
             .custom(isValidObjectId)
-            .withMessage('Valid question bank ID is required')
+            .withMessage('Valid course ID is required')
     ],
 
-    // Start Training Validation
+    submitCourseQuiz: [
+        param('courseId')
+            .custom(isValidObjectId)
+            .withMessage('Valid course ID is required'),
+        body('answers')
+            .isObject()
+            .withMessage('Answers must be an object')
+            .notEmpty()
+            .withMessage('Answers cannot be empty')
+    ],
+
+    retakeCourseQuiz: [
+        param('courseId')
+            .custom(isValidObjectId)
+            .withMessage('Valid course ID is required')
+    ],
+
+    // ========== Old Session-based Training Validations (Deprecated) ==========
     startTraining: [
         param('sessionId')
             .custom(isValidObjectId)
             .withMessage('Valid session ID is required')
     ],
 
-    // Submit Training Validation
     submitTraining: [
         param('sessionId')
             .custom(isValidObjectId)
@@ -509,12 +542,16 @@ const trainingValidation = {
         body('score')
             .isFloat({ min: 0 })
             .withMessage('Score must be a number greater than or equal to 0'),
+        body('completionTime')
+            .optional()
+            .isISO8601()
+            .withMessage('Valid completion time is required'),
         body('completion_time')
+            .optional()
             .isISO8601()
             .withMessage('Valid completion time is required')
     ],
 
-    // Retake Training Validation
     retakeTraining: [
         param('sessionId')
             .custom(isValidObjectId)
