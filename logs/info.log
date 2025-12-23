@@ -921,3 +921,23 @@
 {"timestamp":"2025-12-22T04:26:19.360Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692fe64ea505fa8c97485c4f","socketId":"aKG3dT-EsVc34-PIAAA1"},"pid":752,"hostname":"Bravo"}
 {"timestamp":"2025-12-22T04:26:19.379Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692fe64ea505fa8c97485c4f","socketId":"FPzpR6ZbXxksfl0vAAA4"},"pid":752,"hostname":"Bravo"}
 {"timestamp":"2025-12-22T04:26:19.451Z","level":"INFO","message":"User disconnected","metadata":{"userId":"692fe64ea505fa8c97485c4f","socketId":"g0hkxBqFAek1INZzAAA5"},"pid":752,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:41:22.204Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":27664,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:41:22.269Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":27664,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:41:22.272Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":27664,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:41:30.693Z","level":"INFO","message":"User connected","metadata":{"socketId":"aWwWtRVOlKZYvzxJAAAC"},"pid":27664,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:41:30.698Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"693001f5d4c22c766d371c57","role":"Department Head","tenantId":null,"socketId":"aWwWtRVOlKZYvzxJAAAC"},"pid":27664,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:41:36.074Z","level":"INFO","message":"Weather fetched","metadata":{"latencyMs":1141,"cacheKey":"weather:15.96866603825344:108.26086673375428:undefined:precipitation"},"pid":27664,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:44:17.699Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":27664,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:44:27.899Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":28532,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:44:27.959Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":28532,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:44:27.962Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":28532,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:44:31.725Z","level":"INFO","message":"User connected","metadata":{"socketId":"N7fz-VgYVMsC_PbpAAAB"},"pid":28532,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:44:31.734Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"693001f5d4c22c766d371c57","role":"Department Head","tenantId":null,"socketId":"N7fz-VgYVMsC_PbpAAAB"},"pid":28532,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:45:59.712Z","level":"INFO","message":"User disconnected","metadata":{"userId":"693001f5d4c22c766d371c57","socketId":"N7fz-VgYVMsC_PbpAAAB"},"pid":28532,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:47:04.577Z","level":"INFO","message":"User connected","metadata":{"socketId":"BpCt3V74nKcMFnKJAAAG"},"pid":28532,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:47:04.661Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"693001f5d4c22c766d371c57","role":"Department Head","tenantId":null,"socketId":"BpCt3V74nKcMFnKJAAAG"},"pid":28532,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:47:13.206Z","level":"INFO","message":"User disconnected","metadata":{"userId":"693001f5d4c22c766d371c57","socketId":"BpCt3V74nKcMFnKJAAAG"},"pid":28532,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:47:13.268Z","level":"INFO","message":"User connected","metadata":{"socketId":"_TDUMEdRHxZ271XWAAAJ"},"pid":28532,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:47:13.277Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"693001f5d4c22c766d371c57","role":"Department Head","tenantId":null,"socketId":"_TDUMEdRHxZ271XWAAAJ"},"pid":28532,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T06:47:19.431Z","level":"INFO","message":"Weather fetched","metadata":{"latencyMs":269,"cacheKey":"weather:15.96869035315407:108.26083921318107:undefined:precipitation"},"pid":28532,"hostname":"Bravo"}
+{"timestamp":"2025-12-23T07:48:24.604Z","level":"INFO","message":"User disconnected","metadata":{"userId":"693001f5d4c22c766d371c57","socketId":"_TDUMEdRHxZ271XWAAAJ"},"pid":28532,"hostname":"Bravo"}
