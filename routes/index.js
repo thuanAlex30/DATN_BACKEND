@@ -46,6 +46,8 @@ const certificateRoutes = require('./certificateRoutes');
 const uploadRoutes = require('./uploadRoutes');
 const contactMessageRoutes = require('./contactMessageRoutes');
 
+const utilsRoutes = require('./utilsRoutes');
+
 console.log('Loading kafkaMonitor...');
 const kafkaMonitor = require('../services/kafkaMonitor');
 console.log('kafkaMonitor loaded:', typeof kafkaMonitor);
@@ -158,6 +160,7 @@ router.use('/contact-messages', contactMessageRoutes);
 // Weather Integration Routes
 router.use('/integrations/weather', weatherRoutes);
 router.use('/upload', uploadRoutes);
+router.use('/utils', utilsRoutes);
 
 /**
  * =====================
