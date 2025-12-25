@@ -2445,3 +2445,21 @@
 {"timestamp":"2025-12-23T09:52:16.552Z","level":"INFO","message":"Hourly forecast fetched","metadata":{"latencyMs":800,"cacheKey":"hourly:15.957972:108.264214:24h","hours":24},"pid":14100,"hostname":"Bravo"}
 {"timestamp":"2025-12-23T09:52:19.054Z","level":"INFO","message":"Weather forecast fetched","metadata":{"latencyMs":218,"cacheKey":"forecast:15.957972:108.264214:7days"},"pid":14100,"hostname":"Bravo"}
 {"timestamp":"2025-12-23T09:52:47.225Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":14100,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:10:28.126Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":9612,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:10:28.296Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":9612,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:10:28.300Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":9612,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:11:13.623Z","level":"INFO","message":"User connected","metadata":{"socketId":"ScTfgIzlZRWFnCrwAAAE"},"pid":9612,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:11:13.673Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"693001f5d4c22c766d371c57","role":"Department Head","tenantId":null,"socketId":"ScTfgIzlZRWFnCrwAAAE"},"pid":9612,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:15:19.179Z","level":"INFO","message":"User disconnected","metadata":{"userId":"693001f5d4c22c766d371c57","socketId":"ScTfgIzlZRWFnCrwAAAE"},"pid":9612,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:15:19.267Z","level":"INFO","message":"User connected","metadata":{"socketId":"vwHA0VEjK2K_r_PJAAAH"},"pid":9612,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:15:19.277Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"693001f5d4c22c766d371c57","role":"Department Head","tenantId":null,"socketId":"vwHA0VEjK2K_r_PJAAAH"},"pid":9612,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:15:23.144Z","level":"INFO","message":"Weather fetched","metadata":{"latencyMs":2354,"cacheKey":"weather:16.0471:108.2068:undefined:temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day"},"pid":9612,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:15:23.785Z","level":"INFO","message":"Air quality fetched","metadata":{"latencyMs":542,"cacheKey":"airquality:15.957972:108.264214"},"pid":9612,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:15:23.958Z","level":"INFO","message":"Weather fetched","metadata":{"latencyMs":1263,"cacheKey":"weather:15.957972:108.264214:undefined:temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day"},"pid":9612,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:15:33.198Z","level":"INFO","message":"Hourly forecast fetched","metadata":{"latencyMs":940,"cacheKey":"hourly:15.957972:108.264214:24h","hours":24},"pid":9612,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:15:35.840Z","level":"INFO","message":"Weather forecast fetched","metadata":{"latencyMs":317,"cacheKey":"forecast:15.957972:108.264214:7days"},"pid":9612,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:15:41.190Z","level":"INFO","message":"User connected","metadata":{"socketId":"jPscWjR_2TO1DG7sAAAK"},"pid":9612,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:15:41.197Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"693001f5d4c22c766d371c57","role":"Department Head","tenantId":null,"socketId":"jPscWjR_2TO1DG7sAAAK"},"pid":9612,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:15:41.203Z","level":"INFO","message":"User connected","metadata":{"socketId":"Xz4wthMAQUgFy20RAAAL"},"pid":9612,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:15:41.212Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"693001f5d4c22c766d371c57","role":"Department Head","tenantId":null,"socketId":"Xz4wthMAQUgFy20RAAAL"},"pid":9612,"hostname":"Bravo"}
+{"timestamp":"2025-12-25T03:15:54.771Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":9612,"hostname":"Bravo"}

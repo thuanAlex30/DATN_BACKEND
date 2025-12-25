@@ -34,11 +34,14 @@ class ProjectRepository {
     }
 
     const projects = await Project.find(query)
+      .select('project_name description status site_id leader_id start_date end_date progress tenant_id created_at')
       .populate('leader_id', 'full_name email phone')
       .populate('site_id', 'site_name address')
-      .sort({ created_at: -1 });
+      .sort({ created_at: -1 })
+      .limit(200)
+      .lean();
 
-    return projects;
+    return projects || [];
   }
 
   async getProjectById(id, tenantId = null) {
@@ -48,11 +51,12 @@ class ProjectRepository {
     }
 
     const project = await Project.findOne(filter)
+      .select('project_name description status site_id leader_id start_date end_date progress tenant_id created_at')
       .populate('leader_id', 'full_name email phone')
-      .populate('site_id', 'site_name address coordinates contact_person contact_phone contact_email');
-    
+      .populate('site_id', 'site_name address coordinates contact_person contact_phone contact_email')
+      .lean();
+
     if (!project) return null;
-    
     return project;
   }
 
@@ -132,18 +136,20 @@ class ProjectRepository {
   // ========== PROJECT ASSIGNMENTS ==========
   async getProjectAssignments(projectId) {
     const assignments = await ProjectAssignment.find({ project_id: projectId })
+      .select('user_id role_in_project start_date end_date status created_at')
       .populate({
         path: 'user_id',
-        // cần cả user_id (số nguyên) để export đúng
         select: 'user_id full_name email phone gender tenant_id',
         populate: {
           path: 'tenant_id',
           select: 'name tenant_name tenant_code company_name'
         }
       })
-      .sort({ created_at: -1 });
+      .sort({ created_at: -1 })
+      .limit(500)
+      .lean();
 
-    return assignments;
+    return assignments || [];
   }
 
   async addProjectAssignment(assignmentData) {
@@ -185,16 +191,19 @@ class ProjectRepository {
 
   async getUserProjects(userId) {
     const assignments = await ProjectAssignment.find({ user_id: userId })
+      .select('project_id role_in_project start_date end_date status')
       .populate({
         path: 'project_id',
+        select: 'project_name description leader_id site_id start_date end_date progress',
         populate: [
           { path: 'leader_id', select: 'full_name email phone' },
           { path: 'site_id', select: 'site_name address' }
         ]
-      });
+      })
+      .lean();
 
     return assignments.map(assignment => ({
-      ...assignment.project_id.toObject(),
+      ...(assignment.project_id || {}),
       role_in_project: assignment.role_in_project,
       assignment_start_date: assignment.start_date,
       assignment_end_date: assignment.end_date,
@@ -217,11 +226,14 @@ class ProjectRepository {
       ];
     }
 
-    const sites = await Site.find(query).sort({ site_name: 1 });
-    
+    const sites = await Site.find(query)
+      .select('site_name address coordinates contact_person contact_phone contact_email is_active tenant_id')
+      .sort({ site_name: 1 })
+      .lean();
+
     // Transform _id to id for frontend compatibility
     return sites.map(site => {
-      const siteObj = site.toObject();
+      const siteObj = { ...site };
       siteObj.id = siteObj._id;
       delete siteObj._id;
       return siteObj;
@@ -303,34 +315,42 @@ class ProjectRepository {
     }
 
     const projects = await Project.find(query)
+      .select('project_name description status site_id leader_id start_date end_date progress tenant_id created_at')
       .populate('leader_id', 'full_name email phone')
       .populate('site_id', 'site_name address')
-      .sort({ created_at: -1 });
+      .sort({ created_at: -1 })
+      .limit(200)
+      .lean();
 
-    return projects;
+    return projects || [];
   }
 
   // ========== PROJECT TIMELINE ==========
   async getProjectTimeline(projectId) {
     const project = await Project.findById(projectId)
+      .select('project_name description status site_id leader_id start_date end_date progress tenant_id created_at')
       .populate('leader_id', 'full_name')
-      .populate('site_id', 'site_name address');
+      .populate('site_id', 'site_name address')
+      .lean();
 
     if (!project) {
       return null;
     }
 
     const assignments = await ProjectAssignment.find({ project_id: projectId })
+      .select('user_id role_in_project start_date end_date status created_at')
       .populate('user_id', 'full_name')
-      .sort({ created_at: -1 });
+      .sort({ created_at: -1 })
+      .limit(500)
+      .lean();
 
     return {
       project: {
-        ...project.toObject(),
+        ...project,
         id: project._id
       },
       assignments: assignments.map(assignment => {
-        const assignmentObj = assignment.toObject();
+        const assignmentObj = { ...assignment };
         assignmentObj.id = assignmentObj._id;
         delete assignmentObj._id;
         return assignmentObj;

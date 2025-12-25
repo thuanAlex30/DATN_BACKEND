@@ -11,7 +11,10 @@ class PPERepository {
     if (tenantId) {
       filter.tenant_id = tenantId;
     }
-    return await PPECategory.find(filter).sort({ category_name: 1 });
+    return await PPECategory.find(filter)
+      .select('category_name description tenant_id createdAt')
+      .sort({ category_name: 1 })
+      .lean();
   }
 
   async getCategoryById(id, tenantId = null) {
@@ -72,8 +75,8 @@ class PPERepository {
         validRows: 0
       };
 
-      // Get all categories for validation
-      const categories = await PPECategory.find();
+      // Get all categories for validation (only name and id)
+      const categories = await PPECategory.find().select('category_name').lean();
       const categoryMap = {};
       categories.forEach(cat => {
         categoryMap[cat.category_name.toLowerCase()] = cat._id;
@@ -259,7 +262,8 @@ class PPERepository {
         { $sort: { item_name: 1 } }
       ];
 
-      const result = await PPEItem.aggregate(pipeline);
+      // Run aggregation with disk use allowed and reasonable timeout
+      const result = await PPEItem.aggregate(pipeline).allowDiskUse(true).maxTimeMS(10000);
       
       // Filter out any documents with invalid ObjectIds
       return result.filter(doc => {
@@ -287,7 +291,9 @@ class PPERepository {
     }
 
     const item = await PPEItem.findOne(filter)
-      .populate('category_id', 'category_name description');
+      .select('item_name item_code brand model quantity_available quantity_allocated reorder_level category_id image_url')
+      .populate('category_id', 'category_name description')
+      .lean();
 
     if (!item) {
       return null;
@@ -318,7 +324,7 @@ class PPERepository {
     const remaining_quantity = total_quantity - actual_allocated_quantity;
 
     return {
-      ...item.toObject(),
+      ...item,
       total_quantity,
       remaining_quantity,
       actual_allocated_quantity
@@ -383,6 +389,7 @@ class PPERepository {
     }
 
     return await PPEIssuance.find(query)
+      .select('user_id item_id issued_by status issued_date remaining_quantity quantity tenant_id')
       .populate({
         path: 'user_id',
         select: 'full_name email',
@@ -393,13 +400,16 @@ class PPERepository {
       })
       .populate({
         path: 'item_id',
+        select: 'item_name item_code category_id',
         populate: {
           path: 'category_id',
           select: 'category_name description'
         }
       })
       .populate('issued_by', 'full_name')
-      .sort({ issued_date: -1 });
+      .sort({ issued_date: -1 })
+      .limit(200)
+      .lean();
   }
 
   async getIssuanceById(id, tenantId = null) {
@@ -441,11 +451,14 @@ class PPERepository {
       query.tenant_id = tenantId;
     }
     return await PPEIssuance.find(query)
+      .select('item_id user_id issued_by manager_id status issued_date remaining_quantity quantity')
       .populate('item_id', 'item_name item_code brand model image_url')
       .populate('user_id', 'full_name email department')
       .populate('issued_by', 'full_name email')
       .populate('manager_id', 'full_name email')
-      .sort({ issued_date: -1 });
+      .sort({ issued_date: -1 })
+      .limit(200)
+      .lean();
   }
 
   // Lấy danh sách PPE của nhiều users theo filters
@@ -455,11 +468,14 @@ class PPERepository {
       query.tenant_id = tenantId;
     }
     return await PPEIssuance.find(query)
+      .select('item_id user_id issued_by manager_id status issued_date remaining_quantity quantity')
       .populate('item_id', 'item_name item_code brand model image_url')
       .populate('user_id', 'full_name email department_id')
       .populate('issued_by', 'full_name email')
       .populate('manager_id', 'full_name email')
-      .sort({ issued_date: -1 });
+      .sort({ issued_date: -1 })
+      .limit(200)
+      .lean();
   }
 
   // Lấy danh sách PPE mà Manager đã phát cho employees
@@ -469,25 +485,36 @@ class PPERepository {
       query.tenant_id = tenantId;
     }
     return await PPEIssuance.find(query)
+      .select('item_id user_id issued_by manager_id status issued_date remaining_quantity quantity')
       .populate('item_id', 'item_name item_code brand model image_url')
       .populate('user_id', 'full_name email department_id')
       .populate('issued_by', 'full_name email')
       .populate('manager_id', 'full_name email')
-      .sort({ issued_date: -1 });
+      .sort({ issued_date: -1 })
+      .limit(200)
+      .lean();
   }
 
   // Lấy số lượng PPE đã trả của Manager
   async getManagerReturnedQuantity(managerId, itemId) {
-    const returnedIssuances = await PPEIssuance.find({
-      user_id: managerId,
-      item_id: itemId,
-      issuance_level: 'admin_to_manager',
-      status: 'returned'
-    });
-    
-    return returnedIssuances.reduce((sum, issuance) => {
-      return sum + (issuance.quantity || 0);
-    }, 0);
+    const res = await PPEIssuance.aggregate([
+      {
+        $match: {
+          user_id: new mongoose.Types.ObjectId(managerId),
+          item_id: new mongoose.Types.ObjectId(itemId),
+          issuance_level: 'admin_to_manager',
+          status: 'returned'
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$quantity' }
+        }
+      }
+    ]).maxTimeMS(5000);
+
+    return (res[0] && res[0].total) ? res[0].total : 0;
   }
 
   // Lấy thống kê PPE của Manager cho một item cụ thể - Sử dụng aggregation
@@ -666,66 +693,61 @@ class PPERepository {
       if (tenantId) {
         itemFilter.tenant_id = tenantId;
       }
+      // Fetch items with minimal fields and process in batches to avoid high parallel load
       const items = await PPEItem.find(itemFilter)
+        .select('item_name item_code category_id quantity_available quantity_allocated reorder_level image_url')
         .populate('category_id', 'category_name description')
-        .sort({ item_name: 1 });
+        .sort({ item_name: 1 })
+        .lean();
 
-      const itemsWithTotals = await Promise.all(items.map(async (item) => {
-        try {
-          // Test if item._id is valid
-          if (item._id) {
-            item._id.toString();
-          }
-          
-          // Calculate total quantity (available + allocated)
-          const total_quantity = item.quantity_available + item.quantity_allocated;
-          
-          // Get actual allocated quantity from issuances (for verification)
-          const issuanceMatch = {
-            item_id: item._id,
-            status: 'issued'
-          };
-          if (tenantId) {
-            issuanceMatch.tenant_id = tenantId;
-          }
-          const actualAllocated = await PPEIssuance.aggregate([
-            {
-              $match: issuanceMatch
-            },
-            {
-              $group: {
-                _id: null,
-                total_allocated: { $sum: '$quantity' }
-              }
+      const batchSize = 10;
+      const itemsWithTotals = [];
+      for (let i = 0; i < items.length; i += batchSize) {
+        const batch = items.slice(i, i + batchSize);
+        const batchResults = await Promise.all(batch.map(async (item) => {
+          try {
+            // Calculate total quantity (available + allocated)
+            const total_quantity = (item.quantity_available || 0) + (item.quantity_allocated || 0);
+
+            // Get actual allocated quantity from issuances (for verification) using aggregation
+            const issuanceMatch = {
+              item_id: item._id,
+              status: 'issued'
+            };
+            if (tenantId) {
+              issuanceMatch.tenant_id = tenantId;
             }
-          ]);
+            const actualAllocated = await PPEIssuance.aggregate([
+              { $match: issuanceMatch },
+              { $group: { _id: null, total_allocated: { $sum: '$quantity' } } }
+            ]).maxTimeMS(5000);
 
-          const actual_allocated_quantity = actualAllocated.length > 0 ? actualAllocated[0].total_allocated : 0;
-          
-          // Calculate remaining quantity
-          const remaining_quantity = total_quantity - actual_allocated_quantity;
+            const actual_allocated_quantity = actualAllocated.length > 0 ? actualAllocated[0].total_allocated : 0;
+            const remaining_quantity = total_quantity - actual_allocated_quantity;
 
-          return {
-            item: {
-              ...item.toObject(),
+            return {
+              item: {
+                ...item,
+                total_quantity,
+                remaining_quantity,
+                actual_allocated_quantity
+              },
+              total_available: item.quantity_available,
+              total_allocated: item.quantity_allocated,
               total_quantity,
               remaining_quantity,
               actual_allocated_quantity
-            },
-            total_available: item.quantity_available,
-            total_allocated: item.quantity_allocated,
-            total_quantity,
-            remaining_quantity,
-            actual_allocated_quantity
-          };
-        } catch (error) {
-          console.error('Error processing item in getStockStatus:', item._id, error);
-          return null; // Skip invalid items
-        }
-      }));
+            };
+          } catch (error) {
+            console.error('Error processing item in getStockStatus:', item._id, error);
+            return null;
+          }
+        }));
 
-      // Filter out null values (invalid items)
-      return itemsWithTotals.filter(item => item !== null);
+        itemsWithTotals.push(...batchResults.filter(x => x !== null));
+      }
+
+      return itemsWithTotals;
     } catch (error) {
       console.error('Error in getStockStatus:', error);
       throw error;
@@ -742,8 +764,12 @@ class PPERepository {
       query.tenant_id = tenantId;
     }
     return await PPEIssuance.find(query)
-    .populate('user_id', 'full_name email')
-    .populate('item_id', 'item_name item_code image_url');
+      .select('user_id item_id issued_date expected_return_date status quantity remaining_quantity')
+      .populate('user_id', 'full_name email')
+      .populate('item_id', 'item_name item_code image_url')
+      .sort({ expected_return_date: -1 })
+      .limit(200)
+      .lean();
   }
 
   async getLowStockItems(tenantId = null) {
@@ -754,7 +780,11 @@ class PPERepository {
       query.tenant_id = tenantId;
     }
     return await PPEItem.find(query)
-      .populate('category_id', 'category_name description');
+      .select('item_name item_code category_id quantity_available reorder_level image_url')
+      .populate('category_id', 'category_name description')
+      .sort({ item_name: 1 })
+      .limit(200)
+      .lean();
   }
 
   async getIssuanceStats(tenantId = null) {
@@ -768,7 +798,7 @@ class PPERepository {
         count: { $sum: 1 }
       }
     });
-    const stats = await PPEIssuance.aggregate(pipeline);
+    const stats = await PPEIssuance.aggregate(pipeline).maxTimeMS(5000);
 
     const result = {
       total_issuances: 0,
@@ -791,52 +821,45 @@ class PPERepository {
     if (tenantId) {
       itemFilter.tenant_id = tenantId;
     }
+    // Fetch items minimal fields and process in batches to avoid large parallel aggregation load
     const items = await PPEItem.find(itemFilter)
-      .populate('category_id', 'category_name description');
+      .select('item_name item_code category_id quantity_available quantity_allocated reorder_level image_url')
+      .populate('category_id', 'category_name description')
+      .lean();
 
-    const statistics = await Promise.all(items.map(async (item) => {
-      // Calculate total quantity (available + allocated)
-      const total_quantity = item.quantity_available + item.quantity_allocated;
-      
-      // Get actual allocated quantity from issuances
-      const issuanceMatch = {
-        item_id: item._id,
-        status: 'issued'
-      };
-      if (tenantId) {
-        issuanceMatch.tenant_id = tenantId;
-      }
-      const actualAllocated = await PPEIssuance.aggregate([
-        {
-          $match: issuanceMatch
-        },
-        {
-          $group: {
-            _id: null,
-            total_allocated: { $sum: '$quantity' }
-          }
-        }
-      ]);
+    const batchSize = 10;
+    const statistics = [];
+    for (let i = 0; i < items.length; i += batchSize) {
+      const batch = items.slice(i, i + batchSize);
+      const batchStats = await Promise.all(batch.map(async (item) => {
+        const total_quantity = (item.quantity_available || 0) + (item.quantity_allocated || 0);
+        const issuanceMatch = { item_id: item._id, status: 'issued' };
+        if (tenantId) issuanceMatch.tenant_id = tenantId;
 
-      const actual_allocated_quantity = actualAllocated.length > 0 ? actualAllocated[0].total_allocated : 0;
-      
-      // Calculate remaining quantity
-      const remaining_quantity = total_quantity - actual_allocated_quantity;
+        const actualAllocated = await PPEIssuance.aggregate([
+          { $match: issuanceMatch },
+          { $group: { _id: null, total_allocated: { $sum: '$quantity' } } }
+        ]).maxTimeMS(5000);
 
-      return {
-        item_id: item._id,
-        item_name: item.item_name,
-        item_code: item.item_code,
-        category_name: item.category_id?.category_name || 'Không xác định',
-        total_quantity,
-        remaining_quantity,
-        actual_allocated_quantity,
-        quantity_available: item.quantity_available,
-        quantity_allocated: item.quantity_allocated,
-        reorder_level: item.reorder_level,
-        stock_status: remaining_quantity <= item.reorder_level ? 'low' : 'good'
-      };
-    }));
+        const actual_allocated_quantity = actualAllocated.length > 0 ? actualAllocated[0].total_allocated : 0;
+        const remaining_quantity = total_quantity - actual_allocated_quantity;
+
+        return {
+          item_id: item._id,
+          item_name: item.item_name,
+          item_code: item.item_code,
+          category_name: item.category_id?.category_name || 'Không xác định',
+          total_quantity,
+          remaining_quantity,
+          actual_allocated_quantity,
+          quantity_available: item.quantity_available,
+          quantity_allocated: item.quantity_allocated,
+          reorder_level: item.reorder_level,
+          stock_status: remaining_quantity <= item.reorder_level ? 'low' : 'good'
+        };
+      }));
+      statistics.push(...batchStats);
+    }
 
     // Calculate overall statistics
     const overallStats = {
@@ -875,13 +898,17 @@ class PPERepository {
     }
 
     return await PPEIssuance.find(query)
+      .select('user_id item_id status issued_date quantity remaining_quantity tenant_id')
       .populate('user_id', 'full_name email employee_id')
       .populate('item_id', 'item_name category_id')
-      .sort({ issued_date: -1 });
+      .sort({ issued_date: -1 })
+      .limit(200)
+      .lean();
   }
 
   async getAssignmentById(id) {
     return await PPEIssuance.findById(id)
+      .select('user_id item_id issued_by status issued_date quantity remaining_quantity tenant_id')
       .populate('user_id', 'full_name email employee_id phone department_id')
       .populate({
         path: 'user_id',
@@ -890,7 +917,8 @@ class PPERepository {
           select: 'department_name'
         }
       })
-      .populate('item_id', 'item_name item_code brand model image_url category_id');
+      .populate('item_id', 'item_name item_code brand model image_url category_id')
+      .lean();
   }
 
   async createAssignment(assignmentData) {
@@ -911,9 +939,12 @@ class PPERepository {
 
   async getUserAssignments(userId) {
     return await PPEIssuance.find({ user_id: userId })
+      .select('user_id item_id status issued_date quantity remaining_quantity tenant_id')
       .populate('user_id', 'full_name email employee_id')
       .populate('item_id', 'item_name category_id')
-      .sort({ issued_date: -1 });
+      .sort({ issued_date: -1 })
+      .limit(200)
+      .lean();
   }
 }
 

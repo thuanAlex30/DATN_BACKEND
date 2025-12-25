@@ -14,7 +14,10 @@ class TrainingRepository {
         if (tenantId) {
             query.tenant_id = tenantId;
         }
-        return await CourseSet.find(query).sort({ name: 1 });
+        return await CourseSet.find(query)
+            .select('name description tenant_id created_at')
+            .sort({ name: 1 })
+            .lean();
     }
 
     async getCourseSetById(courseSetId, tenantId = null) {
@@ -92,15 +95,17 @@ class TrainingRepository {
         }
 
         return await Course.find(query)
+            .select('course_name description is_deployed is_mandatory tenant_id course_set_id deployed_by created_at')
             .populate('course_set_id', 'name')
             .populate('deployed_by', 'full_name')
-            .sort({ course_name: 1 });
+            .sort({ course_name: 1 })
+            .lean();
     }
 
     async getAvailableCoursesForEmployee(userId, filters = {}, tenantId = null) {
         try {
             // Get user's department
-            const user = await User.findById(userId).populate('department_id');
+            const user = await User.findById(userId).populate('department_id').lean();
             if (!user || !user.department_id) {
                 return [];
             }
@@ -116,7 +121,9 @@ class TrainingRepository {
             if (tenantId) {
                 assignmentQuery.tenant_id = tenantId;
             }
-            const assignments = await TrainingAssignment.find(assignmentQuery).populate('course_id');
+            const assignments = await TrainingAssignment.find(assignmentQuery)
+                .populate('course_id', 'course_name is_deployed tenant_id is_mandatory')
+                .lean();
 
             // Filter courses that are deployed and belong to tenant
             const availableCourses = [];
@@ -327,8 +334,10 @@ class TrainingRepository {
 
             // Get sessions with populated course data
             const sessions = await TrainingSession.find(query)
+                .select('session_name course_id start_time end_time status_code tenant_id')
                 .populate('course_id', 'course_name description is_mandatory')
-                .sort({ start_time: 1 });
+                .sort({ start_time: 1 })
+                .lean();
 
             return sessions;
         } catch (error) {
@@ -347,7 +356,9 @@ class TrainingRepository {
         }
 
         return await TrainingSession.findOne(filter)
-            .populate('course_id', 'course_name');
+            .select('session_name course_id start_time end_time status_code tenant_id')
+            .populate('course_id', 'course_name')
+            .lean();
     }
 
     async getTrainingSessionById(sessionId, tenantId = null) {
@@ -458,13 +469,16 @@ class TrainingRepository {
 
         // Populate enrollment relations (session_id removed in new schema; populate course directly)
         return await enrollmentQuery
+            .select('course_id user_id status enrolled_at tenant_id session_id assigned_by')
             .populate({
                 path: 'course_id',
                 select: 'course_name description duration_hours is_mandatory validity_months course_set_id'
             })
             .populate('user_id', 'full_name email')
             .populate('assigned_by', 'full_name email')
-            .sort({ enrolled_at: -1 });
+            .sort({ enrolled_at: -1 })
+            .limit(200)
+            .lean();
     }
 
     async getAllTrainingEnrollments(filters = {}, tenantId = null) {
@@ -480,9 +494,11 @@ class TrainingRepository {
             filter.tenant_id = tenantId;
         }
         return await TrainingEnrollment.findOne(filter)
+            .select('course_id user_id status enrolled_at tenant_id session_id assigned_by')
             .populate('course_id', 'course_name description duration_hours is_mandatory validity_months')
             .populate('user_id', 'full_name email')
-            .populate('assigned_by', 'full_name email');
+            .populate('assigned_by', 'full_name email')
+            .lean();
     }
 
     async getTrainingEnrollmentById(enrollmentId, tenantId = null) {
@@ -572,17 +588,21 @@ class TrainingRepository {
         if (filters.courseId) {
             query.course_id = filters.courseId;
         }
-
         return await QuestionBank.find(query)
+            .select('name course_id created_at tenant_id')
             .populate('course_id', 'course_name')
-            .sort({ name: 1 });
+            .sort({ name: 1 })
+            .lean();
     }
 
     async getQuestionBankById(bankId) {
         if (!mongoose.Types.ObjectId.isValid(bankId)) {
             return null;
         }
-        return await QuestionBank.findById(bankId).populate('course_id', 'course_name');
+        return await QuestionBank.findById(bankId)
+            .select('name course_id description created_at')
+            .populate('course_id', 'course_name')
+            .lean();
     }
 
     async createQuestionBank(bankData) {
