@@ -37,6 +37,12 @@ class KafkaMonitor {
       return;
     }
 
+    // Respect runtime flag to skip Kafka monitoring entirely
+    if (process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0') {
+      console.log('ℹ️ Kafka monitoring skipped because KAFKA_ENABLED is false');
+      return;
+    }
+
     console.log('📊 Starting Kafka monitoring...');
     this.isMonitoring = true;
 

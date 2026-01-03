@@ -217,6 +217,13 @@ const issuanceValidation = {
       .optional()
       .messages({
         'string.pattern.base': 'ID Manager không hợp lệ'
+      }),
+    assigned_serial_numbers: Joi.array()
+      .items(Joi.string().max(100))
+      .optional()
+      .messages({
+        'array.base': 'Serial numbers phải là mảng',
+        'string.max': 'Mỗi serial number không được quá 100 ký tự'
       })
   }),
   return: Joi.object({
@@ -248,6 +255,13 @@ const issuanceValidation = {
       .optional()
       .messages({
         'string.max': 'Ghi chú không được quá 500 ký tự'
+      }),
+    returned_serial_numbers: Joi.array()
+      .items(Joi.string().max(100))
+      .optional()
+      .messages({
+        'array.base': 'Returned serial numbers phải là mảng',
+        'string.max': 'Mỗi serial number không được quá 100 ký tự'
       })
   }),
   report: Joi.object({
@@ -321,6 +335,8 @@ router.post('/items/import',
   ppeController.importItems
 );
 router.get('/items/:id', ppeController.getItemById);
+// Generate serial numbers for an item (body: { count?: number })
+router.post('/items/:id/generate-serials', ppeController.generateSerialsForItem);
 router.post('/items', 
   imageUpload.single('image'),
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
@@ -408,11 +424,26 @@ router.get('/issuances/department-employees-ppe',
   ppeController.getDepartmentEmployeesPPE
 );
 
-// Lấy lịch sử PPE của Manager
-router.get('/issuances/manager-history', 
-  authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
-  ppeController.getManagerPPEHistory
-);
+  // Lấy lịch sử PPE của Manager
+  router.get('/issuances/manager-history',
+    authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
+    ppeController.getManagerPPEHistory
+  );
+
+  // API endpoints cho serial number management
+  // Lấy serial numbers khả dụng cho manager
+  router.get('/serial-numbers/manager/:itemId',
+    authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
+    validationMiddleware.validateParams(Joi.object({ itemId: objectId.required() })),
+    ppeController.getAvailableSerialNumbersForManager
+  );
+
+  // Lấy serial numbers khả dụng cho admin
+  router.get('/serial-numbers/admin/:itemId',
+    authMiddleware.authorizeScope({ minRoleLevel: 80, tenantScope: 'tenant' }),
+    validationMiddleware.validateParams(Joi.object({ itemId: objectId.required() })),
+    ppeController.getAvailableSerialNumbersForAdmin
+  );
 
 // Legacy PPE Issuances Routes - giữ lại để tương thích
 router.get('/issuances', ppeController.getAllIssuances);

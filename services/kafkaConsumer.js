@@ -16,6 +16,11 @@ class KafkaConsumer {
    */
   async initialize() {
     try {
+      // Respect runtime flag to skip Kafka entirely
+      if (process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0') {
+        console.log('ℹ️ Kafka Consumer initialization skipped because KAFKA_ENABLED is false');
+        return;
+      }
       if (this.isInitialized) {
         console.log('📥 Kafka Consumer already initialized');
         return;

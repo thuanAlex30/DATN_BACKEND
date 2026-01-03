@@ -13,6 +13,11 @@ class KafkaProducer {
    */
   async initialize() {
     try {
+      // Respect runtime flag to skip Kafka entirely
+      if (process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0') {
+        console.log('ℹ️ Kafka Producer initialization skipped because KAFKA_ENABLED is false');
+        return;
+      }
       if (this.isInitialized) {
         console.log('📤 Kafka Producer already initialized');
         return;
@@ -81,9 +86,10 @@ class KafkaProducer {
         version: eventData.version || '1.0'
       };
 
-      // Send to Kafka
+      // Send to Kafka with bounded timeout to avoid blocking caller
       const startTime = Date.now();
-      const result = await this.producer.send({
+      const timeoutMs = parseInt(process.env.KAFKA_SEND_TIMEOUT_MS || '3000', 10);
+      const sendPromise = this.producer.send({
         topic,
         messages: [{
           key: key || event.eventId,
@@ -91,6 +97,10 @@ class KafkaProducer {
           timestamp: Date.now()
         }]
       });
+      const result = await Promise.race([
+        sendPromise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Kafka send timeout')), timeoutMs))
+      ]);
 
       const latency = Date.now() - startTime;
       

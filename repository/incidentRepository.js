@@ -94,7 +94,7 @@ class IncidentRepository {
         .select('title description location severity status incidentId assignedTo createdBy images createdAt')
         .sort({ createdAt: -1 })
         .limit(50)
-        .maxTimeMS(5000)
+        .setOptions({ maxTimeMS: 5000 })
         .lean();
       
       return incidents || [];
@@ -172,10 +172,10 @@ class IncidentRepository {
         .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
         .skip(skip)
         .limit(limit)
-        .maxTimeMS(5000)
+        .setOptions({ maxTimeMS: 5000 })
         .lean();
 
-      const total = limit <= 50 ? await Incident.countDocuments(query).maxTimeMS(2000).catch(() => incidents.length) : incidents.length;
+      const total = limit <= 50 ? await Incident.countDocuments(query).setOptions({ maxTimeMS: 2000 }).catch(() => incidents.length) : incidents.length;
       
       console.log(`📋 findAll found ${incidents.length} incidents out of ${total} total`);
 
@@ -357,7 +357,7 @@ class IncidentRepository {
           return [];
         }),
         withTimeout(
-          Incident.countDocuments(query).maxTimeMS(10000),
+          Incident.countDocuments(query).setOptions({ maxTimeMS: 10000 }),
           12000
         ).catch(err => {
           console.error('Error in countDocuments:', err);

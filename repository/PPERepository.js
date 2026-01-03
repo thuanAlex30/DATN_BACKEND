@@ -263,7 +263,10 @@ class PPERepository {
       ];
 
       // Run aggregation with disk use allowed and reasonable timeout
-      const result = await PPEItem.aggregate(pipeline).allowDiskUse(true).maxTimeMS(10000);
+      const result = await PPEItem.aggregate(pipeline, {
+        allowDiskUse: true,
+        maxTimeMS: 10000
+      });
       
       // Filter out any documents with invalid ObjectIds
       return result.filter(doc => {
@@ -291,7 +294,7 @@ class PPERepository {
     }
 
     const item = await PPEItem.findOne(filter)
-      .select('item_name item_code brand model quantity_available quantity_allocated reorder_level category_id image_url')
+      .select('item_name item_code brand model quantity_available quantity_allocated reorder_level category_id image_url serial_numbers')
       .populate('category_id', 'category_name description')
       .lean();
 
@@ -389,7 +392,7 @@ class PPERepository {
     }
 
     return await PPEIssuance.find(query)
-      .select('user_id item_id issued_by status issued_date remaining_quantity quantity tenant_id')
+      .select('user_id item_id issued_by status issued_date remaining_quantity quantity tenant_id assigned_serial_numbers returned_serial_numbers')
       .populate({
         path: 'user_id',
         select: 'full_name email',
@@ -417,7 +420,7 @@ class PPERepository {
     if (tenantId) {
       filter.tenant_id = tenantId;
     }
-    return await PPEIssuance.findOne(filter)
+    let issuance = await PPEIssuance.findOne(filter)
       .populate({
         path: 'user_id',
         select: 'full_name email',
@@ -434,14 +437,47 @@ class PPERepository {
         }
       })
       .populate('issued_by', 'full_name');
+    // If not found using tenant filter, retry without tenant (helpful for debugging tenant mismatches)
+    if (!issuance && tenantId) {
+      console.warn(`[PPERepository.getIssuanceById] Not found with tenantId=${tenantId}, retrying without tenant filter for id=${id}`);
+      issuance = await PPEIssuance.findOne({ _id: id })
+        .populate({
+          path: 'user_id',
+          select: 'full_name email',
+          populate: {
+            path: 'department_id',
+            select: 'department_name'
+          }
+        })
+        .populate({
+          path: 'item_id',
+          populate: {
+            path: 'category_id',
+            select: 'category_name description'
+          }
+        })
+        .populate('issued_by', 'full_name');
+    }
+    return issuance;
   }
 
-  async createIssuance(issuanceData, tenantId = null) {
+  async createIssuance(issuanceData, tenantId = null, options = {}) {
     const issuance = new PPEIssuance({
       ...issuanceData,
       ...(tenantId ? { tenant_id: tenantId } : {})
     });
-    return await issuance.save();
+    // options may include session for transactions
+    return await issuance.save(options);
+  }
+
+  // Count issuances pending employee confirmation (manager -> employee, status pending_confirmation)
+  async countPendingEmployeeConfirmations(tenantId = null) {
+    const filter = {
+      issuance_level: 'manager_to_employee',
+      status: 'pending_confirmation'
+    };
+    if (tenantId) filter.tenant_id = tenantId;
+    return await PPEIssuance.countDocuments(filter);
   }
 
   // Lấy danh sách PPE của user theo filters
@@ -451,7 +487,7 @@ class PPERepository {
       query.tenant_id = tenantId;
     }
     return await PPEIssuance.find(query)
-      .select('item_id user_id issued_by manager_id status issued_date remaining_quantity quantity')
+      .select('item_id user_id issued_by manager_id status issued_date remaining_quantity quantity assigned_serial_numbers returned_serial_numbers')
       .populate('item_id', 'item_name item_code brand model image_url')
       .populate('user_id', 'full_name email department')
       .populate('issued_by', 'full_name email')
@@ -468,7 +504,7 @@ class PPERepository {
       query.tenant_id = tenantId;
     }
     return await PPEIssuance.find(query)
-      .select('item_id user_id issued_by manager_id status issued_date remaining_quantity quantity')
+      .select('item_id user_id issued_by manager_id status issued_date remaining_quantity quantity assigned_serial_numbers returned_serial_numbers')
       .populate('item_id', 'item_name item_code brand model image_url')
       .populate('user_id', 'full_name email department_id')
       .populate('issued_by', 'full_name email')
@@ -512,7 +548,7 @@ class PPERepository {
           total: { $sum: '$quantity' }
         }
       }
-    ]).maxTimeMS(5000);
+    ], { maxTimeMS: 5000 });
 
     return (res[0] && res[0].total) ? res[0].total : 0;
   }
@@ -562,13 +598,13 @@ class PPERepository {
           total_received: {
             $sum: '$quantity'  // ✅ TỔNG SỐ NHẬN = SUM tất cả quantity, không phụ thuộc status
           },
+          // Total returned to Header Department (only count admin->manager issuances with status 'returned')
           total_returned: {
             $sum: {
-              // Tính số đã trả = quantity - remaining_quantity (hoặc toàn bộ quantity nếu status='returned')
               $cond: [
                 { $eq: ['$status', 'returned'] },
-                '$quantity',  // Đã trả toàn bộ
-                { $subtract: ['$quantity', { $ifNull: ['$remaining_quantity', '$quantity'] }] }  // Trả một phần
+                '$quantity',
+                0
               ]
             }
           },
@@ -603,8 +639,17 @@ class PPERepository {
                 },
                 initialValue: 0,
                 in: {
-                  // ✅ Tính TẤT CẢ quantity, không filter status
-                  $add: ['$$value', { $ifNull: ['$$this.quantity', 0] }]
+                  // ✅ Tính chỉ những issuance đã được xác nhận (status === 'issued')
+                  $add: [
+                    '$$value',
+                    {
+                      $cond: [
+                        { $eq: ['$$this.status', 'issued'] },
+                        { $ifNull: ['$$this.quantity', 0] },
+                        0
+                      ]
+                    }
+                  ]
                 }
               }
             }
@@ -720,7 +765,7 @@ class PPERepository {
             const actualAllocated = await PPEIssuance.aggregate([
               { $match: issuanceMatch },
               { $group: { _id: null, total_allocated: { $sum: '$quantity' } } }
-            ]).maxTimeMS(5000);
+            ], { maxTimeMS: 5000 });
 
             const actual_allocated_quantity = actualAllocated.length > 0 ? actualAllocated[0].total_allocated : 0;
             const remaining_quantity = total_quantity - actual_allocated_quantity;
@@ -798,7 +843,7 @@ class PPERepository {
         count: { $sum: 1 }
       }
     });
-    const stats = await PPEIssuance.aggregate(pipeline).maxTimeMS(5000);
+    const stats = await PPEIssuance.aggregate(pipeline, { maxTimeMS: 5000 });
 
     const result = {
       total_issuances: 0,
@@ -839,7 +884,7 @@ class PPERepository {
         const actualAllocated = await PPEIssuance.aggregate([
           { $match: issuanceMatch },
           { $group: { _id: null, total_allocated: { $sum: '$quantity' } } }
-        ]).maxTimeMS(5000);
+        ], { maxTimeMS: 5000 });
 
         const actual_allocated_quantity = actualAllocated.length > 0 ? actualAllocated[0].total_allocated : 0;
         const remaining_quantity = total_quantity - actual_allocated_quantity;
