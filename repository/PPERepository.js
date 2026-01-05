@@ -392,7 +392,7 @@ class PPERepository {
     }
 
     return await PPEIssuance.find(query)
-      .select('user_id item_id issued_by status issued_date remaining_quantity quantity tenant_id assigned_serial_numbers returned_serial_numbers')
+      .select('user_id item_id issued_by manager_id status issued_date expected_return_date actual_return_date remaining_quantity manager_remaining_quantity quantity assigned_serial_numbers returned_serial_numbers report_description report_severity report_type reported_date confirmation_notes confirmed_date notes tenant_id createdAt updatedAt')
       .populate({
         path: 'user_id',
         select: 'full_name email',
@@ -487,7 +487,8 @@ class PPERepository {
       query.tenant_id = tenantId;
     }
     return await PPEIssuance.find(query)
-      .select('item_id user_id issued_by manager_id status issued_date remaining_quantity quantity assigned_serial_numbers returned_serial_numbers')
+      // Include additional fields required by frontend (report, return details, dates, serials, notes, timestamps)
+      .select('item_id user_id issued_by manager_id status issued_date expected_return_date actual_return_date remaining_quantity manager_remaining_quantity quantity assigned_serial_numbers returned_serial_numbers report_description report_severity report_type reported_date confirmation_notes confirmed_date notes tenant_id createdAt updatedAt')
       .populate('item_id', 'item_name item_code brand model image_url')
       .populate('user_id', 'full_name email department')
       .populate('issued_by', 'full_name email')
@@ -504,9 +505,9 @@ class PPERepository {
       query.tenant_id = tenantId;
     }
     return await PPEIssuance.find(query)
-      .select('item_id user_id issued_by manager_id status issued_date remaining_quantity quantity assigned_serial_numbers returned_serial_numbers')
+      .select('item_id user_id issued_by manager_id status issued_date expected_return_date actual_return_date remaining_quantity manager_remaining_quantity quantity assigned_serial_numbers returned_serial_numbers report_description report_severity report_type reported_date confirmation_notes confirmed_date notes tenant_id createdAt updatedAt')
       .populate('item_id', 'item_name item_code brand model image_url')
-      .populate('user_id', 'full_name email department_id')
+      .populate('user_id', 'full_name email department')
       .populate('issued_by', 'full_name email')
       .populate('manager_id', 'full_name email')
       .sort({ issued_date: -1 })
@@ -943,9 +944,16 @@ class PPERepository {
     }
 
     return await PPEIssuance.find(query)
-      .select('user_id item_id status issued_date quantity remaining_quantity tenant_id')
-      .populate('user_id', 'full_name email employee_id')
-      .populate('item_id', 'item_name category_id')
+      .select('user_id item_id issued_by status issued_date expected_return_date actual_return_date remaining_quantity manager_remaining_quantity quantity assigned_serial_numbers returned_serial_numbers report_description report_severity report_type reported_date confirmation_notes confirmed_date notes tenant_id createdAt updatedAt')
+      .populate('user_id', 'full_name email employee_id department_id')
+      .populate({
+        path: 'user_id',
+        populate: {
+          path: 'department_id',
+          select: 'department_name'
+        }
+      })
+      .populate('item_id', 'item_name item_code brand model image_url category_id')
       .sort({ issued_date: -1 })
       .limit(200)
       .lean();

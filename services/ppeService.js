@@ -1726,9 +1726,10 @@ class PPEService {
   }
 
   // Get PPE issuances for a specific user
-  async getIssuancesByUser(userId) {
+  async getIssuancesByUser(userId, tenantId = null) {
     try {
-      const issuances = await ppeRepository.getAllIssuances({ user_id: userId });
+      // Prefer repository method that returns populated item_id with image_url
+      const issuances = await ppeRepository.getIssuancesByUser(userId, {}, tenantId);
       return createResponse(200, 'Lấy PPE của nhân viên thành công',
         transformDocumentsId(issuances, POPULATED_FIELDS.PPE_ISSUANCE));
     } catch (error) {
