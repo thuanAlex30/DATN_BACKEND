@@ -6,7 +6,15 @@ const IncidentHistorySchema = new mongoose.Schema({
   performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   timestamp: { type: Date, default: Date.now },
   note: String,
-  findingsImages: { type: [String], default: [] } // Hình ảnh minh chứng cho action "Điều tra"
+  // Minh chứng - Evidence
+  evidenceImages: { type: [String], default: [] }, // Hình ảnh minh chứng (tổng quát)
+  findingsImages: { type: [String], default: [] }, // Hình ảnh minh chứng cho action "Điều tra" (backward compatible)
+  evidenceType: { 
+    type: String, 
+    enum: ['photo', 'document', 'video', 'other'],
+    default: 'photo'
+  }, // Loại minh chứng
+  evidenceDescription: { type: String } // Mô tả về minh chứng
 });
 
 const IncidentSchema = new mongoose.Schema({
@@ -31,6 +39,10 @@ const IncidentSchema = new mongoose.Schema({
   assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   notified: { type: Boolean, default: false },
+  // Thời gian xử lý
+  estimatedCompletionTime: { type: Date }, // Thời gian dự kiến hoàn thành
+  actualStartTime: { type: Date }, // Thời gian bắt đầu xử lý thực tế (khi assign)
+  actualCompletionTime: { type: Date }, // Thời gian hoàn thành thực tế (khi close)
   histories: [IncidentHistorySchema],
   createdAt: { type: Date, default: Date.now }
 });
@@ -41,5 +53,7 @@ IncidentSchema.index({ severity: 1 });
 IncidentSchema.index({ createdAt: -1 });
 IncidentSchema.index({ assignedTo: 1 });
 IncidentSchema.index({ createdBy: 1 });
+IncidentSchema.index({ location: 1 }); // Index cho location để kiểm tra conflict
+IncidentSchema.index({ assignedTo: 1, status: 1, location: 1 }); // Composite index cho location conflict check
 
 module.exports = mongoose.model('Incident', IncidentSchema);

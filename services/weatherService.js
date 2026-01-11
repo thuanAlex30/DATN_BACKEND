@@ -7,6 +7,27 @@ const cache = new NodeCache({
   checkperiod: 120,
 });
 
+// Helper to safely parse latitude/longitude with fallbacks
+function parseCoordinate(value, envVar, defaultValue) {
+  if (value !== undefined && value !== null && value !== '') {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  const envN = Number(process.env[envVar]);
+  if (Number.isFinite(envN)) return envN;
+  return defaultValue;
+}
+
+function extractApiMessage(respData) {
+  if (respData === undefined || respData === null) return null;
+  if (typeof respData === 'string') return respData;
+  if (typeof respData === 'boolean' || typeof respData === 'number') return `Provider returned ${String(respData)}`;
+  if (typeof respData === 'object') {
+    return respData.error ?? respData.message ?? JSON.stringify(respData);
+  }
+  return null;
+}
+
 const OPEN_METEO_BASE_URL = process.env.OPEN_METEO_BASE_URL || 'https://api.open-meteo.com/v1';
 const AIR_QUALITY_BASE_URL = process.env.AIR_QUALITY_BASE_URL || 'https://air-quality-api.open-meteo.com/v1';
 
@@ -16,10 +37,8 @@ class WeatherService {
   }
 
   static async fetchCurrentWeather(params) {
-    const latitude =
-      params.latitude ?? Number(process.env.WEATHER_DEFAULT_LAT) ?? 16.0471;
-    const longitude =
-      params.longitude ?? Number(process.env.WEATHER_DEFAULT_LON) ?? 108.2068;
+    const latitude = parseCoordinate(params.latitude, 'WEATHER_DEFAULT_LAT', 16.0471);
+    const longitude = parseCoordinate(params.longitude, 'WEATHER_DEFAULT_LON', 108.2068);
 
     const normalizedParams = {
       latitude,
@@ -106,6 +125,55 @@ class WeatherService {
       logger.info('Weather fetched', { latencyMs, cacheKey });
       return response;
     } catch (error) {
+      // If Open-Meteo returned 400 (likely invalid timezone or params), try a safe retry with timezone='auto'
+      if (error.response?.status === 400 && normalizedParams.timezone !== 'auto') {
+        try {
+          logger.warn('Weather API 400 received, retrying with timezone=auto', { cacheKey });
+          const safeParams = { ...normalizedParams, timezone: 'auto' };
+          const { data } = await axios.get(`${OPEN_METEO_BASE_URL}/forecast`, {
+            params: safeParams,
+            timeout: 10000
+          });
+
+          // compute currentPrecipitation as before
+          let currentPrecipitation = 0;
+          if (data.hourly && data.hourly.precipitation && data.hourly.time) {
+            const currentTime = data.current_weather.time;
+            const timeIndex = data.hourly.time.findIndex(t => t === currentTime);
+            if (timeIndex !== -1 && data.hourly.precipitation[timeIndex] !== undefined) {
+              currentPrecipitation = data.hourly.precipitation[timeIndex];
+            }
+          }
+
+          const latencyMs = Date.now() - startedAt;
+          const response = {
+            provider: 'open-meteo',
+            fetchedAt: new Date().toISOString(),
+            location: {
+              latitude: data.latitude,
+              longitude: data.longitude,
+              elevation: data.elevation,
+              timezone: data.timezone,
+              utcOffsetSeconds: data.utc_offset_seconds,
+            },
+            current: {
+              ...data.current_weather,
+              precipitation: currentPrecipitation,
+            },
+            latencyMs,
+            raw: process.env.NODE_ENV === 'development' ? data : undefined,
+            stale: false,
+          };
+
+          cache.set(cacheKey, response);
+          logger.info('Weather fetched (retry)', { latencyMs, cacheKey });
+          return response;
+        } catch (retryErr) {
+          // fall through to existing error handling below
+          logger.warn('Retry with timezone=auto also failed', { cacheKey, message: retryErr.message });
+          error = retryErr;
+        }
+      }
       const latencyMs = Date.now() - startedAt;
       const cachedFallback = cache.get(cacheKey);
       if (cachedFallback) {
@@ -126,17 +194,15 @@ class WeatherService {
 
       throw {
         statusCode: error.response?.status || 500,
-        message: error.response?.data?.error || 'Failed to fetch weather data',
+        message: extractApiMessage(error.response?.data) || error.message || 'Failed to fetch weather data',
         feature: 'weather'
       };
     }
   }
 
   static async fetchForecast(params) {
-    const latitude =
-      params.latitude ?? Number(process.env.WEATHER_DEFAULT_LAT) ?? 16.0471;
-    const longitude =
-      params.longitude ?? Number(process.env.WEATHER_DEFAULT_LON) ?? 108.2068;
+    const latitude = parseCoordinate(params.latitude, 'WEATHER_DEFAULT_LAT', 16.0471);
+    const longitude = parseCoordinate(params.longitude, 'WEATHER_DEFAULT_LON', 108.2068);
 
     const normalizedParams = {
       latitude,
@@ -203,6 +269,56 @@ class WeatherService {
       logger.info('Weather forecast fetched', { latencyMs, cacheKey });
       return response;
     } catch (error) {
+      // If Open-Meteo returned 400 (likely invalid timezone or params), try a safe retry with timezone='auto'
+      if (error.response?.status === 400 && normalizedParams.timezone !== 'auto') {
+        try {
+          logger.warn('Weather forecast API 400 received, retrying with timezone=auto', { cacheKey });
+          const safeParams = { ...normalizedParams, timezone: 'auto' };
+          const { data } = await axios.get(`${OPEN_METEO_BASE_URL}/forecast`, {
+            params: safeParams,
+            timeout: 10000
+          });
+
+          const latencyMs = Date.now() - startedAt;
+          // Process daily forecast data
+          const dailyForecast = [];
+          if (data.daily && data.daily.time) {
+            for (let i = 0; i < data.daily.time.length; i++) {
+              dailyForecast.push({
+                date: data.daily.time[i],
+                weathercode: data.daily.weathercode[i],
+                temperature_max: data.daily.temperature_2m_max[i],
+                temperature_min: data.daily.temperature_2m_min[i],
+                windspeed_max: data.daily.windspeed_10m_max[i],
+                precipitation_sum: data.daily.precipitation_sum[i] || 0,
+              });
+            }
+          }
+
+          const response = {
+            provider: 'open-meteo',
+            fetchedAt: new Date().toISOString(),
+            location: {
+              latitude: data.latitude,
+              longitude: data.longitude,
+              elevation: data.elevation,
+              timezone: data.timezone,
+              utcOffsetSeconds: data.utc_offset_seconds,
+            },
+            daily: dailyForecast,
+            latencyMs,
+            stale: false,
+          };
+
+          cache.set(cacheKey, response, 3600); // Cache 1 hour for forecast
+          logger.info('Weather forecast fetched (retry)', { latencyMs, cacheKey });
+          return response;
+        } catch (retryErr) {
+          // fall through to existing error handling below
+          logger.warn('Retry forecast with timezone=auto also failed', { cacheKey, message: retryErr.message });
+          error = retryErr;
+        }
+      }
       const latencyMs = Date.now() - startedAt;
       const cachedFallback = cache.get(cacheKey);
       if (cachedFallback) {
@@ -223,7 +339,7 @@ class WeatherService {
 
       throw {
         statusCode: error.response?.status || 500,
-        message: error.response?.data?.error || 'Failed to fetch weather forecast',
+        message: extractApiMessage(error.response?.data) || error.message || 'Failed to fetch weather forecast',
         feature: 'weather-forecast'
       };
     }
@@ -239,8 +355,10 @@ class WeatherService {
     const normalizedParams = {
       latitude,
       longitude,
-      hourly: 'temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,pressure_msl,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day',
-      timezone: params.timezone ?? 'auto',
+      // Request all necessary fields for hourly forecast charts
+      hourly: params.hourly ?? 'temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day',
+      // Default timezone to Asia/Ho_Chi_Minh per user request
+      timezone: params.timezone ?? process.env.WEATHER_TIMEZONE ?? 'Asia/Ho_Chi_Minh',
       forecast_days: Math.ceil(hours / 24), // Calculate days needed
     };
 
@@ -321,17 +439,34 @@ class WeatherService {
 
       throw {
         statusCode: error.response?.status || 500,
-        message: error.response?.data?.error || 'Failed to fetch hourly forecast',
+        message: extractApiMessage(error.response?.data) || error.message || 'Failed to fetch hourly forecast',
         feature: 'hourly-forecast'
       };
     }
   }
 
   static async fetchAirQuality(params) {
-    const latitude =
-      params.latitude ?? Number(process.env.WEATHER_DEFAULT_LAT) ?? 16.0471;
-    const longitude =
-      params.longitude ?? Number(process.env.WEATHER_DEFAULT_LON) ?? 108.2068;
+    // Parse latitude safely - avoid NaN
+    let latitude = 16.0471; // Default
+    if (params.latitude != null && !isNaN(params.latitude) && isFinite(params.latitude)) {
+      latitude = Number(params.latitude);
+    } else if (process.env.WEATHER_DEFAULT_LAT) {
+      const envLat = Number(process.env.WEATHER_DEFAULT_LAT);
+      if (!isNaN(envLat) && isFinite(envLat)) {
+        latitude = envLat;
+      }
+    }
+    
+    // Parse longitude safely - avoid NaN
+    let longitude = 108.2068; // Default
+    if (params.longitude != null && !isNaN(params.longitude) && isFinite(params.longitude)) {
+      longitude = Number(params.longitude);
+    } else if (process.env.WEATHER_DEFAULT_LON) {
+      const envLon = Number(process.env.WEATHER_DEFAULT_LON);
+      if (!isNaN(envLon) && isFinite(envLon)) {
+        longitude = envLon;
+      }
+    }
 
     const normalizedParams = {
       latitude,

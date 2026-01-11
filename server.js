@@ -33,6 +33,7 @@ const kafkaConsumer = require('./services/kafkaConsumer');
 const kafkaMonitor = require('./services/kafkaMonitor');
 const expiryCheckJob = require('./jobs/expiryCheckJob');
 const ppeOverdueJob = require('./jobs/ppeOverdueJob');
+const weatherAlertJob = require('./jobs/weatherAlertJob');
 
 // =====================
 // App & Server
@@ -191,23 +192,33 @@ const io = new Server(server, {
     websocketService.initialize(io);
     expiryCheckJob.start();
     ppeOverdueJob.start();
+    weatherAlertJob.start();
 
-    // Kafka (optional)
-    try {
-      await kafkaProducer.initialize();
-      await kafkaConsumer.initialize();
-      await kafkaMonitor.startMonitoring();
+    // Kafka (optional) - can be disabled with env KAFKA_ENABLED=false
+    const isKafkaEnabled = !(process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0');
+    if (isKafkaEnabled) {
+      try {
+        await kafkaProducer.initialize();
+        await kafkaConsumer.initialize();
+        await kafkaMonitor.startMonitoring();
 
-      console.log('✅ Kafka initialized');
-    } catch (e) {
-      console.log('⚠️ Kafka disabled:', e.message);
+        console.log('✅ Kafka initialized');
+      } catch (e) {
+        console.log('⚠️ Kafka disabled (init failed):', e.message);
+      }
+    } else {
+      console.log('ℹ️ Kafka initialization skipped (KAFKA_ENABLED is false)');
     }
 
     const shutdown = () => {
       console.log('🛑 Shutting down...');
 
       expiryCheckJob.stop();
-      kafkaMonitor.stopMonitoring();
+      ppeOverdueJob.stop();
+      weatherAlertJob.stop();
+      if (isKafkaEnabled && kafkaMonitor && typeof kafkaMonitor.stopMonitoring === 'function') {
+        try { kafkaMonitor.stopMonitoring(); } catch (err) { console.warn('Error stopping kafkaMonitor:', err.message); }
+      }
       server.close(() => process.exit(0));
     };
 

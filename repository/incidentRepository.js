@@ -584,6 +584,111 @@ class IncidentRepository {
       throw new Error(`Lỗi tìm kiếm incidents: ${error.message}`);
     }
   }
+
+  /**
+   * Kiểm tra xem user có đang xử lý sự cố tại địa điểm khác không
+   * Một người không thể xử lý các sự cố tại các nơi khác nhau cùng lúc
+   * @param {String} userId - ID của user
+   * @param {String} location - Địa điểm của sự cố mới
+   * @param {String} excludeIncidentId - ID của incident hiện tại (để exclude khi update)
+   * @param {String} tenantId - Tenant ID để filter
+   * @returns {Object} { hasConflict: boolean, conflictingIncidents: Array }
+   */
+  async checkLocationConflict(userId, location, excludeIncidentId = null, tenantId = null) {
+    try {
+      const query = {
+        assignedTo: userId,
+        status: 'Đang xử lý', // Chỉ kiểm tra các sự cố đang xử lý
+        location: { $ne: location } // Tìm các sự cố ở địa điểm khác
+      };
+
+      if (tenantId) {
+        query.tenant_id = tenantId;
+      }
+
+      if (excludeIncidentId) {
+        query._id = { $ne: excludeIncidentId };
+      }
+
+      const conflictingIncidents = await Incident.find(query)
+        .select('_id incidentId title location status createdAt')
+        .lean();
+
+      return {
+        hasConflict: conflictingIncidents.length > 0,
+        conflictingIncidents: conflictingIncidents
+      };
+    } catch (error) {
+      throw new Error(`Lỗi kiểm tra location conflict: ${error.message}`);
+    }
+  }
+
+  /**
+   * Lấy danh sách incidents đang được phân công cho user tại một địa điểm
+   * @param {String} userId - ID của user
+   * @param {String} location - Địa điểm
+   * @param {String} tenantId - Tenant ID
+   * @returns {Array} Danh sách incidents
+   */
+  async getActiveIncidentsByUserAndLocation(userId, location, tenantId = null) {
+    try {
+      const query = {
+        assignedTo: userId,
+        status: 'Đang xử lý',
+        location: location
+      };
+
+      if (tenantId) {
+        query.tenant_id = tenantId;
+      }
+
+      const incidents = await Incident.find(query)
+        .select('_id incidentId title location status createdAt actualStartTime')
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return incidents;
+    } catch (error) {
+      throw new Error(`Lỗi lấy incidents theo user và location: ${error.message}`);
+    }
+  }
+
+  /**
+   * Kiểm tra xem user có đang xử lý sự cố nào không
+   * Rule: 1 manager chỉ được quyền xử lý 1 sự cố
+   * Khi sự cố đang xử lý đã đóng thì mới được nhận sự cố tiếp theo
+   * @param {String} userId - ID của user
+   * @param {String} excludeIncidentId - ID của incident hiện tại (để exclude khi update)
+   * @param {String} tenantId - Tenant ID để filter
+   * @returns {Object} { hasActiveIncident: boolean, activeIncident: Object | null }
+   */
+  async checkActiveIncident(userId, excludeIncidentId = null, tenantId = null) {
+    try {
+      const query = {
+        assignedTo: userId,
+        status: 'Đang xử lý' // Chỉ kiểm tra các sự cố đang xử lý
+      };
+
+      if (tenantId) {
+        query.tenant_id = tenantId;
+      }
+
+      if (excludeIncidentId) {
+        query._id = { $ne: excludeIncidentId };
+      }
+
+      const activeIncident = await Incident.findOne(query)
+        .select('_id incidentId title location status createdAt actualStartTime estimatedCompletionTime')
+        .lean();
+
+      return {
+        hasActiveIncident: !!activeIncident,
+        activeIncident: activeIncident || null
+      };
+    } catch (error) {
+      throw new Error(`Lỗi kiểm tra active incident: ${error.message}`);
+    }
+  }
 }
 
 module.exports = new IncidentRepository();
