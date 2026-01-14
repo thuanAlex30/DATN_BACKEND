@@ -3,6 +3,6 @@ services:
     name: safety-management-backend
     env: node
     nodeVersion: 20.18.0
-    buildCommand: npm install
+    buildCommand: rm -rf node_modules && npm ci || npm install
     startCommand: npm start
 
