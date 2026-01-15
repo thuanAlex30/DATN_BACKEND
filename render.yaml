@@ -3,6 +3,6 @@ services:
     name: safety-management-backend
     env: node
     nodeVersion: 20.18.0
-    buildCommand: rm -rf node_modules package-lock.json && npm cache clean --force && npm install --no-audit --legacy-peer-deps && (test -f node_modules/express-validator/lib/index.js || (rm -rf node_modules/express-validator && npm install express-validator@7.3.1 --no-audit --legacy-peer-deps))
+    buildCommand: rm -rf node_modules package-lock.json && npm cache clean --force && npm install --no-audit --legacy-peer-deps
     startCommand: npm start
 
