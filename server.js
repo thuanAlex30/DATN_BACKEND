@@ -136,12 +136,7 @@ app.use('/uploads', express.static(uploadsDir));
 // =====================
 // Logging
 // =====================
-app.use((req, res, next) => {
-  console.log(
-    `${new Date().toISOString()} - ${req.method} ${req.originalUrl} - IP: ${req.ip}`
-  );
-  next();
-});
+// Only use LoggingMiddleware.logAllRequests to avoid duplicate logging
 app.use(LoggingMiddleware.logAllRequests);
 
 // =====================

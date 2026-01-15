@@ -58,20 +58,11 @@ class ErrorMiddleware {
 
   // Async error wrapper
   static asyncHandler(fn) {
-    return (req, res, next) => {
+    return async (req, res, next) => {
       try {
-        // Call the function and handle the promise
-        const promise = Promise.resolve(fn(req, res, next));
-        
-        // Handle promise rejection
-        promise.catch((error) => {
-          console.error(`❌ ErrorMiddleware.asyncHandler - Error caught:`, error);
-          return next(error);
-        });
-        
-        return promise;
+        await Promise.resolve(fn(req, res, next));
       } catch (error) {
-        console.error(`❌ ErrorMiddleware.asyncHandler - Synchronous error:`, error);
+        console.error(`❌ ErrorMiddleware.asyncHandler - Error caught:`, error);
         return next(error);
       }
     };
