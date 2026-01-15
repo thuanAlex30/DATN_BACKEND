@@ -27,6 +27,7 @@ const connectDB = require('./config/database');
 const routes = require('./routes');
 const ErrorMiddleware = require('./middlewares/ErrorMiddleware');
 const LoggingMiddleware = require('./middlewares/LoggingMiddleware');
+const { preventDuplicateRequests } = require('./middlewares/DuplicateRequestMiddleware');
 const websocketService = require('./services/websocketService');
 const kafkaProducer = require('./services/kafkaProducer');
 const kafkaConsumer = require('./services/kafkaConsumer');
@@ -132,6 +133,12 @@ const resolveUploadsDir = () => {
 
 const uploadsDir = resolveUploadsDir();
 app.use('/uploads', express.static(uploadsDir));
+
+// =====================
+// Duplicate Request Prevention
+// =====================
+// Prevent duplicate requests within a short time window (helps with rate limiting)
+app.use(preventDuplicateRequests);
 
 // =====================
 // Logging
