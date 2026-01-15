@@ -24,19 +24,6 @@ router.get(
   WeatherController.getCurrent
 );
 
-// Get equipment suggestions based on weather - available to all authenticated users
-router.get(
-  '/equipment-suggestions',
-  ValidationMiddleware.validateQuery(
-    Joi.object({
-      latitude: Joi.number().optional(),
-      longitude: Joi.number().optional(),
-      timezone: Joi.string().optional()
-    })
-  ),
-  WeatherController.getEquipmentSuggestions
-);
-
 // Get 7-day weather forecast - available to all authenticated users
 router.get(
   '/forecast',
