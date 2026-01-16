@@ -54,7 +54,10 @@ const parseAllowedOrigins = () => {
     'http://127.0.0.1:3000',
     'http://127.0.0.1:3001',
     'http://127.0.0.1:5173',
-    'https://safe-n814.onrender.com'
+    'https://safe-n814.onrender.com',
+    // Vercel frontend URLs
+    'https://datnfrontend-c0qa73axv-lam-danh-mais-projects.vercel.app',
+    'https://*.vercel.app' // Support all Vercel preview deployments
   ];
 
   if (process.env.FRONTEND_URL) base.push(process.env.FRONTEND_URL);
@@ -76,7 +79,15 @@ const allowedOrigins = parseAllowedOrigins();
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true); // Postman / server-side
+    
+    // Check exact match
     if (allowedOrigins.includes(origin)) return callback(null, true);
+    
+    // Check Vercel pattern (*.vercel.app)
+    if (origin.includes('.vercel.app') && allowedOrigins.includes('https://*.vercel.app')) {
+      return callback(null, true);
+    }
+    
     return callback(null, false); // ❗ NEVER throw error
   },
   credentials: true,
