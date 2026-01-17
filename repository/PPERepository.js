@@ -12,7 +12,7 @@ class PPERepository {
       filter.tenant_id = tenantId;
     }
     return await PPECategory.find(filter)
-      .select('category_name description tenant_id createdAt')
+      .select('category_name description lifespan_months tenant_id createdAt image_url')
       .sort({ category_name: 1 })
       .lean();
   }
@@ -701,13 +701,24 @@ class PPERepository {
       total_returned_by_employees: 0
     };
     
-    // ✅ Đảm bảo các giá trị không null/undefined
+    // ✅ Ensure numeric and non-negative results (defensive)
+    const toNum = (v) => {
+      const n = Number(v || 0);
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    const total_received = toNum(stats.total_received);
+    const total_returned = Math.max(0, toNum(stats.total_returned));
+    const remaining_in_hand = Math.max(0, toNum(stats.remaining_in_hand));
+    const total_issued_to_employees = Math.max(0, toNum(stats.total_issued_to_employees));
+    const total_returned_by_employees = Math.max(0, toNum(stats.total_returned_by_employees));
+
     return {
-      total_received: stats.total_received || 0,
-      total_returned: stats.total_returned || 0,
-      remaining_in_hand: stats.remaining_in_hand || 0,
-      total_issued_to_employees: stats.total_issued_to_employees || 0,
-      total_returned_by_employees: stats.total_returned_by_employees || 0
+      total_received,
+      total_returned,
+      remaining_in_hand,
+      total_issued_to_employees,
+      total_returned_by_employees
     };
   }
 

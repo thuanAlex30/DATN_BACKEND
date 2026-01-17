@@ -41,6 +41,11 @@ const imageUpload = multer({
 // Apply authentication middleware to all routes
 router.use(authMiddleware.authenticate);
 
+// Concurrency limiter middleware (to avoid DB overload / bursts)
+const concurrencyLimiter = require('../middlewares/concurrencyLimiter');
+const writeLimiter = concurrencyLimiter(Number(process.env.PPE_CONCURRENCY_LIMIT) || 5);
+const uploadLimiter = concurrencyLimiter(Number(process.env.PPE_UPLOAD_CONCURRENCY_LIMIT) || 2);
+
 // Common ObjectId validator
 const objectId = Joi.string()
   .pattern(/^[0-9a-fA-F]{24}$/)
@@ -299,7 +304,9 @@ const issuanceValidation = {
 router.get('/categories', ppeController.getAllCategories);
 router.get('/categories/:id', ppeController.getCategoryById);
 router.post('/categories', 
+  uploadLimiter,
   imageUpload.single('image'),
+  writeLimiter,
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   validationMiddleware.validateBody(categoryValidation.create),
   ppeController.createCategory
@@ -315,6 +322,7 @@ router.post('/categories/import',
   ppeController.importCategories
 );
 router.put('/categories/:id', 
+  uploadLimiter,
   imageUpload.single('image'),
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   validationMiddleware.validateParams(Joi.object({ id: objectId.required() })),
@@ -338,12 +346,15 @@ router.get('/items/:id', ppeController.getItemById);
 // Generate serial numbers for an item (body: { count?: number })
 router.post('/items/:id/generate-serials', ppeController.generateSerialsForItem);
 router.post('/items', 
+  uploadLimiter,
   imageUpload.single('image'),
+  writeLimiter,
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   validationMiddleware.validateBody(itemValidation.create),
   ppeController.createItem
 );
 router.put('/items/:id', 
+  uploadLimiter,
   imageUpload.single('image'),
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   validationMiddleware.validateParams(Joi.object({ id: objectId.required() })),
@@ -367,6 +378,7 @@ router.put('/items/:id/quantity',
 // PPE Issuances Routes - Luồng phân cấp Admin → Manager → Employee
 // Admin phát PPE cho Manager
 router.post('/issuances/to-manager', 
+  writeLimiter,
   authMiddleware.authorizeScope({ minRoleLevel: 80, tenantScope: 'tenant' }),
   validationMiddleware.validateBody(issuanceValidation.create),
   ppeController.issueToManager
@@ -374,6 +386,7 @@ router.post('/issuances/to-manager',
 
 // Manager phát PPE cho Employee
 router.post('/issuances/to-employee', 
+  writeLimiter,
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   addIssuedByMiddleware,
   validationMiddleware.validateBody(issuanceValidation.create),
@@ -463,6 +476,7 @@ router.put('/issuances/:id',
   ppeController.updateIssuance
 );
 router.post('/issuances/:id/return', 
+  writeLimiter,
   authMiddleware.authorizeScope({ minRoleLevel: 70, tenantScope: 'tenant', departmentScope: 'hierarchy' }),
   validationMiddleware.validateBody(issuanceValidation.return),
   ppeController.returnIssuance

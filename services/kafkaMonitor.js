@@ -1,3 +1,18 @@
+// If Kafka disabled, export a simple stub that tracks nothing
+if (process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0') {
+  console.log('ℹ️ KafkaMonitor stub active (KAFKA_ENABLED=false)');
+  module.exports = {
+    startMonitoring: async () => {},
+    stopMonitoring: () => {},
+    incrementProducerMetrics: () => {},
+    incrementConsumerMetrics: () => {},
+    setProducerError: () => {},
+    setConsumerError: () => {},
+    getMetrics: () => ({ producer: {}, consumer: {}, topics: {}, dlq: {} })
+  };
+  return;
+}
+
 const { kafka, topics } = require('../config/kafkaConfig');
 
 class KafkaMonitor {

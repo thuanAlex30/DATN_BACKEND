@@ -1,4 +1,15 @@
-const { Kafka, Partitioners } = require('kafkajs');
+// Kafka enable flag
+const isKafkaEnabled = (process.env.KAFKA_ENABLED === 'true' || process.env.KAFKA_ENABLED === '1');
+
+let Kafka;
+let Partitioners;
+if (isKafkaEnabled) {
+  ({ Kafka, Partitioners } = require('kafkajs'));
+} else {
+  // Provide safe fallbacks so this module can be required even when kafkajs is not installed
+  Kafka = null;
+  Partitioners = { LegacyPartitioner: () => () => 0 };
+}
 
 // Kafka Configuration
 const kafkaConfig = {
@@ -179,8 +190,8 @@ const eventTypes = {
   CERTIFICATE_BULK_OPERATION: 'certificate_bulk_operation'
 };
 
-// Create Kafka instance
-const kafka = new Kafka(kafkaConfig);
+// Create Kafka instance only when enabled
+const kafka = isKafkaEnabled ? new Kafka(kafkaConfig) : null;
 
 // Producer configuration
 const producerConfig = {

@@ -1162,49 +1162,113 @@ class PPEService {
         ppeSummary[itemId].issuances.push(issuance);
       }
 
-      // Tính toán chính xác cho từng item và transform issuances
-      for (const itemId in ppeSummary) {
-        const stats = await ppeRepository.getManagerPPEStats(managerId, itemId);
-        console.log(`[DEBUG] getManagerPPEStats for item ${itemId}:`, JSON.stringify(stats, null, 2));
-        
-        ppeSummary[itemId].total_received = stats.total_received || 0;  // ✅ Lấy từ DB để chính xác
-        ppeSummary[itemId].total_returned = stats.total_returned || 0;
-        ppeSummary[itemId].remaining_in_hand = stats.remaining_in_hand || 0;  // ✅ Số còn giữ sau khi trả Admin
-        ppeSummary[itemId].total_issued_to_employees = stats.total_issued_to_employees || 0;  // ✅ TỔNG số đã phát (kể cả đã trả)
-        ppeSummary[itemId].total_returned_by_employees = stats.total_returned_by_employees || 0;  // ✅ Tổng số employees đã trả lại
-        // ✅ Số còn lại = remaining_in_hand - (số đang giữ bởi employees)
-        // Số đang giữ bởi employees = total_issued_to_employees - total_returned_by_employees
-        const currentlyHeldByEmployees = (stats.total_issued_to_employees || 0) - (stats.total_returned_by_employees || 0);
-        ppeSummary[itemId].remaining = Math.max(0, (stats.remaining_in_hand || 0) - currentlyHeldByEmployees);
-        // Additional debug / computed fields for frontend
-        ppeSummary[itemId].currentlyHeldByEmployees = currentlyHeldByEmployees;
-        ppeSummary[itemId].availableToReturn = Math.max(0, (stats.remaining_in_hand || 0) - currentlyHeldByEmployees);
-        // employee_issuances counts will be filled later when employee_issuances are fetched
-        
-        // Fetch manager->employee issuances separately so frontend can show pending counts
-        let employeeIssuancesForItem = [];
+      // Tính toán chính xác cho từng item bằng một lần aggregation + lấy employee issuances một lần
+      const mongoose = require('mongoose');
+      // Safe conversion to ObjectId: handle strings or already ObjectId instances
+      const toObjectIdSafe = (val) => {
+        if (!val) return null;
         try {
-          employeeIssuancesForItem = await ppeRepository.getIssuancesByManager(managerId, { item_id: itemId, issuance_level: 'manager_to_employee' }, tenantId) || [];
+          if (val instanceof mongoose.Types.ObjectId) return val;
+          return new mongoose.Types.ObjectId(val);
         } catch (e) {
-          console.warn('[getManagerPPE] failed to fetch employee issuances for item', itemId, e.message || e);
+          // fallback: return original value if cannot convert
+          return val;
         }
+      };
+      const managerObjectId = toObjectIdSafe(managerId);
+      const matchTenant = tenantId ? { tenant_id: toObjectIdSafe(tenantId) } : {};
 
-        // Compute employee issuance status counts
-        const empIss = employeeIssuancesForItem || [];
-        const empPending = empIss.filter(i => i.status === 'pending_confirmation' || i.status === 'pending_manager_return').length;
-        const empIssued = empIss.filter(i => i.status === 'issued').length;
-        const empReturned = empIss.filter(i => i.status === 'returned').length;
+      // Aggregation facets: admin (received by manager) and employee (issued by manager)
+      const aggPipeline = [
+        {
+          $facet: {
+            adminStats: [
+              { $match: { ...matchTenant, user_id: managerObjectId, issuance_level: 'admin_to_manager' } },
+              {
+                $group: {
+                  _id: '$item_id',
+                  total_received: { $sum: '$quantity' },
+                  total_returned: { $sum: { $cond: [ { $eq: ['$status', 'returned'] }, '$quantity', 0 ] } },
+                  remaining_in_hand: { $sum: { $ifNull: ['$remaining_quantity', '$quantity'] } }
+                }
+              }
+            ],
+            employeeStats: [
+              { $match: { ...matchTenant, manager_id: managerObjectId, issuance_level: 'manager_to_employee' } },
+              {
+                $group: {
+                  _id: '$item_id',
+                  total_issued_to_employees: { $sum: '$quantity' },
+                  total_returned_by_employees: { $sum: { $cond: [ { $eq: ['$status', 'returned'] }, '$quantity', 0 ] } },
+                  pending_count: { $sum: { $cond: [ { $in: ['$status', ['pending_confirmation', 'pending_manager_return']] }, 1, 0 ] } },
+                  issued_count: { $sum: { $cond: [ { $eq: ['$status', 'issued'] }, 1, 0 ] } },
+                  returned_count: { $sum: { $cond: [ { $eq: ['$status', 'returned'] }, 1, 0 ] } },
+                  total_count: { $sum: 1 }
+                }
+              }
+            ]
+          }
+        }
+      ];
 
-        // Transform admin->manager issuances (only) and provide employeeIssuances separately plus counts
+      const aggResult = (await PPEIssuance.aggregate(aggPipeline).allowDiskUse(true).exec())[0] || { adminStats: [], employeeStats: [] };
+      const adminMap = new Map();
+      for (const a of aggResult.adminStats || []) {
+        const idStr = (a._id && a._id.toString()) || a._id;
+        adminMap.set(idStr, a);
+      }
+      const empMap = new Map();
+      for (const e of aggResult.employeeStats || []) {
+        const idStr = (e._id && e._id.toString()) || e._id;
+        empMap.set(idStr, e);
+      }
+
+      // Fetch all employee issuances for this manager once (for listing per item)
+      let allEmployeeIssuances = [];
+      try {
+        allEmployeeIssuances = await ppeRepository.getIssuancesByManager(managerId, { issuance_level: 'manager_to_employee' }, tenantId) || [];
+      } catch (e) {
+        console.warn('[getManagerPPE] failed to fetch all employee issuances for manager', managerId, e.message || e);
+      }
+      // Group employee issuances by item id
+      const employeeIssuancesByItem = {};
+      for (const ei of allEmployeeIssuances) {
+        const itemIdKey = (ei.item_id && (ei.item_id._id || ei.item_id).toString()) || (ei.item_id && ei.item_id.toString()) || '';
+        if (!employeeIssuancesByItem[itemIdKey]) employeeIssuancesByItem[itemIdKey] = [];
+        employeeIssuancesByItem[itemIdKey].push(ei);
+      }
+
+      // Populate ppeSummary from aggregated stats and grouped employee issuances
+      for (const itemId in ppeSummary) {
+        const a = adminMap.get(itemId) || {};
+        const e = empMap.get(itemId) || {};
+
+        ppeSummary[itemId].total_received = a.total_received || ppeSummary[itemId].total_received || 0;
+        ppeSummary[itemId].total_returned = a.total_returned || 0;
+        ppeSummary[itemId].remaining_in_hand = a.remaining_in_hand || 0;
+
+        ppeSummary[itemId].total_issued_to_employees = e.total_issued_to_employees || 0;
+        ppeSummary[itemId].total_returned_by_employees = e.total_returned_by_employees || 0;
+
+        const currentlyHeldByEmployees = (ppeSummary[itemId].total_issued_to_employees || 0) - (ppeSummary[itemId].total_returned_by_employees || 0);
+        ppeSummary[itemId].remaining = Math.max(0, (ppeSummary[itemId].remaining_in_hand || 0) - currentlyHeldByEmployees);
+        ppeSummary[itemId].currentlyHeldByEmployees = currentlyHeldByEmployees;
+        ppeSummary[itemId].availableToReturn = Math.max(0, (ppeSummary[itemId].remaining_in_hand || 0) - currentlyHeldByEmployees);
+
+        const employeeIssuancesForItem = employeeIssuancesByItem[itemId] || [];
+        const empPending = (e.pending_count !== undefined) ? e.pending_count : employeeIssuancesForItem.filter(i => i.status === 'pending_confirmation' || i.status === 'pending_manager_return').length;
+        const empIssued = (e.issued_count !== undefined) ? e.issued_count : employeeIssuancesForItem.filter(i => i.status === 'issued').length;
+        const empReturned = (e.returned_count !== undefined) ? e.returned_count : employeeIssuancesForItem.filter(i => i.status === 'returned').length;
+
         ppeSummary[itemId].issuances = transformDocumentsId(ppeSummary[itemId].issuances, POPULATED_FIELDS.PPE_ISSUANCE);
         ppeSummary[itemId].employee_issuances = transformDocumentsId(employeeIssuancesForItem, POPULATED_FIELDS.PPE_ISSUANCE);
         ppeSummary[itemId].employee_issuances_counts = {
           pending: empPending,
           issued: empIssued,
           returned: empReturned,
-          total: empIss.length
+          total: (e.total_count !== undefined) ? e.total_count : employeeIssuancesForItem.length
         };
-        
+
         console.log(`[DEBUG] ppeSummary[${itemId}] after calculation:`, JSON.stringify(ppeSummary[itemId], null, 2));
       }
 

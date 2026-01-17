@@ -28,9 +28,10 @@ const routes = require('./routes');
 const ErrorMiddleware = require('./middlewares/ErrorMiddleware');
 const LoggingMiddleware = require('./middlewares/LoggingMiddleware');
 const websocketService = require('./services/websocketService');
-const kafkaProducer = require('./services/kafkaProducer');
-const kafkaConsumer = require('./services/kafkaConsumer');
-const kafkaMonitor = require('./services/kafkaMonitor');
+// Kafka modules are required lazily below only if enabled to avoid startup failures
+let kafkaProducer = null;
+let kafkaConsumer = null;
+let kafkaMonitor = null;
 const expiryCheckJob = require('./jobs/expiryCheckJob');
 const ppeOverdueJob = require('./jobs/ppeOverdueJob');
 
@@ -96,12 +97,24 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // =====================
 // Rate limit
 // =====================
+// Per-path rate limit for PPE API (higher allowance to avoid throttling during dashboard refreshes)
+const ppeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'production' ? 1000 : 10000,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Global fallback limiter for all other routes
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: process.env.NODE_ENV === 'production' ? 200 : 10000,
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Apply PPE-specific limiter before the global limiter so PPE routes get higher allowance
+app.use('/api/ppe', ppeLimiter);
 app.use(limiter);
 
 // =====================
@@ -192,10 +205,15 @@ const io = new Server(server, {
     expiryCheckJob.start();
     ppeOverdueJob.start();
 
-    // Kafka (optional) - can be disabled with env KAFKA_ENABLED=false
-    const isKafkaEnabled = !(process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0');
+    // Kafka (optional) - only enabled when KAFKA_ENABLED set to 'true' or '1'
+    const isKafkaEnabled = (process.env.KAFKA_ENABLED === 'true' || process.env.KAFKA_ENABLED === '1');
     if (isKafkaEnabled) {
       try {
+        // Lazy-require Kafka modules so they are not loaded when Kafka is disabled
+        kafkaProducer = require('./services/kafkaProducer');
+        kafkaConsumer = require('./services/kafkaConsumer');
+        kafkaMonitor = require('./services/kafkaMonitor');
+
         await kafkaProducer.initialize();
         await kafkaConsumer.initialize();
         await kafkaMonitor.startMonitoring();
@@ -203,6 +221,10 @@ const io = new Server(server, {
         console.log('✅ Kafka initialized');
       } catch (e) {
         console.log('⚠️ Kafka disabled (init failed):', e.message);
+        // If init fails, ensure references remain null to avoid later usage
+        kafkaProducer = null;
+        kafkaConsumer = null;
+        kafkaMonitor = null;
       }
     } else {
       console.log('ℹ️ Kafka initialization skipped (KAFKA_ENABLED is false)');

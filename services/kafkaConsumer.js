@@ -1,3 +1,18 @@
+// Export no-op stub if Kafka is disabled to avoid loading kafkajs and connecting.
+if (process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0') {
+  console.log('ℹ️ KafkaConsumer stub active (KAFKA_ENABLED=false)');
+  module.exports = {
+    initialize: async () => {},
+    disconnect: async () => {},
+    startConsuming: async () => {},
+    sendToDLQ: async () => {},
+    addEventHandler: () => {},
+    removeEventHandler: () => {},
+    getStatus: () => ({ isConnected: false, isInitialized: false, isConsuming: false, eventHandlersCount: 0 })
+  };
+  return;
+}
+
 const { kafka, topics, eventTypes, consumerConfig } = require('../config/kafkaConfig');
 const websocketService = require('./websocketService');
 const kafkaMonitor = require('./kafkaMonitor');

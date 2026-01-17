@@ -33,26 +33,45 @@ async function uploadImageBuffer(buffer, originalName, folder = 'ppe') {
   const { name } = path.parse(originalName || `image-${Date.now()}`);
   const publicId = `${name}-${Date.now()}`;
 
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        public_id: publicId,
-        resource_type: 'image',
-        overwrite: true,
-        eager_async: false,
-      },
-      (err, result) => {
-        if (err) return reject(err);
-        resolve({
-          secureUrl: result.secure_url,
-          publicId: result.public_id,
-        });
-      }
-    );
+  // Retry wrapper with exponential backoff for robustness
+  const maxRetries = Number(process.env.CLOUDINARY_MAX_RETRIES || 3);
+  const baseDelay = Number(process.env.CLOUDINARY_BASE_DELAY_MS || 300);
 
-    stream.end(buffer);
-  });
+  async function attemptUpload(attempt = 0) {
+    return new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder,
+          public_id: publicId,
+          resource_type: 'image',
+          overwrite: true,
+          eager_async: false,
+        },
+        (err, result) => {
+          if (err) {
+            return reject(err);
+          }
+          resolve({
+            secureUrl: result.secure_url,
+            publicId: result.public_id,
+          });
+        }
+      );
+      stream.end(buffer);
+    }).catch(async (err) => {
+      // Retry on transient errors / 429s
+      const isRetryable = err && (err.http_code === 429 || err.http_code >= 500 || !err.http_code);
+      if (isRetryable && attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * baseDelay;
+        console.warn(`[cloudinaryHelper] upload failed (attempt ${attempt + 1}/${maxRetries}), retrying after ${delay}ms`, err.message || err);
+        await new Promise(res => setTimeout(res, delay));
+        return attemptUpload(attempt + 1);
+      }
+      throw err;
+    });
+  }
+
+  return attemptUpload(0);
 }
 
 module.exports = {

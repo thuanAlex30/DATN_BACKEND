@@ -1,3 +1,16 @@
+// If Kafka is disabled, export a no-op stub immediately to avoid loading kafkajs or attempting connections.
+if (process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0') {
+  console.log('ℹ️ KafkaProducer stub active (KAFKA_ENABLED=false)');
+  module.exports = {
+    initialize: async () => { /* noop */ },
+    disconnect: async () => { /* noop */ },
+    sendEvent: async () => ({ success: false, error: 'kafka_disabled' }),
+    sendPPEEvent: async () => ({ success: false, error: 'kafka_disabled' }),
+    getStatus: () => ({ isConnected: false, isInitialized: false })
+  };
+  return;
+}
+
 const { kafka, topics, eventTypes, producerConfig } = require('../config/kafkaConfig');
 const { v4: uuidv4 } = require('uuid');
 

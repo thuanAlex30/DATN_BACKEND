@@ -9,16 +9,11 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:kafka": "jest tests/kafka",
     "test:integration": "jest tests/integration",
     "test:e2e": "jest tests/e2e",
     "test:stress": "jest tests/stress",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "kafka:start": "docker-compose up -d kafka zookeeper",
-    "kafka:stop": "docker-compose down",
-    "kafka:topics": "node scripts/create-kafka-topics.js",
-    "kafka:monitor": "node scripts/kafka-monitor.js",
     "service:audit": "node scripts/start-audit-service.js",
     "service:analytics": "node scripts/start-analytics-service.js",
     "service:event-aggregator": "node scripts/start-event-aggregator.js",
@@ -36,9 +31,7 @@
     "docker:logs": "docker-compose logs -f",
     "docker:restart": "docker-compose restart",
     "docker:prod": "docker-compose -f docker-compose.prod.yml up -d",
-    "docker:prod:down": "docker-compose -f docker-compose.prod.yml down",
-    "docker:kafka:topics": "docker exec safety-kafka kafka-topics --bootstrap-server localhost:9092 --list",
-    "docker:kafka:create-topics": "docker exec safety-kafka-init bash -c 'kafka-topics --bootstrap-server kafka:29092 --list'"
+    "docker:prod:down": "docker-compose -f docker-compose.prod.yml down"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
@@ -66,7 +59,7 @@
     "jsonwebtoken": "^9.0.2",
     "jspdf": "^3.0.3",
     "k6": "^0.0.0",
-    "kafkajs": "^2.2.4",
+    
     "lodash": "^4.17.21",
     "moment": "^2.29.4",
     "mongoose": "^7.5.0",
