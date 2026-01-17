@@ -220,7 +220,10 @@ const io = new Server(server, {
         console.log('⚠️ Kafka disabled (init failed):', e.message);
       }
     } else {
-      console.log('ℹ️ Kafka initialization skipped (KAFKA_ENABLED is false)');
+      // Silent skip to reduce log noise in deployment environments
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('ℹ️ Kafka initialization skipped (KAFKA_ENABLED is false)');
+      }
     }
 
     const shutdown = () => {

@@ -5,4 +5,8 @@ services:
     nodeVersion: 20.18.0
     buildCommand: rm -rf node_modules package-lock.json && npm cache clean --force && npm install --no-audit --legacy-peer-deps
     startCommand: npm start
+    envVars:
+      # Disable Kafka to reduce deployment logs noise on Render
+      - key: KAFKA_ENABLED
+        value: "false"
 
