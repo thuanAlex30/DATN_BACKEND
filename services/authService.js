@@ -108,7 +108,7 @@ class AuthService {
       }
       
       if (!user) {
-        return createResponse(401, 'Thông tin đăng nhập không hợp lệ');
+        return createResponse(401, 'Tài khoản không tồn tại');
       }
 
       if (!user.is_active) {
@@ -121,7 +121,7 @@ class AuthService {
 
       const isPasswordValid = await user.comparePassword(password);
       if (!isPasswordValid) {
-        return createResponse(401, 'Thông tin đăng nhập không hợp lệ');
+        return createResponse(401, 'Mật khẩu không đúng');
       }
 
       // Get role name for token

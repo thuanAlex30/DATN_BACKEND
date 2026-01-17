@@ -55,5 +55,9 @@ IncidentSchema.index({ assignedTo: 1 });
 IncidentSchema.index({ createdBy: 1 });
 IncidentSchema.index({ location: 1 }); // Index cho location để kiểm tra conflict
 IncidentSchema.index({ assignedTo: 1, status: 1, location: 1 }); // Composite index cho location conflict check
+// Composite indexes for stats queries - improve aggregation performance
+IncidentSchema.index({ tenant_id: 1, status: 1 });
+IncidentSchema.index({ tenant_id: 1, severity: 1 });
+IncidentSchema.index({ tenant_id: 1, createdAt: -1 }); // Most common query pattern
 
 module.exports = mongoose.model('Incident', IncidentSchema);

@@ -4,7 +4,9 @@
  */
 
 const requestCache = new Map();
-const DUPLICATE_WINDOW_MS = 2000; // 2 seconds window
+const responseCache = new Map(); // Cache responses for duplicate requests
+const DUPLICATE_WINDOW_MS = 1000; // 1 second window (reduced from 2s)
+const CACHE_TTL_MS = 5000; // Cache responses for 5 seconds
 
 /**
  * Generate a unique key for a request
@@ -13,13 +15,15 @@ function generateRequestKey(req) {
   const method = req.method;
   const path = req.path || req.url.split('?')[0];
   const query = JSON.stringify(req.query || {});
-  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  // Don't include IP for stats endpoints - allow same request from different components
+  const includeIp = !path.includes('/stats/');
+  const ip = includeIp ? (req.ip || req.connection.remoteAddress || 'unknown') : 'shared';
   
   return `${method}:${path}:${query}:${ip}`;
 }
 
 /**
- * Middleware to detect and block duplicate requests
+ * Middleware to detect and handle duplicate requests (cache response instead of blocking)
  */
 function preventDuplicateRequests(req, res, next) {
   // Skip for non-GET requests (POST, PUT, DELETE should be allowed)
@@ -30,32 +34,56 @@ function preventDuplicateRequests(req, res, next) {
   const requestKey = generateRequestKey(req);
   const now = Date.now();
   
-  // Check if this exact request was made recently
+  // Check if we have a cached response
+  const cachedResponse = responseCache.get(requestKey);
+  if (cachedResponse && (now - cachedResponse.timestamp) < CACHE_TTL_MS) {
+    // Return cached response immediately
+    console.log(`✅ Returning cached response for: ${req.method} ${req.path}`);
+    return res.status(cachedResponse.status || 200).json(cachedResponse.data);
+  }
+  
+  // Check if this exact request is currently being processed
   const cachedRequest = requestCache.get(requestKey);
   
   if (cachedRequest && (now - cachedRequest.timestamp) < DUPLICATE_WINDOW_MS) {
-    // Duplicate request detected - return cached response or skip
-    console.warn(`⚠️ Duplicate request detected and blocked: ${req.method} ${req.path}`, {
-      requestKey,
+    // Duplicate request detected - but don't block, just log
+    // The response will be cached when the first request completes
+    console.log(`ℹ️ Duplicate request detected (within ${DUPLICATE_WINDOW_MS}ms): ${req.method} ${req.path}`, {
       timeSinceLastRequest: now - cachedRequest.timestamp,
-      ip: req.ip
     });
-    
-    // Return 429 Too Many Requests
-    return res.status(429).json({
-      success: false,
-      message: 'Duplicate request detected. Please wait a moment before retrying.',
-      retryAfter: Math.ceil((DUPLICATE_WINDOW_MS - (now - cachedRequest.timestamp)) / 1000)
-    });
+    // Allow the request to proceed - response will be cached
   }
   
-  // Store this request
+  // Store this request timestamp
   requestCache.set(requestKey, {
     timestamp: now,
     requestId: `${now}-${Math.random().toString(36).substr(2, 9)}`
   });
   
-  // Clean up old entries periodically (every 10 seconds)
+  // Intercept response to cache it
+  const originalJson = res.json.bind(res);
+  res.json = function(data) {
+    // Cache successful responses for stats endpoints
+    if (req.path.includes('/stats/') && res.statusCode >= 200 && res.statusCode < 300) {
+      responseCache.set(requestKey, {
+        timestamp: now,
+        status: res.statusCode,
+        data: data
+      });
+      // Clean up old cache entries
+      if (responseCache.size > 500) {
+        const cutoff = now - CACHE_TTL_MS * 2;
+        for (const [key, value] of responseCache.entries()) {
+          if (value.timestamp < cutoff) {
+            responseCache.delete(key);
+          }
+        }
+      }
+    }
+    return originalJson(data);
+  };
+  
+  // Clean up old request entries periodically
   if (requestCache.size > 1000) {
     const cutoff = now - DUPLICATE_WINDOW_MS * 2;
     for (const [key, value] of requestCache.entries()) {
