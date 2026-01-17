@@ -100,7 +100,7 @@ router.get('/health', (req, res) => {
         dlq: {
           messagesInDLQ: kafkaMetrics.dlq?.messagesInDLQ || 0,
         },
-      },
+      } : null
     });
   } catch (error) {
     console.error('Health check error:', error);
