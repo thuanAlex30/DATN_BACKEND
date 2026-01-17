@@ -7,6 +7,6 @@ services:
     startCommand: npm start
     envVars:
       # Disable Kafka to reduce deployment logs noise on Render
-      - key: KAFKA_ENABLED
-        value: "false"
+      # Kafka is disabled by default (not set = disabled)
+      # To enable: set ENABLE_KAFKA=true
 

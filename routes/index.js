@@ -62,7 +62,7 @@ router.get('/health', (req, res) => {
   try {
     // Lazy load kafkaMonitor only when needed
     let kafkaMetrics = null;
-    const isKafkaEnabled = !(process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0');
+    const isKafkaEnabled = process.env.ENABLE_KAFKA === 'true';
     if (isKafkaEnabled) {
       try {
         const kafkaMonitor = require('../services/kafkaMonitor');
