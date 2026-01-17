@@ -68,27 +68,30 @@ class PayOSService {
 
   /**
    * Helper: Set default return/cancel URLs
-   * Ưu tiên: Render Backend URL > Frontend URL > localhost
+   * Ưu tiên: FRONTEND_URL > Production Vercel URL > Render Backend URL > localhost
    */
   _setDefaultUrls() {
-    // Kiểm tra nếu đang chạy trên Render
-    const renderUrl = process.env.RENDER_EXTERNAL_URL || process.env.RENDER_URL;
+    // Production Frontend URL
+    const PRODUCTION_FRONTEND_URL = 'https://datn-fontend-sigma.vercel.app';
     
-    // Xác định frontend URL - ưu tiên: FRONTEND_URL > Vercel URL > localhost
-    const frontendUrl = process.env.FRONTEND_URL || 
-                       'https://datnfrontend-c0qa73axv-lam-danh-mais-projects.vercel.app' || 
-                       'http://localhost:5173';
+    // Xác định frontend URL - ưu tiên production URLs
+    let frontendUrl = process.env.FRONTEND_URL;
     
-    if (renderUrl) {
-      // Trên Render: redirect về frontend sau khi thanh toán
-      // Frontend sẽ xử lý hiển thị kết quả thanh toán
-      this.returnUrl = `${frontendUrl}/pricing/payment-success`;
-      this.cancelUrl = `${frontendUrl}/pricing/payment-cancelled`;
-    } else {
-      // Local development: trỏ về frontend
-      this.returnUrl = `${frontendUrl}/pricing/payment-success`;
-      this.cancelUrl = `${frontendUrl}/pricing/payment-cancelled`;
+    // Nếu không có FRONTEND_URL, dùng production Vercel URL
+    if (!frontendUrl) {
+      // Kiểm tra nếu đang chạy trên production (Render/Vercel)
+      const isProduction = process.env.NODE_ENV === 'production' || 
+                          process.env.RENDER_EXTERNAL_URL || 
+                          process.env.RENDER_URL ||
+                          process.env.VERCEL;
+      
+      // Luôn dùng production URL khi deploy, chỉ dùng localhost khi development local
+      frontendUrl = isProduction ? PRODUCTION_FRONTEND_URL : 'http://localhost:5173';
     }
+    
+    // Luôn dùng frontend URL cho return/cancel (frontend sẽ xử lý redirect)
+    this.returnUrl = `${frontendUrl}/pricing/payment-success`;
+    this.cancelUrl = `${frontendUrl}/pricing/payment-cancelled`;
   }
 
   /**

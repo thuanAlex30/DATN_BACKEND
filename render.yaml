@@ -9,4 +9,8 @@ services:
       # Disable Kafka to reduce deployment logs noise on Render
       # Kafka is disabled by default (not set = disabled)
       # To enable: set ENABLE_KAFKA=true
+      
+      # Frontend URL for PayOS callbacks and redirects
+      - key: FRONTEND_URL
+        value: "https://datn-fontend-sigma.vercel.app"
 
