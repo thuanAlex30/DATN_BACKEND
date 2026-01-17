@@ -29,9 +29,7 @@ const ErrorMiddleware = require('./middlewares/ErrorMiddleware');
 const LoggingMiddleware = require('./middlewares/LoggingMiddleware');
 const { preventDuplicateRequests } = require('./middlewares/DuplicateRequestMiddleware');
 const websocketService = require('./services/websocketService');
-const kafkaProducer = require('./services/kafkaProducer');
-const kafkaConsumer = require('./services/kafkaConsumer');
-const kafkaMonitor = require('./services/kafkaMonitor');
+// Lazy load Kafka modules to avoid connection attempts when disabled
 const expiryCheckJob = require('./jobs/expiryCheckJob');
 const ppeOverdueJob = require('./jobs/ppeOverdueJob');
 const weatherAlertJob = require('./jobs/weatherAlertJob');
@@ -211,6 +209,11 @@ const io = new Server(server, {
     const isKafkaEnabled = !(process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0');
     if (isKafkaEnabled) {
       try {
+        // Lazy load Kafka modules only when enabled to avoid connection attempts
+        const kafkaProducer = require('./services/kafkaProducer');
+        const kafkaConsumer = require('./services/kafkaConsumer');
+        const kafkaMonitor = require('./services/kafkaMonitor');
+        
         await kafkaProducer.initialize();
         await kafkaConsumer.initialize();
         await kafkaMonitor.startMonitoring();
@@ -221,9 +224,7 @@ const io = new Server(server, {
       }
     } else {
       // Silent skip to reduce log noise in deployment environments
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('ℹ️ Kafka initialization skipped (KAFKA_ENABLED is false)');
-      }
+      // Don't even require Kafka modules when disabled
     }
 
     const shutdown = () => {
@@ -232,8 +233,16 @@ const io = new Server(server, {
       expiryCheckJob.stop();
       ppeOverdueJob.stop();
       weatherAlertJob.stop();
-      if (isKafkaEnabled && kafkaMonitor && typeof kafkaMonitor.stopMonitoring === 'function') {
-        try { kafkaMonitor.stopMonitoring(); } catch (err) { console.warn('Error stopping kafkaMonitor:', err.message); }
+      const isKafkaEnabled = !(process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0');
+      if (isKafkaEnabled) {
+        try {
+          const kafkaMonitor = require('./services/kafkaMonitor');
+          if (kafkaMonitor && typeof kafkaMonitor.stopMonitoring === 'function') {
+            kafkaMonitor.stopMonitoring();
+          }
+        } catch (err) {
+          // Ignore if Kafka modules not loaded
+        }
       }
       server.close(() => process.exit(0));
     };
