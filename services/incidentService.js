@@ -323,7 +323,7 @@ class IncidentService {
         
         return {
           success: false,
-          message: `Người này đang xử lý sự cố ${activeIncident.incidentId}${locationInfo}. Một người chỉ được quyền xử lý 1 sự cố tại một thời điểm. Vui lòng đợi sự cố hiện tại được đóng.`,
+          message: `Người này đang xử lý sự cố ${activeIncident.incidentId}${locationInfo}. Một người chỉ được quyền xử lý 1 sự cố tại một thời điểm.`,
           statusCode: 400,
           data: {
             hasActiveIncident: true,
