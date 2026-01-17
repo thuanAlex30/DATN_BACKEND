@@ -1,3 +1,5 @@
+const KAFKA_ENABLED = process.env.ENABLE_KAFKA === 'true';
+
 const { kafka, topics, eventTypes, producerConfig } = require('../config/kafkaConfig');
 const { v4: uuidv4 } = require('uuid');
 
@@ -12,6 +14,11 @@ class KafkaProducer {
    * Initialize Kafka Producer
    */
   async initialize() {
+    // Guard: Kafka must be enabled
+    if (!KAFKA_ENABLED) {
+      return; // Silent return, no connection attempt
+    }
+
     try {
       if (this.isInitialized) {
         console.log('📤 Kafka Producer already initialized');
@@ -62,6 +69,11 @@ class KafkaProducer {
    * @param {string} key - Optional partition key
    */
   async sendEvent(topic, eventData, key = null) {
+    // Guard: Kafka must be enabled - fail silent, don't throw
+    if (!KAFKA_ENABLED) {
+      return { success: false, error: 'Kafka is disabled' };
+    }
+
     try {
       if (!this.isConnected) {
         await this.initialize();
@@ -345,6 +357,11 @@ class KafkaProducer {
    * @param {Object} metadata - Event metadata
    */
   async sendSystemEvent(eventType, systemData, metadata = {}) {
+    // Guard: Kafka must be enabled - fail silent, don't throw
+    if (!KAFKA_ENABLED) {
+      return { success: false, error: 'Kafka is disabled' };
+    }
+
     const event = {
       eventType,
       data: {
@@ -521,9 +538,19 @@ class KafkaProducer {
    * Get connection status
    */
   getStatus() {
+    // Guard: Kafka must be enabled
+    if (!KAFKA_ENABLED) {
+      return {
+        isConnected: false,
+        isInitialized: false,
+        enabled: false
+      };
+    }
+
     return {
       isConnected: this.isConnected,
-      isInitialized: this.isInitialized
+      isInitialized: this.isInitialized,
+      enabled: true
     };
   }
 }

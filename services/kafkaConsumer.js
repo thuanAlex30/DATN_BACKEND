@@ -1,3 +1,5 @@
+const KAFKA_ENABLED = process.env.ENABLE_KAFKA === 'true';
+
 const { kafka, topics, eventTypes, consumerConfig } = require('../config/kafkaConfig');
 const websocketService = require('./websocketService');
 const kafkaMonitor = require('./kafkaMonitor');
@@ -15,6 +17,11 @@ class KafkaConsumer {
    * Initialize Kafka Consumer
    */
   async initialize() {
+    // Guard: Kafka must be enabled - CRITICAL: No consumer should exist if disabled
+    if (!KAFKA_ENABLED) {
+      return; // Silent return, no connection attempt, no consumer creation
+    }
+
     try {
       if (this.isInitialized) {
         console.log('📥 Kafka Consumer already initialized');
@@ -63,6 +70,11 @@ class KafkaConsumer {
    * Subscribe to topics and start consuming
    */
   async startConsuming() {
+    // Guard: Kafka must be enabled - CRITICAL: No auto-connect, no subscribe, no loop
+    if (!KAFKA_ENABLED) {
+      return; // Silent return, no subscription, no consuming loop
+    }
+
     try {
       // If already consuming, just return (allow multiple services to call this)
       if (this.isConsuming) {
@@ -107,6 +119,11 @@ class KafkaConsumer {
    * @param {Error} error - Error that occurred
    */
   async sendToDLQ(originalTopic, message, error) {
+    // Guard: Kafka must be enabled - no DLQ if disabled
+    if (!KAFKA_ENABLED) {
+      return; // Silent return, no DLQ
+    }
+
     try {
       const dlqTopic = `${originalTopic}.dlq`;
       const dlqMessage = {
@@ -159,6 +176,11 @@ class KafkaConsumer {
    * @param {number} retryCount - Current retry count
    */
   async processMessageWithRetry(topic, partition, message, retryCount = 0) {
+    // Guard: Kafka must be enabled - no message processing if disabled
+    if (!KAFKA_ENABLED) {
+      return; // Silent return, no processing
+    }
+
     const maxRetries = 3;
     const retryDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff
 

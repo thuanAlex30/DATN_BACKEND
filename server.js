@@ -205,8 +205,8 @@ const io = new Server(server, {
     ppeOverdueJob.start();
     weatherAlertJob.start();
 
-    // Kafka (optional) - can be disabled with env KAFKA_ENABLED=false
-    const isKafkaEnabled = !(process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0');
+    // Kafka (optional) - can be disabled with env ENABLE_KAFKA=false or not set
+    const isKafkaEnabled = process.env.ENABLE_KAFKA === 'true';
     if (isKafkaEnabled) {
       try {
         // Lazy load Kafka modules only when enabled to avoid connection attempts
@@ -233,7 +233,7 @@ const io = new Server(server, {
       expiryCheckJob.stop();
       ppeOverdueJob.stop();
       weatherAlertJob.stop();
-      const isKafkaEnabled = !(process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0');
+      const isKafkaEnabled = process.env.ENABLE_KAFKA === 'true';
       if (isKafkaEnabled) {
         try {
           const kafkaMonitor = require('./services/kafkaMonitor');
