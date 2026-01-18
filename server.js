@@ -112,6 +112,15 @@ const limiter = rateLimit({
   max: process.env.NODE_ENV === 'production' ? 200 : 10000,
   standardHeaders: true,
   legacyHeaders: false,
+  message: 'Too many requests from this IP, please try again later.',
+  handler: (req, res) => {
+    res.status(429).json({
+      success: false,
+      message: 'Too many requests from this IP, please try again later.',
+      errors: null,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 app.use(limiter);
 

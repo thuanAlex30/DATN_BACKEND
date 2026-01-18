@@ -1,6 +1,8 @@
 const KAFKA_ENABLED = process.env.ENABLE_KAFKA === 'true';
 
-const { kafka, topics } = require('../config/kafkaConfig');
+// Don't destructure kafka - lazy load it only when needed
+const kafkaConfig = require('../config/kafkaConfig');
+const { topics } = kafkaConfig;
 
 class KafkaMonitor {
   constructor() {
@@ -115,8 +117,15 @@ class KafkaMonitor {
    * Collect topic-specific metrics
    */
   async collectTopicMetrics() {
+    // Guard: Kafka must be enabled
+    if (!KAFKA_ENABLED) {
+      return; // Silent return
+    }
+
     let admin = null;
     try {
+      // Lazy load kafka only when needed
+      const kafka = kafkaConfig.kafka;
       admin = kafka.admin();
       await admin.connect();
 
@@ -220,7 +229,14 @@ class KafkaMonitor {
    * Collect DLQ metrics
    */
   async collectDLQMetrics() {
+    // Guard: Kafka must be enabled
+    if (!KAFKA_ENABLED) {
+      return; // Silent return
+    }
+
     try {
+      // Lazy load kafka only when needed
+      const kafka = kafkaConfig.kafka;
       const admin = kafka.admin();
       await admin.connect();
 

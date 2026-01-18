@@ -2,9 +2,13 @@ const axios = require('axios');
 const NodeCache = require('node-cache');
 const logger = require('../utils/logger');
 
+// Increase cache TTL to reduce API calls and avoid 429 rate limits
+// Default: 30 minutes (1800 seconds), can be overridden via OPEN_METEO_CACHE_TTL_SECONDS
+// Weather data doesn't change frequently, so 30 minutes is reasonable
 const cache = new NodeCache({
-  stdTTL: Number(process.env.OPEN_METEO_CACHE_TTL_SECONDS) || 600,
+  stdTTL: Number(process.env.OPEN_METEO_CACHE_TTL_SECONDS) || 1800, // 30 minutes default (increased from 15)
   checkperiod: 120,
+  useClones: false, // Better performance for large objects
 });
 
 // Helper to safely parse latitude/longitude with fallbacks
@@ -21,9 +25,22 @@ function parseCoordinate(value, envVar, defaultValue) {
 function extractApiMessage(respData) {
   if (respData === undefined || respData === null) return null;
   if (typeof respData === 'string') return respData;
-  if (typeof respData === 'boolean' || typeof respData === 'number') return `Provider returned ${String(respData)}`;
+  if (typeof respData === 'boolean') {
+    // Boolean true/false should not be used as error messages
+    return null; // Return null to use fallback message
+  }
+  if (typeof respData === 'number') return `Provider returned ${String(respData)}`;
   if (typeof respData === 'object') {
-    return respData.error ?? respData.message ?? JSON.stringify(respData);
+    // Check if message is a meaningful string, not boolean
+    const errorMsg = respData.error ?? respData.message;
+    if (typeof errorMsg === 'string' && errorMsg.trim()) {
+      return errorMsg;
+    }
+    if (typeof errorMsg === 'boolean') {
+      // Don't use boolean as message
+      return null;
+    }
+    return JSON.stringify(respData);
   }
   return null;
 }
@@ -175,12 +192,41 @@ class WeatherService {
         }
       }
       const latencyMs = Date.now() - startedAt;
+      const statusCode = error.response?.status;
+      
+      // Handle 429 (Rate Limit) - serve stale cache immediately, don't retry
+      if (statusCode === 429) {
+        const cachedFallback = cache.get(cacheKey);
+        if (cachedFallback) {
+          logger.warn('Weather API rate limited (429), serving stale cache', {
+            latencyMs,
+            cacheKey,
+            error: error.message,
+          });
+          return { ...cachedFallback, stale: true, staleAt: new Date().toISOString() };
+        }
+        // If no cache, return error with helpful message
+        logger.error('Weather API rate limited (429) and no cache available', {
+          latencyMs,
+          cacheKey,
+          message: error.message,
+        });
+        throw {
+          statusCode: 429,
+          message: 'Weather API rate limit exceeded. Please try again later.',
+          feature: 'weather',
+          retryAfter: error.response?.headers?.['retry-after'] || 60
+        };
+      }
+
+      // For other errors, try to serve stale cache
       const cachedFallback = cache.get(cacheKey);
       if (cachedFallback) {
         logger.warn('Weather API failed, serving stale cache', {
           latencyMs,
           cacheKey,
           error: error.message,
+          status: statusCode,
         });
         return { ...cachedFallback, stale: true, staleAt: new Date().toISOString() };
       }
@@ -189,11 +235,11 @@ class WeatherService {
         latencyMs,
         cacheKey,
         message: error.message,
-        status: error.response?.status,
+        status: statusCode,
       });
 
       throw {
-        statusCode: error.response?.status || 500,
+        statusCode: statusCode || 500,
         message: extractApiMessage(error.response?.data) || error.message || 'Failed to fetch weather data',
         feature: 'weather'
       };
@@ -265,7 +311,7 @@ class WeatherService {
         stale: false,
       };
 
-      cache.set(cacheKey, response, 3600); // Cache 1 hour for forecast
+      cache.set(cacheKey, response, 3600 * 2); // Cache 2 hours for forecast (reduced API calls)
       logger.info('Weather forecast fetched', { latencyMs, cacheKey });
       return response;
     } catch (error) {
@@ -310,7 +356,7 @@ class WeatherService {
             stale: false,
           };
 
-          cache.set(cacheKey, response, 3600); // Cache 1 hour for forecast
+          cache.set(cacheKey, response, 3600 * 2); // Cache 2 hours for forecast (reduced API calls)
           logger.info('Weather forecast fetched (retry)', { latencyMs, cacheKey });
           return response;
         } catch (retryErr) {
@@ -320,12 +366,40 @@ class WeatherService {
         }
       }
       const latencyMs = Date.now() - startedAt;
+      const statusCode = error.response?.status;
+      
+      // Handle 429 (Rate Limit) - serve stale cache immediately
+      if (statusCode === 429) {
+        const cachedFallback = cache.get(cacheKey);
+        if (cachedFallback) {
+          logger.warn('Weather forecast API rate limited (429), serving stale cache', {
+            latencyMs,
+            cacheKey,
+            error: error.message,
+          });
+          return { ...cachedFallback, stale: true, staleAt: new Date().toISOString() };
+        }
+        logger.error('Weather forecast API rate limited (429) and no cache available', {
+          latencyMs,
+          cacheKey,
+          message: error.message,
+        });
+        throw {
+          statusCode: 429,
+          message: 'Weather API rate limit exceeded. Please try again later.',
+          feature: 'weather-forecast',
+          retryAfter: error.response?.headers?.['retry-after'] || 60
+        };
+      }
+
+      // For other errors, try to serve stale cache
       const cachedFallback = cache.get(cacheKey);
       if (cachedFallback) {
         logger.warn('Weather forecast API failed, serving stale cache', {
           latencyMs,
           cacheKey,
           error: error.message,
+          status: statusCode,
         });
         return { ...cachedFallback, stale: true, staleAt: new Date().toISOString() };
       }
@@ -334,11 +408,11 @@ class WeatherService {
         latencyMs,
         cacheKey,
         message: error.message,
-        status: error.response?.status,
+        status: statusCode,
       });
 
       throw {
-        statusCode: error.response?.status || 500,
+        statusCode: statusCode || 500,
         message: extractApiMessage(error.response?.data) || error.message || 'Failed to fetch weather forecast',
         feature: 'weather-forecast'
       };
@@ -415,17 +489,45 @@ class WeatherService {
         stale: false,
       };
 
-      cache.set(cacheKey, response, 1800); // Cache 30 minutes for hourly
+      cache.set(cacheKey, response, 3600); // Cache 1 hour for hourly (reduced API calls)
       logger.info('Hourly forecast fetched', { latencyMs, cacheKey, hours });
       return response;
     } catch (error) {
       const latencyMs = Date.now() - startedAt;
+      const statusCode = error.response?.status;
+      
+      // Handle 429 (Rate Limit) - serve stale cache immediately
+      if (statusCode === 429) {
+        const cachedFallback = cache.get(cacheKey);
+        if (cachedFallback) {
+          logger.warn('Hourly forecast API rate limited (429), serving stale cache', {
+            latencyMs,
+            cacheKey,
+            error: error.message,
+          });
+          return { ...cachedFallback, stale: true, staleAt: new Date().toISOString() };
+        }
+        logger.error('Hourly forecast API rate limited (429) and no cache available', {
+          latencyMs,
+          cacheKey,
+          message: error.message,
+        });
+        throw {
+          statusCode: 429,
+          message: 'Weather API rate limit exceeded. Please try again later.',
+          feature: 'hourly-forecast',
+          retryAfter: error.response?.headers?.['retry-after'] || 60
+        };
+      }
+
+      // For other errors, try to serve stale cache
       const cachedFallback = cache.get(cacheKey);
       if (cachedFallback) {
         logger.warn('Hourly forecast API failed, serving stale cache', {
           latencyMs,
           cacheKey,
           error: error.message,
+          status: statusCode,
         });
         return { ...cachedFallback, stale: true, staleAt: new Date().toISOString() };
       }
@@ -434,11 +536,11 @@ class WeatherService {
         latencyMs,
         cacheKey,
         message: error.message,
-        status: error.response?.status,
+        status: statusCode,
       });
 
       throw {
-        statusCode: error.response?.status || 500,
+        statusCode: statusCode || 500,
         message: extractApiMessage(error.response?.data) || error.message || 'Failed to fetch hourly forecast',
         feature: 'hourly-forecast'
       };
@@ -520,27 +622,50 @@ class WeatherService {
         stale: false,
       };
 
-      cache.set(cacheKey, response, 1800); // Cache 30 minutes
+      cache.set(cacheKey, response, 3600); // Cache 1 hour for air quality (reduced API calls)
       logger.info('Air quality fetched', { latencyMs, cacheKey });
       return response;
     } catch (error) {
       const latencyMs = Date.now() - startedAt;
-      const cachedFallback = cache.get(cacheKey);
-      if (cachedFallback) {
-        logger.warn('Air quality API failed, serving stale cache', {
+      const statusCode = error.response?.status;
+      
+      // Handle 429 (Rate Limit) - serve stale cache immediately
+      if (statusCode === 429) {
+        const cachedFallback = cache.get(cacheKey);
+        if (cachedFallback) {
+          logger.warn('Air quality API rate limited (429), serving stale cache', {
+            latencyMs,
+            cacheKey,
+            error: error.message,
+          });
+          return { ...cachedFallback, stale: true, staleAt: new Date().toISOString() };
+        }
+        // Air quality is optional, return null values instead of throwing
+        logger.warn('Air quality API rate limited (429) and no cache available, returning null', {
           latencyMs,
           cacheKey,
-          error: error.message,
+          message: error.message,
         });
-        return { ...cachedFallback, stale: true, staleAt: new Date().toISOString() };
+      } else {
+        // For other errors, try to serve stale cache
+        const cachedFallback = cache.get(cacheKey);
+        if (cachedFallback) {
+          logger.warn('Air quality API failed, serving stale cache', {
+            latencyMs,
+            cacheKey,
+            error: error.message,
+            status: statusCode,
+          });
+          return { ...cachedFallback, stale: true, staleAt: new Date().toISOString() };
+        }
+        
+        logger.error('Air quality API error', {
+          latencyMs,
+          cacheKey,
+          message: error.message,
+          status: statusCode,
+        });
       }
-
-      logger.error('Air quality API error', {
-        latencyMs,
-        cacheKey,
-        message: error.message,
-        status: error.response?.status,
-      });
 
       // Don't throw, return null values instead as AQ is optional
       return {
