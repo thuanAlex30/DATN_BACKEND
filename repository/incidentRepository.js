@@ -94,7 +94,7 @@ class IncidentRepository {
         .select('title description location severity status incidentId assignedTo createdBy images createdAt')
         .sort({ createdAt: -1 })
         .limit(50)
-        .maxTimeMS(5000)
+        .setOptions({ maxTimeMS: 5000 })
         .lean();
       
       return incidents || [];

@@ -106,6 +106,16 @@ const ppeIssuanceSchema = new mongoose.Schema({
     type: Number,
     min: 0
   },
+  // Serial numbers được gán cho employee này (individual tracking)
+  assigned_serial_numbers: [{
+    type: String,
+    maxlength: 100
+  }],
+  // Serial numbers đã được trả lại (khi trả từng phần)
+  returned_serial_numbers: [{
+    type: String,
+    maxlength: 100
+  }],
   // Ngày xác nhận nhận PPE
   confirmed_date: {
     type: Date

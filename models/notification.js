@@ -182,7 +182,7 @@ notificationSchema.statics.getNotifications = async function(userId, filters = {
             .skip((page - 1) * limit)
             .limit(parseInt(limit))
             .lean()
-            .maxTimeMS(5000); // Increased to 5 seconds
+            .setOptions({ maxTimeMS: 5000 }); // Increased to 5 seconds
         
         // Force use of compound index if tenant_id is in query
         if (tenant_id) {
@@ -205,7 +205,7 @@ notificationSchema.statics.getNotifications = async function(userId, filters = {
                 if (is_read !== undefined) countQuery.is_read = is_read;
                 // Skip search in count for performance
                 
-                total = await this.countDocuments(countQuery).maxTimeMS(3000);
+                total = await this.countDocuments(countQuery).setOptions({ maxTimeMS: 3000 });
             } catch (countError) {
                 console.warn('CountDocuments timeout or error, using estimated count:', countError.message);
                 // If count fails, estimate based on current results

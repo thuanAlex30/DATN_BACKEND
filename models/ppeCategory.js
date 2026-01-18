@@ -19,7 +19,9 @@ const ppeCategorySchema = new mongoose.Schema({
     maxlength: 500
   },
   image_url: {
-    type: String
+    type: String,
+    maxlength: 1000,
+    default: ''
   },
   lifespan_months: {
     type: Number,

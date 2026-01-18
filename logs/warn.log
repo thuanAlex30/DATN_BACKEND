@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 {"timestamp":"2025-10-17T16:59:53.132Z","level":"WARN","message":"User not connected","metadata":{"userId":"68f09eb00e5cbe5680a1f908","event":"ppe_notification"},"pid":18956,"hostname":"Bravo"}
 {"timestamp":"2025-10-17T16:59:53.135Z","level":"WARN","message":"User not connected","metadata":{"userId":"68f09e9a0e5cbe5680a1f823","event":"ppe_notification"},"pid":18956,"hostname":"Bravo"}
 {"timestamp":"2025-10-17T16:59:53.166Z","level":"WARN","message":"User not connected","metadata":{"userId":"68f09ead0e5cbe5680a1f8ea","event":"ppe_notification"},"pid":18956,"hostname":"Bravo"}
@@ -249,4 +247,3 @@
 {"timestamp":"2025-12-22T04:23:36.024Z","level":"WARN","message":"User tenant not set in Map, emitting anyway (fallback)","metadata":{"userId":"693d216842ce47030aba2909","tenantId":"692f1ab190adce349220ffb3","event":"ppe_notification"},"pid":752,"hostname":"Bravo"}
 {"timestamp":"2025-12-22T04:24:24.764Z","level":"WARN","message":"User tenant not set in Map, emitting anyway (fallback)","metadata":{"userId":"692fe64ea505fa8c97485c4f","tenantId":"692f1ab190adce349220ffb3","event":"ppe_notification"},"pid":752,"hostname":"Bravo"}
 {"timestamp":"2025-12-22T17:06:23.620Z","level":"WARN","message":"User tenant not set in Map, emitting anyway (fallback)","metadata":{"userId":"693001f5d4c22c766d371c57","tenantId":"692f1ab190adce349220ffb3","event":"course_set_created"},"pid":22208,"hostname":"Bravo"}
->>>>>>> 7c7ffc5f30943a849f306b4d642b839afef77921

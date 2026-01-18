@@ -107,12 +107,24 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // =====================
 // Rate limit
 // =====================
+// Per-path rate limit for PPE API (higher allowance to avoid throttling during dashboard refreshes)
+const ppeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'production' ? 1000 : 10000,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Global fallback limiter for all other routes
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: process.env.NODE_ENV === 'production' ? 200 : 10000,
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Apply PPE-specific limiter before the global limiter so PPE routes get higher allowance
+app.use('/api/ppe', ppeLimiter);
 app.use(limiter);
 
 // =====================
@@ -221,6 +233,10 @@ const io = new Server(server, {
         console.log('✅ Kafka initialized');
       } catch (e) {
         console.log('⚠️ Kafka disabled (init failed):', e.message);
+        // If init fails, ensure references remain null to avoid later usage
+        kafkaProducer = null;
+        kafkaConsumer = null;
+        kafkaMonitor = null;
       }
     } else {
       // Silent skip to reduce log noise in deployment environments

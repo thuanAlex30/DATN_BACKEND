@@ -8,6 +8,21 @@ const RealtimeNotificationService = require('./realtimeNotificationService');
 const logger = require('../utils/logger');
 
 class PPENotificationService {
+  // Helper to run notification calls in background with bounded timeout
+  static sendNonBlocking(promiseFactory, timeoutMs = 3000) {
+    // fire-and-forget
+    setImmediate(async () => {
+      try {
+        await Promise.race([
+          promiseFactory(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('notification timeout')), timeoutMs))
+        ]);
+      } catch (err) {
+        logger.warn('Non-blocking notification failed or timed out:', err.message || err);
+      }
+    });
+  }
+
   /**
    * Send notification when PPE is issued to manager
    * @param {Object} options - Notification options
@@ -38,7 +53,7 @@ class PPENotificationService {
         logger.warn('PPE item name not found', { issuanceId: issuance._id, itemId: issuance.item_id });
       }
       
-      await RealtimeNotificationService.sendToUser({
+      PPENotificationService.sendNonBlocking(() => RealtimeNotificationService.sendToUser({
         userId: recipient._id || recipient.id,
         title: 'PPE được phát cho Manager',
         message: `PPE "${itemName}" đã được phát cho bạn`,
@@ -59,7 +74,7 @@ class PPENotificationService {
         eventName: 'ppe_notification',
         saveToDatabase: true,
         sendWebSocket: true
-      });
+      }), 3000);
 
       logger.info('PPE issued to manager notification sent', {
         recipientId: recipient._id || recipient.id,
@@ -82,7 +97,7 @@ class PPENotificationService {
   static async notifyPPEIssuedToEmployee({ issuance, issuer, recipient, tenantId }) {
     try {
       // Notify employee
-      await RealtimeNotificationService.sendToUser({
+      PPENotificationService.sendNonBlocking(() => RealtimeNotificationService.sendToUser({
         userId: recipient._id || recipient.id,
         title: 'PPE được phát cho Employee',
         message: `PPE "${issuance.item_id?.item_name || issuance.itemName}" đã được phát cho bạn`,
@@ -103,10 +118,10 @@ class PPENotificationService {
         eventName: 'ppe_notification',
         saveToDatabase: true,
         sendWebSocket: true
-      });
+      }), 3000);
 
       // Notify manager
-      await RealtimeNotificationService.sendToUser({
+      PPENotificationService.sendNonBlocking(() => RealtimeNotificationService.sendToUser({
         userId: issuer._id || issuer.id,
         title: 'PPE đã được phát',
         message: `Bạn đã phát PPE "${issuance.item_id?.item_name || issuance.itemName}" cho ${recipient.full_name || recipient.name}`,
@@ -123,10 +138,10 @@ class PPENotificationService {
         eventName: 'ppe_notification',
         saveToDatabase: true,
         sendWebSocket: true
-      });
+      }), 3000);
 
       // Notify all managers and admins for quantity updates
-      await RealtimeNotificationService.sendToRole({
+      PPENotificationService.sendNonBlocking(() => RealtimeNotificationService.sendToRole({
         role: 'manager',
         title: 'Cập nhật số lượng PPE',
         message: `PPE "${issuance.item_id?.item_name || issuance.itemName}" đã được phát`,
@@ -143,9 +158,9 @@ class PPENotificationService {
         eventName: 'ppe_quantity_update',
         saveToDatabase: false, // Don't save quantity updates to database
         sendWebSocket: true
-      });
+      }), 3000);
 
-      await RealtimeNotificationService.sendToRole({
+      PPENotificationService.sendNonBlocking(() => RealtimeNotificationService.sendToRole({
         role: 'admin',
         title: 'Cập nhật số lượng PPE',
         message: `PPE "${issuance.item_id?.item_name || issuance.itemName}" đã được phát`,
@@ -162,7 +177,7 @@ class PPENotificationService {
         eventName: 'ppe_quantity_update',
         saveToDatabase: false,
         sendWebSocket: true
-      });
+      }), 3000);
 
       logger.info('PPE issued to employee notifications sent', {
         recipientId: recipient._id || recipient.id,
@@ -185,7 +200,7 @@ class PPENotificationService {
    */
   static async notifyPPEConfirmed({ issuance, employee, manager, tenantId }) {
     try {
-      await RealtimeNotificationService.sendToUser({
+      PPENotificationService.sendNonBlocking(() => RealtimeNotificationService.sendToUser({
         userId: manager._id || manager.id,
         title: 'Xác nhận nhận PPE',
         message: `${employee.full_name || employee.name} đã xác nhận nhận PPE "${issuance.item_id?.item_name || issuance.itemName}"`,
@@ -203,7 +218,7 @@ class PPENotificationService {
         eventName: 'ppe_notification',
         saveToDatabase: true,
         sendWebSocket: true
-      });
+      }), 3000);
 
       logger.info('PPE confirmed notification sent', {
         managerId: manager._id || manager.id,
@@ -225,7 +240,7 @@ class PPENotificationService {
    */
   static async notifyPPEReturnedToManager({ issuance, employee, manager, tenantId }) {
     try {
-      await RealtimeNotificationService.sendToUser({
+      PPENotificationService.sendNonBlocking(() => RealtimeNotificationService.sendToUser({
         userId: manager._id || manager.id,
         title: 'PPE được trả lại',
         message: `${employee.full_name || employee.name} đã trả PPE "${issuance.item_id?.item_name || issuance.itemName}"`,
@@ -243,7 +258,7 @@ class PPENotificationService {
         eventName: 'ppe_notification',
         saveToDatabase: true,
         sendWebSocket: true
-      });
+      }), 3000);
 
       logger.info('PPE returned to manager notification sent', {
         managerId: manager._id || manager.id,
@@ -264,7 +279,7 @@ class PPENotificationService {
    */
   static async notifyPPEReturnedToAdmin({ issuance, manager, tenantId }) {
     try {
-      await RealtimeNotificationService.sendToUser({
+      PPENotificationService.sendNonBlocking(() => RealtimeNotificationService.sendToUser({
         userId: manager._id || manager.id,
         title: 'PPE đã được trả lại',
         message: `Bạn đã trả PPE "${issuance.item_id?.item_name || issuance.itemName}" cho Admin`,
@@ -280,7 +295,7 @@ class PPENotificationService {
         eventName: 'ppe_notification',
         saveToDatabase: true,
         sendWebSocket: true
-      });
+      }), 3000);
 
       logger.info('PPE returned to admin notification sent', {
         managerId: manager._id || manager.id,
@@ -302,7 +317,7 @@ class PPENotificationService {
    */
   static async notifyPPEReturnConfirmed({ issuance, employee, manager, tenantId }) {
     try {
-      await RealtimeNotificationService.sendToUser({
+      PPENotificationService.sendNonBlocking(() => RealtimeNotificationService.sendToUser({
         userId: manager._id || manager.id,
         title: 'Xác nhận trả PPE',
         message: `${employee.full_name || employee.name} đã xác nhận trả PPE "${issuance.item_id?.item_name || issuance.itemName}"`,
@@ -320,7 +335,7 @@ class PPENotificationService {
         eventName: 'ppe_notification',
         saveToDatabase: true,
         sendWebSocket: true
-      });
+      }), 3000);
 
       logger.info('PPE return confirmed notification sent', {
         managerId: manager._id || manager.id,
