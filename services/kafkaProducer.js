@@ -1,8 +1,8 @@
 const KAFKA_ENABLED = process.env.ENABLE_KAFKA === 'true';
 
-// Don't destructure kafka - lazy load it only when needed
+// Don't destructure kafka, producerConfig - lazy load them only when needed
 const kafkaConfig = require('../config/kafkaConfig');
-const { topics, eventTypes, producerConfig } = kafkaConfig;
+const { topics, eventTypes } = kafkaConfig;
 const { v4: uuidv4 } = require('uuid');
 
 class KafkaProducer {
@@ -27,8 +27,9 @@ class KafkaProducer {
         return;
       }
 
-      // Lazy load kafka only when needed
+      // Lazy load kafka and producerConfig only when needed
       const kafka = kafkaConfig.kafka;
+      const producerConfig = kafkaConfig.producerConfig;
       this.producer = kafka.producer(producerConfig);
       
       console.log('📤 Initializing Kafka Producer...');
