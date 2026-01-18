@@ -48,9 +48,8 @@ const contactMessageRoutes = require('./contactMessageRoutes');
 
 const utilsRoutes = require('./utilsRoutes');
 
-console.log('Loading kafkaMonitor...');
-const kafkaMonitor = require('../services/kafkaMonitor');
-console.log('kafkaMonitor loaded:', typeof kafkaMonitor);
+// Lazy load kafkaMonitor to avoid connection attempts when disabled
+// const kafkaMonitor = require('../services/kafkaMonitor');
 
 const router = express.Router();
 
@@ -61,7 +60,17 @@ const router = express.Router();
  */
 router.get('/health', (req, res) => {
   try {
-    const kafkaMetrics = kafkaMonitor.getMetrics();
+    // Lazy load kafkaMonitor only when needed
+    let kafkaMetrics = null;
+    const isKafkaEnabled = process.env.ENABLE_KAFKA === 'true';
+    if (isKafkaEnabled) {
+      try {
+        const kafkaMonitor = require('../services/kafkaMonitor');
+        kafkaMetrics = kafkaMonitor.getMetrics();
+      } catch (err) {
+        // Ignore if Kafka is not available
+      }
+    }
 
     res.json({
       success: true,
@@ -73,25 +82,25 @@ router.get('/health', (req, res) => {
       services: {
         database: 'connected',
         websocket: 'active',
-        kafka: kafkaMetrics.isMonitoring ? 'monitoring' : 'inactive',
+        kafka: kafkaMetrics && kafkaMetrics.isMonitoring ? 'monitoring' : 'inactive',
       },
-      kafka: {
+      kafka: kafkaMetrics ? {
         monitoring: kafkaMetrics.isMonitoring,
         producer: {
-          connected: kafkaMetrics.producer.isConnected,
-          messagesSent: kafkaMetrics.producer.messagesSent,
-          errors: kafkaMetrics.producer.errors,
-          averageLatency: kafkaMetrics.producer.averageLatency,
+          connected: kafkaMetrics.producer?.isConnected || false,
+          messagesSent: kafkaMetrics.producer?.messagesSent || 0,
+          errors: kafkaMetrics.producer?.errors || 0,
+          averageLatency: kafkaMetrics.producer?.averageLatency || 0,
         },
         consumer: {
-          connected: kafkaMetrics.consumer.isConnected,
-          messagesProcessed: kafkaMetrics.consumer.messagesProcessed,
-          errors: kafkaMetrics.consumer.errors,
+          connected: kafkaMetrics.consumer?.isConnected || false,
+          messagesProcessed: kafkaMetrics.consumer?.messagesProcessed || 0,
+          errors: kafkaMetrics.consumer?.errors || 0,
         },
         dlq: {
-          messagesInDLQ: kafkaMetrics.dlq.messagesInDLQ,
+          messagesInDLQ: kafkaMetrics.dlq?.messagesInDLQ || 0,
         },
-      },
+      } : null
     });
   } catch (error) {
     console.error('Health check error:', error);

@@ -116,6 +116,11 @@ const incidentValidation = {
       .messages({
         'any.invalid': 'ID người được phân công không hợp lệ',
         'any.required': 'ID người được phân công là bắt buộc'
+      }),
+    
+    estimatedCompletionTime: Joi.date().greater('now').optional()
+      .messages({
+        'date.greater': 'Thời gian dự kiến hoàn thành phải sau thời điểm hiện tại'
       })
   }),
 

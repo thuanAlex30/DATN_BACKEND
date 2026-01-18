@@ -166,18 +166,22 @@ class IncidentRepository {
 
       // Thực hiện query với phân trang
       const skip = (page - 1) * limit;
+      const queryStartTime = Date.now();
       
       const incidents = await Incident.find(query)
         .select('title description location severity status incidentId assignedTo createdBy images createdAt')
         .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
         .skip(skip)
         .limit(limit)
-        .setOptions({ maxTimeMS: 5000 })
+        .maxTimeMS(3000)
         .lean();
 
-      const total = limit <= 50 ? await Incident.countDocuments(query).setOptions({ maxTimeMS: 2000 }).catch(() => incidents.length) : incidents.length;
+      const queryDuration = Date.now() - queryStartTime;
       
-      console.log(`📋 findAll found ${incidents.length} incidents out of ${total} total`);
+      // Only count total if needed (skip for large datasets)
+      const total = limit <= 50 ? await Incident.countDocuments(query).maxTimeMS(2000).catch(() => incidents.length) : incidents.length;
+      
+      console.log(`📋 findAll found ${incidents.length} incidents out of ${total} total in ${queryDuration}ms`);
 
       return {
         incidents,
@@ -285,6 +289,7 @@ class IncidentRepository {
 
   // Thống kê sự cố
   async getStatistics(filters = {}) {
+    const startTime = Date.now();
     try {
       const query = {};
       
@@ -322,48 +327,49 @@ class IncidentRepository {
         ]);
       };
 
-      // Simplified aggregation - similar to project stats
-      // Use Promise.all for parallel execution with timeout
+      // Optimized aggregation - use single aggregation with $facet including total count
+      // This combines all stats in one query instead of 3 separate queries
       // Use allowDiskUse and optimize with indexes
-      const [statusStats, severityStats, totalResult] = await Promise.all([
-        withTimeout(
-          Incident.aggregate([
-            { $match: query },
-            {
-              $group: {
-                _id: '$status',
-                count: { $sum: 1 }
-              }
+      const aggregationResult = await withTimeout(
+        Incident.aggregate([
+          { $match: query },
+          {
+            $facet: {
+              statusStats: [
+                {
+                  $group: {
+                    _id: '$status',
+                    count: { $sum: 1 }
+                  }
+                }
+              ],
+              severityStats: [
+                {
+                  $group: {
+                    _id: '$severity',
+                    count: { $sum: 1 }
+                  }
+                }
+              ],
+              totalCount: [
+                {
+                  $count: 'total'
+                }
+              ]
             }
-          ], { allowDiskUse: true }),
-          15000
-        ).catch(err => {
-          console.error('Error in statusStats aggregation:', err);
-          return [];
-        }),
-        withTimeout(
-          Incident.aggregate([
-            { $match: query },
-            {
-              $group: {
-                _id: '$severity',
-                count: { $sum: 1 }
-              }
-            }
-          ], { allowDiskUse: true }),
-          15000
-        ).catch(err => {
-          console.error('Error in severityStats aggregation:', err);
-          return [];
-        }),
-        withTimeout(
-          Incident.countDocuments(query).setOptions({ maxTimeMS: 10000 }),
-          12000
-        ).catch(err => {
-          console.error('Error in countDocuments:', err);
-          return 0;
-        })
-      ]);
+          }
+        ], { allowDiskUse: true, maxTimeMS: 5000 }),
+        6000
+      ).catch(err => {
+        console.error('Error in stats aggregation:', err);
+        return [{ statusStats: [], severityStats: [], totalCount: [{ total: 0 }] }];
+      });
+
+      // Extract results from $facet
+      const result = aggregationResult[0] || { statusStats: [], severityStats: [], totalCount: [{ total: 0 }] };
+      const statusStats = result.statusStats || [];
+      const severityStats = result.severityStats || [];
+      const totalResult = result.totalCount?.[0]?.total || 0;
 
       // Build status breakdown object
       const statusBreakdown = {};
@@ -389,6 +395,9 @@ class IncidentRepository {
       const critical = (severityBreakdown['rất nghiêm trọng'] || 0) + 
                      (severityBreakdown['critical'] || 0);
 
+      const duration = Date.now() - startTime;
+      console.log(`⏱️ getStatistics completed in ${duration}ms`);
+      
       return {
         total: totalResult || 0,
         inProgress,
@@ -398,7 +407,8 @@ class IncidentRepository {
         bySeverity: severityBreakdown
       };
     } catch (error) {
-      console.error('Error in getStatistics:', error);
+      const duration = Date.now() - startTime;
+      console.error(`❌ Error in getStatistics after ${duration}ms:`, error);
       throw new Error(`Lỗi thống kê sự cố: ${error.message}`);
     }
   }
@@ -582,6 +592,111 @@ class IncidentRepository {
       return incidents;
     } catch (error) {
       throw new Error(`Lỗi tìm kiếm incidents: ${error.message}`);
+    }
+  }
+
+  /**
+   * Kiểm tra xem user có đang xử lý sự cố tại địa điểm khác không
+   * Một người không thể xử lý các sự cố tại các nơi khác nhau cùng lúc
+   * @param {String} userId - ID của user
+   * @param {String} location - Địa điểm của sự cố mới
+   * @param {String} excludeIncidentId - ID của incident hiện tại (để exclude khi update)
+   * @param {String} tenantId - Tenant ID để filter
+   * @returns {Object} { hasConflict: boolean, conflictingIncidents: Array }
+   */
+  async checkLocationConflict(userId, location, excludeIncidentId = null, tenantId = null) {
+    try {
+      const query = {
+        assignedTo: userId,
+        status: 'Đang xử lý', // Chỉ kiểm tra các sự cố đang xử lý
+        location: { $ne: location } // Tìm các sự cố ở địa điểm khác
+      };
+
+      if (tenantId) {
+        query.tenant_id = tenantId;
+      }
+
+      if (excludeIncidentId) {
+        query._id = { $ne: excludeIncidentId };
+      }
+
+      const conflictingIncidents = await Incident.find(query)
+        .select('_id incidentId title location status createdAt')
+        .lean();
+
+      return {
+        hasConflict: conflictingIncidents.length > 0,
+        conflictingIncidents: conflictingIncidents
+      };
+    } catch (error) {
+      throw new Error(`Lỗi kiểm tra location conflict: ${error.message}`);
+    }
+  }
+
+  /**
+   * Lấy danh sách incidents đang được phân công cho user tại một địa điểm
+   * @param {String} userId - ID của user
+   * @param {String} location - Địa điểm
+   * @param {String} tenantId - Tenant ID
+   * @returns {Array} Danh sách incidents
+   */
+  async getActiveIncidentsByUserAndLocation(userId, location, tenantId = null) {
+    try {
+      const query = {
+        assignedTo: userId,
+        status: 'Đang xử lý',
+        location: location
+      };
+
+      if (tenantId) {
+        query.tenant_id = tenantId;
+      }
+
+      const incidents = await Incident.find(query)
+        .select('_id incidentId title location status createdAt actualStartTime')
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return incidents;
+    } catch (error) {
+      throw new Error(`Lỗi lấy incidents theo user và location: ${error.message}`);
+    }
+  }
+
+  /**
+   * Kiểm tra xem user có đang xử lý sự cố nào không
+   * Rule: 1 manager chỉ được quyền xử lý 1 sự cố
+   * Khi sự cố đang xử lý đã đóng thì mới được nhận sự cố tiếp theo
+   * @param {String} userId - ID của user
+   * @param {String} excludeIncidentId - ID của incident hiện tại (để exclude khi update)
+   * @param {String} tenantId - Tenant ID để filter
+   * @returns {Object} { hasActiveIncident: boolean, activeIncident: Object | null }
+   */
+  async checkActiveIncident(userId, excludeIncidentId = null, tenantId = null) {
+    try {
+      const query = {
+        assignedTo: userId,
+        status: 'Đang xử lý' // Chỉ kiểm tra các sự cố đang xử lý
+      };
+
+      if (tenantId) {
+        query.tenant_id = tenantId;
+      }
+
+      if (excludeIncidentId) {
+        query._id = { $ne: excludeIncidentId };
+      }
+
+      const activeIncident = await Incident.findOne(query)
+        .select('_id incidentId title location status createdAt actualStartTime estimatedCompletionTime')
+        .lean();
+
+      return {
+        hasActiveIncident: !!activeIncident,
+        activeIncident: activeIncident || null
+      };
+    } catch (error) {
+      throw new Error(`Lỗi kiểm tra active incident: ${error.message}`);
     }
   }
 }

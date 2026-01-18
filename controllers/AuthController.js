@@ -17,6 +17,11 @@ class AuthController {
     const { username, password } = req.body;
     const result = await AuthService.login(username, password);
     
+    // Check if login failed
+    if (!result.success || result.statusCode !== 200) {
+      return ApiResponse.error(res, result.message || 'Sai thông tin tài khoản hoặc mật khẩu', result.statusCode || 401);
+    }
+    
     // Emit user login event
     // try {
     //   const metadata = {
@@ -38,7 +43,8 @@ class AuthController {
     //   // Don't fail the request if event emission fails
     // }
     
-    return ApiResponse.success(res, result, 'Login successful');
+    // result.data contains { user, tokens }
+    return ApiResponse.success(res, result.data, 'Đăng nhập thành công');
   });
 
   // Refresh access token

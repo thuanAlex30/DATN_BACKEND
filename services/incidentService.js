@@ -292,8 +292,12 @@ class IncidentService {
   /**
    * Phân công incident
    */
-  static async assignIncident(id, assignedTo, userId, tenantId = null) {
+  static async assignIncident(id, assignData, userId, tenantId = null) {
     try {
+      // Support cả object và string cho backward compatibility
+      const assignedTo = typeof assignData === 'string' ? assignData : assignData.assignedTo;
+      const estimatedCompletionTime = typeof assignData === 'object' ? assignData.estimatedCompletionTime : null;
+
       const incident = await incidentRepository.getIncidentById(id, tenantId);
       
       if (!incident) {
@@ -304,17 +308,58 @@ class IncidentService {
         };
       }
 
-      // Update assignedTo and status using repository
-      const updatedIncident = await incidentRepository.updateById(id, {
+      // Validate: Kiểm tra xem user có đang xử lý sự cố nào không
+      // Rule: 1 manager chỉ được quyền xử lý 1 sự cố
+      // Khi sự cố đang xử lý đã đóng thì mới được nhận sự cố tiếp theo
+      const activeCheck = await incidentRepository.checkActiveIncident(
         assignedTo,
-        status: 'Đang xử lý'
-      }, tenantId);
+        id, // Exclude incident hiện tại khi update
+        tenantId
+      );
+
+      if (activeCheck.hasActiveIncident) {
+        const activeIncident = activeCheck.activeIncident;
+        const locationInfo = activeIncident.location ? ` tại địa điểm: ${activeIncident.location}` : '';
+        
+        return {
+          success: false,
+          message: `Người này đang xử lý sự cố ${activeIncident.incidentId}${locationInfo}. Một người chỉ được quyền xử lý 1 sự cố tại một thời điểm.`,
+          statusCode: 400,
+          data: {
+            hasActiveIncident: true,
+            activeIncident: activeIncident
+          }
+        };
+      }
+
+      // Lấy thông tin user được phân công để ghi vào history
+      const assignee = await User.findById(assignedTo).select('full_name email');
+      const assigneeName = assignee ? assignee.full_name : assignedTo;
+
+      // Update assignedTo, status và actualStartTime
+      const updateData = {
+        assignedTo,
+        status: 'Đang xử lý',
+        actualStartTime: new Date() // Ghi lại thời gian bắt đầu xử lý
+      };
+
+      // Thêm estimatedCompletionTime nếu có
+      if (estimatedCompletionTime) {
+        updateData.estimatedCompletionTime = new Date(estimatedCompletionTime);
+      }
+
+      const updatedIncident = await incidentRepository.updateById(id, updateData, tenantId);
       
-      // Thêm history entry
+      // Thêm history entry với thông tin đầy đủ
+      const historyNote = estimatedCompletionTime 
+        ? `Phân công xử lý cho ${assigneeName} tại địa điểm: ${incident.location || 'N/A'}. Dự kiến hoàn thành: ${new Date(estimatedCompletionTime).toLocaleString('vi-VN')}`
+        : `Phân công xử lý cho ${assigneeName} tại địa điểm: ${incident.location || 'N/A'}`;
+
       await incidentRepository.addHistory(id, {
         action: 'Phân công',
         performedBy: userId,
-        note: `Phân công xử lý cho user ID: ${assignedTo}`
+        note: historyNote,
+        timestamp: new Date()
       }, tenantId);
 
       // Emit events
@@ -378,13 +423,16 @@ class IncidentService {
       });
 
 
-      // Thêm investigation entry
+      // Thêm investigation entry với minh chứng
       const investigationHistoryData = {
         action: 'Điều tra',
         performedBy: userId,
         note: investigation,
         timestamp: new Date(),
-        findingsImages: findingsImages || []
+        findingsImages: findingsImages || [], // Backward compatible
+        evidenceImages: findingsImages || [], // Minh chứng điều tra
+        evidenceType: 'photo',
+        evidenceDescription: 'Hình ảnh minh chứng kết quả điều tra sự cố'
       };
       
       console.log('📝 Adding investigation history:', {
@@ -517,9 +565,10 @@ class IncidentService {
         await incidentRepository.updateById(id, { images: merged }, tenantId);
       }
 
-      // Update status using repository
+      // Update status và actualCompletionTime using repository
       const updatedIncident = await incidentRepository.updateById(id, {
-        status: 'Đã đóng'
+        status: 'Đã đóng',
+        actualCompletionTime: new Date() // Ghi lại thời gian hoàn thành thực tế
       }, tenantId);
 
       // Thêm close entry
