@@ -1,4 +1,8 @@
-const { kafka, topics } = require('../config/kafkaConfig');
+const KAFKA_ENABLED = process.env.ENABLE_KAFKA === 'true';
+
+// Don't destructure kafka - lazy load it only when needed
+const kafkaConfig = require('../config/kafkaConfig');
+const { topics } = kafkaConfig;
 
 class KafkaMonitor {
   constructor() {
@@ -32,8 +36,19 @@ class KafkaMonitor {
    * Start monitoring Kafka health
    */
   async startMonitoring() {
+    // Guard: Kafka must be enabled - no monitoring if disabled
+    if (!KAFKA_ENABLED) {
+      return; // Silent return, no monitoring, no spam log
+    }
+
     if (this.isMonitoring) {
       console.log('📊 Kafka monitoring already started');
+      return;
+    }
+
+    // Respect runtime flag to skip Kafka monitoring entirely
+    if (process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0') {
+      console.log('ℹ️ Kafka monitoring skipped because KAFKA_ENABLED is false');
       return;
     }
 
@@ -69,6 +84,11 @@ class KafkaMonitor {
    * Collect metrics from Kafka
    */
   async collectMetrics() {
+    // Guard: Kafka must be enabled - no ping producer/consumer if disabled
+    if (!KAFKA_ENABLED) {
+      return; // Silent return, no ping, no spam log
+    }
+
     try {
       // Dynamic require to avoid circular dependency
       let kafkaProducer, kafkaConsumer;
@@ -103,8 +123,15 @@ class KafkaMonitor {
    * Collect topic-specific metrics
    */
   async collectTopicMetrics() {
+    // Guard: Kafka must be enabled
+    if (!KAFKA_ENABLED) {
+      return; // Silent return
+    }
+
     let admin = null;
     try {
+      // Lazy load kafka only when needed
+      const kafka = kafkaConfig.kafka;
       admin = kafka.admin();
       await admin.connect();
 
@@ -208,7 +235,14 @@ class KafkaMonitor {
    * Collect DLQ metrics
    */
   async collectDLQMetrics() {
+    // Guard: Kafka must be enabled
+    if (!KAFKA_ENABLED) {
+      return; // Silent return
+    }
+
     try {
+      // Lazy load kafka only when needed
+      const kafka = kafkaConfig.kafka;
       const admin = kafka.admin();
       await admin.connect();
 
@@ -251,6 +285,11 @@ class KafkaMonitor {
    * Check Kafka health and send alerts
    */
   async checkHealth() {
+    // Guard: Kafka must be enabled - no health check if disabled
+    if (!KAFKA_ENABLED) {
+      return; // Silent return, no health check, no spam log
+    }
+
     const healthStatus = {
       overall: 'healthy',
       issues: [],
@@ -305,6 +344,11 @@ class KafkaMonitor {
    * Send health check event to system events topic
    */
   async sendHealthCheckEvent(healthStatus) {
+    // Guard: Kafka must be enabled - no system_event if disabled
+    if (!KAFKA_ENABLED) {
+      return; // Silent return, no system_event
+    }
+
     try {
       // Dynamic require to avoid circular dependency
       let kafkaProducer;

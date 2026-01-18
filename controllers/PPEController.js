@@ -203,6 +203,19 @@ class PPEController {
     }
   });
 
+  static generateSerialsForItem = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { count } = req.body;
+    const tenantId = req.user.tenant_id;
+    const result = await ppeService.generateSerialsForItem(id, count, tenantId);
+
+    if (result.success) {
+      return ApiResponse.success(res, result.data, result.message, result.statusCode);
+    } else {
+      return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+    }
+  });
+
   static updateItem = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
     const itemData = req.body;
@@ -642,7 +655,13 @@ class PPEController {
   // PPE Dashboard
   static getDashboardStats = ErrorMiddleware.asyncHandler(async (req, res) => {
     try {
-      const result = await ppeService.getDashboardStats();
+      // Get tenantId from authenticated user
+      const tenantId = req.user?.tenant_id || null;
+      if (!tenantId) {
+        return ApiResponse.error(res, 'Tenant ID not found. Please ensure you are authenticated.', 401);
+      }
+      
+      const result = await ppeService.getDashboardStats(tenantId);
       
       if (result.success) {
         return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -990,12 +1009,47 @@ class PPEController {
     });
     const tenantId = req.user.tenant_id;
     const result = await ppeService.getDepartmentEmployeesPPE(managerId, tenantId);
-    
+
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
     }
+  });
+
+  // Lấy danh sách serial numbers khả dụng cho manager
+  static getAvailableSerialNumbersForManager = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { itemId } = req.params;
+    const managerId = req.user.id;
+
+    if (!itemId || !itemId.match(/^[0-9a-fA-F]{24}$/)) {
+      return ApiResponse.error(res, 'ID thiết bị không hợp lệ', 400);
+    }
+
+    const serialNumbers = await ppeService.getAvailableSerialNumbersForManager(managerId, itemId);
+
+    return ApiResponse.success(res, {
+      item_id: itemId,
+      available_serial_numbers: serialNumbers,
+      count: serialNumbers.length
+    }, 'Lấy danh sách serial numbers khả dụng thành công');
+  });
+
+  // Lấy danh sách serial numbers khả dụng cho admin
+  static getAvailableSerialNumbersForAdmin = ErrorMiddleware.asyncHandler(async (req, res) => {
+    const { itemId } = req.params;
+
+    if (!itemId || !itemId.match(/^[0-9a-fA-F]{24}$/)) {
+      return ApiResponse.error(res, 'ID thiết bị không hợp lệ', 400);
+    }
+
+    const serialNumbers = await ppeService.getAvailableSerialNumbersForAdmin(itemId);
+
+    return ApiResponse.success(res, {
+      item_id: itemId,
+      available_serial_numbers: serialNumbers,
+      count: serialNumbers.length
+    }, 'Lấy danh sách serial numbers khả dụng thành công');
   });
 
   // Lấy lịch sử PPE của Manager

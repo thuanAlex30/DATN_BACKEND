@@ -233,6 +233,44 @@ class PPEService {
     }
   }
 
+  // Generate serial numbers for an item (API / migration helper)
+  async generateSerialsForItem(itemId, count = null, tenantId = null) {
+    try {
+      const PPEItem = require('../models/ppeItem');
+      const filter = { _id: itemId };
+      if (tenantId) filter.tenant_id = tenantId;
+
+      const item = await PPEItem.findOne(filter).select('item_code serial_numbers quantity_available').lean();
+      if (!item) {
+        return createResponse(404, 'Không tìm thấy thiết bị PPE');
+      }
+
+      const existing = Array.isArray(item.serial_numbers) ? item.serial_numbers : [];
+      const availableQty = Number(item.quantity_available || 0);
+      const toCreate = count !== null ? Number(count) : Math.max(0, availableQty - existing.length);
+      if (toCreate <= 0) {
+        return createResponse(200, 'Không cần tạo thêm serial', { created: 0, total_existing: existing.length });
+      }
+
+      // Generate serials deterministic-ish: ITEMCODE-TS-XXXX
+      const base = item.item_code || 'ITEM';
+      const newSerials = [];
+      const startIndex = existing.length + 1;
+      const ts = Date.now().toString().slice(-6);
+      for (let i = 0; i < toCreate; i++) {
+        newSerials.push(`${base}-${ts}-${String(startIndex + i).padStart(4, '0')}`);
+      }
+
+      // Push to item.serial_numbers using repository update (supports operators)
+      await ppeRepository.updateItem(itemId, { $push: { serial_numbers: { $each: newSerials } } }, tenantId);
+
+      return createResponse(200, 'Tạo serial cho thiết bị thành công', { created: newSerials.length, serials: newSerials });
+    } catch (error) {
+      console.error('Error generating serials for item:', error);
+      return createResponse(500, 'Lỗi khi tạo serial cho thiết bị', null, error.message);
+    }
+  }
+
   async createItem(itemData, tenantId = null) {
     try {
       // Validate required fields
@@ -262,6 +300,17 @@ class PPEService {
         item_code: normalizedItemCode,
         quantity_allocated: itemData.quantity_allocated ?? 0
       };
+      // Auto-generate serial numbers if quantity_available given and no serial_numbers provided
+      if (itemDataWithNormalizedCode.quantity_available && (!itemDataWithNormalizedCode.serial_numbers || itemDataWithNormalizedCode.serial_numbers.length === 0)) {
+        const base = normalizedItemCode || 'ITEM';
+        const ts = Date.now().toString().slice(-6);
+        const qty = Number(itemDataWithNormalizedCode.quantity_available || 0);
+        const serials = [];
+        for (let i = 0; i < qty; i++) {
+          serials.push(`${base}-${ts}-${String(i + 1).padStart(4, '0')}`);
+        }
+        itemDataWithNormalizedCode.serial_numbers = serials;
+      }
 
       const item = await ppeRepository.createItem(itemDataWithNormalizedCode, tenantId);
       return createResponse(201, 'Tạo thiết bị PPE thành công',
@@ -321,6 +370,25 @@ class PPEService {
   // PPE Items with quantity management
   async updateItemQuantity(id, quantityData, tenantId = null) {
     try {
+      // If increasing quantity and item uses serial_numbers, generate required serials first
+      if (quantityData && quantityData.quantity_available !== undefined) {
+        const existingItem = await ppeRepository.getItemById(id, tenantId);
+        const currentSerials = Array.isArray(existingItem.serial_numbers) ? existingItem.serial_numbers : [];
+        const newQty = Number(quantityData.quantity_available || 0);
+        const need = Math.max(0, newQty - currentSerials.length);
+        if (need > 0) {
+          const base = (existingItem.item_code || 'ITEM').toString().toUpperCase();
+          const ts = Date.now().toString().slice(-6);
+          const startIndex = currentSerials.length + 1;
+          const newSerials = [];
+          for (let i = 0; i < need; i++) {
+            newSerials.push(`${base}-${ts}-${String(startIndex + i).padStart(4, '0')}`);
+          }
+          // push into item
+          await ppeRepository.updateItem(id, { $push: { serial_numbers: { $each: newSerials } } }, tenantId);
+        }
+      }
+
       const item = await ppeRepository.updateItemQuantity(id, quantityData, tenantId);
       if (!item) {
         return createResponse(404, 'Không tìm thấy thiết bị PPE để cập nhật số lượng');
@@ -366,6 +434,19 @@ class PPEService {
       console.log('🔍 createIssuanceToEmployee - issuanceData:', issuanceData);
       console.log('🔍 createIssuanceToEmployee - issued_by type:', typeof issuanceData.issued_by);
       console.log('🔍 createIssuanceToEmployee - issued_by value:', issuanceData.issued_by);
+      const _createIssStart = Date.now();
+      console.log('🔍 createIssuanceToEmployee - start at', new Date(_createIssStart).toISOString());
+
+      // Check if item has serial numbers for serial tracking
+      const item = await PPEItem.findById(issuanceData.item_id).select('serial_numbers').lean();
+      const hasSerialNumbers = item && item.serial_numbers && item.serial_numbers.length > 0;
+
+      // Validate assigned serial numbers if provided and item has serials
+      if (hasSerialNumbers && issuanceData.assigned_serial_numbers && issuanceData.assigned_serial_numbers.length > 0) {
+        if (issuanceData.assigned_serial_numbers.length !== issuanceData.quantity) {
+          throw new Error(`Số lượng serial numbers (${issuanceData.assigned_serial_numbers.length}) phải bằng số lượng phát (${issuanceData.quantity})`);
+        }
+      }
       
       // Validate required fields
       if (!issuanceData.user_id || !issuanceData.item_id || !issuanceData.quantity || 
@@ -438,8 +519,10 @@ class PPEService {
       }
 
       // Kiểm tra Manager có đủ PPE in-hand để phát - sử dụng aggregation để tính chính xác
+      console.time('ppeService.getManagerPPEStats');
       const managerPPEStats = await ppeRepository.getManagerPPEStats(issuanceData.issued_by, issuanceData.item_id);
-      
+      console.timeEnd('ppeService.getManagerPPEStats');
+
       if (!managerPPEStats || managerPPEStats.total_received === 0) {
         throw new Error('Manager chưa nhận PPE này từ Admin');
       }
@@ -449,6 +532,84 @@ class PPEService {
 
       if (availableQuantity < issuanceData.quantity) {
         throw new Error(`Manager không đủ PPE để phát. Hiện có: ${availableQuantity}, cần phát: ${issuanceData.quantity}`);
+      }
+
+      // Handle serial number assignment based on item configuration
+      let assignedSerialNumbers = [];
+      if (hasSerialNumbers) {
+        // Item has serial numbers - require serial number assignment
+        if (issuanceData.assigned_serial_numbers && issuanceData.assigned_serial_numbers.length > 0) {
+          // Get available serial numbers for this manager and item
+          const availableSerialNumbers = await this.getAvailableSerialNumbersForManager(issuanceData.issued_by, issuanceData.item_id);
+
+          // Validate that all assigned serial numbers are available
+          const unavailableSerials = issuanceData.assigned_serial_numbers.filter(
+            serial => !availableSerialNumbers.includes(serial)
+          );
+
+          if (unavailableSerials.length > 0) {
+            throw new Error(`Serial numbers không khả dụng: ${unavailableSerials.join(', ')}`);
+          }
+
+          assignedSerialNumbers = [...issuanceData.assigned_serial_numbers];
+        } else {
+          // Auto-assign serial numbers if not provided
+          const availableSerialNumbers = await this.getAvailableSerialNumbersForManager(issuanceData.issued_by, issuanceData.item_id);
+
+          if (availableSerialNumbers.length < issuanceData.quantity) {
+            throw new Error(`Không đủ serial numbers khả dụng. Cần: ${issuanceData.quantity}, có: ${availableSerialNumbers.length}`);
+          }
+
+          // Try to reserve serial numbers atomically using reservation collection
+          const PPESerialReservation = require('../models/ppeSerialReservation');
+          const { v4: uuidv4 } = require('uuid');
+          const reservationToken = uuidv4();
+          const reserved = [];
+
+          for (const s of availableSerialNumbers) {
+            if (reserved.length >= issuanceData.quantity) break;
+            try {
+              const doc = new PPESerialReservation({
+                serial: s,
+                item_id: issuanceData.item_id,
+                reserved_by: issuanceData.issued_by,
+                reserved_token: reservationToken
+              });
+              // save with session if present to allow rollback
+              await doc.save(session ? { session } : {});
+              reserved.push(s);
+            } catch (err) {
+              // duplicate key -> serial already reserved concurrently; skip
+              if (err && err.code === 11000) {
+                continue;
+              }
+              // other errors -> rethrow
+              throw err;
+            }
+          }
+
+          if (reserved.length < issuanceData.quantity) {
+            // cleanup any partial reservations if not in transaction (if session provided, transaction will rollback)
+            try {
+              if (session) {
+                // let transaction rollback
+              } else {
+                await PPESerialReservation.deleteMany({ reserved_token: reservationToken });
+              }
+            } catch (cleanupErr) {
+              console.warn('Failed to cleanup partial serial reservations:', cleanupErr);
+            }
+            throw new Error(`Không đủ serial numbers khả dụng. Cần: ${issuanceData.quantity}, đã reserve được: ${reserved.length}`);
+          }
+
+          assignedSerialNumbers = reserved.slice(0, issuanceData.quantity);
+          // attach reservationToken to issuanceData for later assignment/cleanup
+          issuanceData._reservation_token = reservationToken;
+        }
+      } else {
+        // Item has no serial numbers - allow issuance without serial tracking
+        console.log(`ℹ️ Item ${issuanceData.item_id} has no serial numbers - proceeding without serial tracking`);
+        // assignedSerialNumbers remains empty array
       }
 
       // Kiểm tra duplicate: không cho phép tạo issuance trùng lặp cho cùng user, item, và status pending
@@ -473,32 +634,77 @@ class PPEService {
       const issuancePayload = {
         ...issuanceData,
         issuance_level: 'manager_to_employee',
-        manager_id: issuanceData.issued_by
+        manager_id: issuanceData.issued_by,
+        assigned_serial_numbers: assignedSerialNumbers,
+        remaining_quantity: issuanceData.quantity // Initialize remaining quantity
       };
-      const issuance = await ppeRepository.createIssuance(issuancePayload, tenantId);
+      console.time('ppeService.createIssuance_db');
+      const issuance = await ppeRepository.createIssuance(issuancePayload, tenantId, session ? { session } : {});
+      console.timeEnd('ppeService.createIssuance_db');
+
+      // If serials were reserved (reservation token exists), mark them assigned to this issuance
+      if (issuanceData._reservation_token) {
+        try {
+          const PPESerialReservation = require('../models/ppeSerialReservation');
+          await PPESerialReservation.updateMany(
+            { reserved_token: issuanceData._reservation_token },
+            { $set: { assigned_issuance_id: issuance._id } },
+            session ? { session } : {}
+          );
+        } catch (err) {
+          console.warn('Failed to attach reservation records to issuance:', err);
+        }
+      }
+      // enqueue background post-processing job (notifications, events)
+      try {
+        const { addIssuancePostProcessingJob } = require('./queueService');
+        // fire-and-forget: do not await queue add to avoid blocking issuance flow if Redis is slow/unreachable
+        setImmediate(() => {
+          addIssuancePostProcessingJob({ issuanceId: issuance._id.toString(), tenantId })
+            .catch(err => console.warn('Failed to enqueue issuance post-processing job (async):', err));
+        });
+      } catch (err) {
+        console.warn('Failed to schedule issuance post-processing job:', err);
+      }
 
       // Decrease remaining_quantity on Manager's admin_to_manager issuances for this item
-      let deductQty = issuanceData.quantity;
-      while (deductQty > 0) {
+      // Collect bulk ops to reduce DB round-trips and run in single bulkWrite (supports session)
+      let remainingToDeduct = issuanceData.quantity;
+      const bulkOps = [];
+
+      while (remainingToDeduct > 0) {
         const sourceIssuance = await PPEIssuance.findOne({
           user_id: issuanceData.issued_by,
           item_id: issuanceData.item_id,
           issuance_level: 'admin_to_manager',
           status: { $in: ['issued', 'pending_confirmation'] },
           remaining_quantity: { $gt: 0 }
-        }).sort({ issued_date: -1 }); // latest first
+        }).sort({ issued_date: -1 }).session(session); // latest first
 
         if (!sourceIssuance) break;
 
-        const useQty = Math.min(sourceIssuance.remaining_quantity ?? sourceIssuance.quantity, deductQty);
-        sourceIssuance.remaining_quantity = (sourceIssuance.remaining_quantity ?? sourceIssuance.quantity) - useQty;
-        const saveOptions = session ? { session } : {};
-        await sourceIssuance.save(saveOptions);
+        const availableFromSource = sourceIssuance.remaining_quantity ?? sourceIssuance.quantity;
+        const useQty = Math.min(availableFromSource, remainingToDeduct);
 
-        // If fully consumed and status still issued, keep as is; remaining_quantity reflects the rest
-        deductQty -= useQty;
+        // Prepare bulk update to decrement remaining_quantity
+        bulkOps.push({
+          updateOne: {
+            filter: { _id: sourceIssuance._id },
+            update: { $inc: { remaining_quantity: -useQty } }
+          }
+        });
+
+        remainingToDeduct -= useQty;
       }
-      
+
+      if (bulkOps.length > 0) {
+        console.time('ppeService.bulkUpdateSourceIssuances');
+        await PPEIssuance.bulkWrite(bulkOps, { session });
+        console.timeEnd('ppeService.bulkUpdateSourceIssuances');
+      }
+
+      const _createIssEnd = Date.now();
+      console.log('🔍 createIssuanceToEmployee - end at', new Date(_createIssEnd).toISOString(), 'durationMs:', _createIssEnd - _createIssStart);
       return { issuance, issuer, recipient, manager };
     };
 
@@ -540,6 +746,15 @@ class PPEService {
       });
     } catch (error) {
       console.error('Error creating PPE issuance to employee:', error);
+      // If we created reservations outside a transaction, attempt cleanup
+      try {
+        if (issuanceData && issuanceData._reservation_token) {
+          const PPESerialReservation = require('../models/ppeSerialReservation');
+          await PPESerialReservation.deleteMany({ reserved_token: issuanceData._reservation_token });
+        }
+      } catch (cleanupErr) {
+        console.warn('Cleanup failed for serial reservations:', cleanupErr);
+      }
       return createResponse(500, 'Lỗi khi Manager phát PPE cho Employee', null, error.message);
     } finally {
       if (session) {
@@ -636,17 +851,52 @@ class PPEService {
         }
       }
 
+      // Validate returned serial numbers if provided
+      if (returnData.returned_serial_numbers && returnData.returned_serial_numbers.length > 0) {
+        if (!issuance.assigned_serial_numbers || issuance.assigned_serial_numbers.length === 0) {
+          return createResponse(400, 'Issuance không có serial numbers để trả');
+        }
+
+        // Check if all returned serial numbers were assigned to this employee
+        const invalidSerials = returnData.returned_serial_numbers.filter(
+          serial => !issuance.assigned_serial_numbers.includes(serial)
+        );
+
+        if (invalidSerials.length > 0) {
+          return createResponse(400, `Serial numbers không hợp lệ: ${invalidSerials.join(', ')}`);
+        }
+
+        // Check if any of these serial numbers have already been returned
+        const alreadyReturned = issuance.returned_serial_numbers || [];
+        const duplicateReturns = returnData.returned_serial_numbers.filter(
+          serial => alreadyReturned.includes(serial)
+        );
+
+        if (duplicateReturns.length > 0) {
+          return createResponse(400, `Serial numbers đã được trả trước đó: ${duplicateReturns.join(', ')}`);
+        }
+      }
+
       // Get returner and manager info for WebSocket
       const returner = await User.findById(issuance.user_id);
       const manager = await User.findById(issuance.manager_id);
 
-      // Update issuance status
-      await ppeRepository.updateIssuance(id, {
+      // Prepare update data
+      const updateData = {
         status: 'pending_manager_return',
         actual_return_date: returnData.actual_return_date || new Date(),
         return_condition: returnData.return_condition,
         notes: returnData.notes
-      });
+      };
+
+      // Add returned serial numbers if provided
+      if (returnData.returned_serial_numbers && returnData.returned_serial_numbers.length > 0) {
+        const currentReturned = issuance.returned_serial_numbers || [];
+        updateData.returned_serial_numbers = [...currentReturned, ...returnData.returned_serial_numbers];
+      }
+
+      // Update issuance status
+      await ppeRepository.updateIssuance(id, updateData);
 
       return createResponse(200, 'Employee trả PPE cho Manager thành công', {
         issuance: transformDocumentId(issuance, POPULATED_FIELDS.PPE_ISSUANCE),
@@ -694,7 +944,8 @@ class PPEService {
 
         // Compute aggregated available-to-return from manager stats (in-hand only)
         const stats = await ppeRepository.getManagerPPEStats(issuance.user_id._id || issuance.user_id, issuance.item_id._id || issuance.item_id);
-        const aggregatedAvailableToReturn = Math.max(0, (stats.remaining_in_hand || 0) - (stats.total_issued_to_employees || 0));
+        const currentlyHeldByEmployees = (stats.total_issued_to_employees || 0) - (stats.total_returned_by_employees || 0);
+        const aggregatedAvailableToReturn = Math.max(0, (stats.remaining_in_hand || 0) - currentlyHeldByEmployees);
 
         console.log(`[DEBUG returnIssuanceToAdmin] Issuance ID: ${id}`);
         console.log(`[DEBUG returnIssuanceToAdmin] Stats:`, JSON.stringify(stats, null, 2));
@@ -731,6 +982,12 @@ class PPEService {
           return_condition: returnData.return_condition,
           notes: returnData.notes
         };
+
+        // If fully returned, clear assigned serial numbers (no longer assigned to manager)
+        if (newStatus === 'returned') {
+          updateData.assigned_serial_numbers = [];
+          updateData.returned_serial_numbers = [...(issuance.assigned_serial_numbers || [])];
+        }
 
         updatedIssuance = await ppeRepository.updateIssuance(id, updateData);
         console.log(`[DEBUG returnIssuanceToAdmin] Updated issuance:`, JSON.stringify(updatedIssuance, null, 2));
@@ -791,13 +1048,60 @@ class PPEService {
         employee = await User.findById(issuance.user_id);
         manager = await User.findById(managerId);
 
-        // Mark issuance as returned (Employee has returned to Manager)
-        await ppeRepository.updateIssuance(id, {
-          status: 'returned'
-        });
+        // Determine returned quantity (prefer returned_serial_numbers if present)
+        const returnedSerials = issuance.returned_serial_numbers || [];
+        const returnedQty = (Array.isArray(returnedSerials) && returnedSerials.length > 0)
+          ? returnedSerials.length
+          : (issuance.quantity || 0);
 
-        // No quantity changes here - Manager still holds the PPE
-        // Quantity will only change when Manager returns to Admin
+        // Mark employee issuance as returned (Employee has returned to Manager)
+        // Use direct model update with session to keep within transaction
+        const updatedEmployeeIssuance = await PPEIssuance.findByIdAndUpdate(
+          id,
+          {
+            status: 'returned',
+            actual_return_date: new Date(),
+            // Remove returned serials from assigned_serial_numbers (if serial-tracked)
+            assigned_serial_numbers: (issuance.assigned_serial_numbers || []).filter(s => !(returnedSerials || []).includes(s))
+          },
+          { new: true, session }
+        );
+
+        // Now credit the manager's admin_to_manager issuances so manager's in-hand count increases.
+        // We'll add returnedQty back to the most recent admin_to_manager issuance(s).
+        if (returnedQty > 0) {
+          let remainingToCredit = returnedQty;
+
+          // Try to credit the latest admin_to_manager issuance first (reverse of deduction during issuance)
+          while (remainingToCredit > 0) {
+            const sourceIssuance = await PPEIssuance.findOne({
+              user_id: managerId,
+              item_id: issuance.item_id,
+              issuance_level: 'admin_to_manager',
+              status: { $in: ['issued', 'pending_confirmation'] }
+            }).sort({ issued_date: -1 }).session(session);
+
+            if (!sourceIssuance) {
+              // If no admin source found, stop crediting (data inconsistency)
+              console.warn('No admin_to_manager source issuance found to credit returned PPE for manager', { managerId, item_id: issuance.item_id, remainingToCredit });
+              break;
+            }
+
+            // Credit into this source issuance
+            await PPEIssuance.findByIdAndUpdate(
+              sourceIssuance._id,
+              {
+                $inc: { remaining_quantity: remainingToCredit },
+                // If serials returned, push them back to the source issuance's assigned_serial_numbers
+                ...(returnedSerials && returnedSerials.length > 0 ? { $push: { assigned_serial_numbers: { $each: returnedSerials } } } : {})
+              },
+              { new: true, session }
+            );
+
+            // We've credited all returned qty into one source (mirror deduction behavior)
+            remainingToCredit = 0;
+          }
+        }
       });
       
       return createResponse(200, 'Xác nhận nhận PPE từ Employee thành công', {
@@ -858,24 +1162,113 @@ class PPEService {
         ppeSummary[itemId].issuances.push(issuance);
       }
 
-      // Tính toán chính xác cho từng item và transform issuances
+      // Tính toán chính xác cho từng item bằng một lần aggregation + lấy employee issuances một lần
+      const mongoose = require('mongoose');
+      // Safe conversion to ObjectId: handle strings or already ObjectId instances
+      const toObjectIdSafe = (val) => {
+        if (!val) return null;
+        try {
+          if (val instanceof mongoose.Types.ObjectId) return val;
+          return new mongoose.Types.ObjectId(val);
+        } catch (e) {
+          // fallback: return original value if cannot convert
+          return val;
+        }
+      };
+      const managerObjectId = toObjectIdSafe(managerId);
+      const matchTenant = tenantId ? { tenant_id: toObjectIdSafe(tenantId) } : {};
+
+      // Aggregation facets: admin (received by manager) and employee (issued by manager)
+      const aggPipeline = [
+        {
+          $facet: {
+            adminStats: [
+              { $match: { ...matchTenant, user_id: managerObjectId, issuance_level: 'admin_to_manager' } },
+              {
+                $group: {
+                  _id: '$item_id',
+                  total_received: { $sum: '$quantity' },
+                  total_returned: { $sum: { $cond: [ { $eq: ['$status', 'returned'] }, '$quantity', 0 ] } },
+                  remaining_in_hand: { $sum: { $ifNull: ['$remaining_quantity', '$quantity'] } }
+                }
+              }
+            ],
+            employeeStats: [
+              { $match: { ...matchTenant, manager_id: managerObjectId, issuance_level: 'manager_to_employee' } },
+              {
+                $group: {
+                  _id: '$item_id',
+                  total_issued_to_employees: { $sum: '$quantity' },
+                  total_returned_by_employees: { $sum: { $cond: [ { $eq: ['$status', 'returned'] }, '$quantity', 0 ] } },
+                  pending_count: { $sum: { $cond: [ { $in: ['$status', ['pending_confirmation', 'pending_manager_return']] }, 1, 0 ] } },
+                  issued_count: { $sum: { $cond: [ { $eq: ['$status', 'issued'] }, 1, 0 ] } },
+                  returned_count: { $sum: { $cond: [ { $eq: ['$status', 'returned'] }, 1, 0 ] } },
+                  total_count: { $sum: 1 }
+                }
+              }
+            ]
+          }
+        }
+      ];
+
+      const aggResult = (await PPEIssuance.aggregate(aggPipeline).allowDiskUse(true).exec())[0] || { adminStats: [], employeeStats: [] };
+      const adminMap = new Map();
+      for (const a of aggResult.adminStats || []) {
+        const idStr = (a._id && a._id.toString()) || a._id;
+        adminMap.set(idStr, a);
+      }
+      const empMap = new Map();
+      for (const e of aggResult.employeeStats || []) {
+        const idStr = (e._id && e._id.toString()) || e._id;
+        empMap.set(idStr, e);
+      }
+
+      // Fetch all employee issuances for this manager once (for listing per item)
+      let allEmployeeIssuances = [];
+      try {
+        allEmployeeIssuances = await ppeRepository.getIssuancesByManager(managerId, { issuance_level: 'manager_to_employee' }, tenantId) || [];
+      } catch (e) {
+        console.warn('[getManagerPPE] failed to fetch all employee issuances for manager', managerId, e.message || e);
+      }
+      // Group employee issuances by item id
+      const employeeIssuancesByItem = {};
+      for (const ei of allEmployeeIssuances) {
+        const itemIdKey = (ei.item_id && (ei.item_id._id || ei.item_id).toString()) || (ei.item_id && ei.item_id.toString()) || '';
+        if (!employeeIssuancesByItem[itemIdKey]) employeeIssuancesByItem[itemIdKey] = [];
+        employeeIssuancesByItem[itemIdKey].push(ei);
+      }
+
+      // Populate ppeSummary from aggregated stats and grouped employee issuances
       for (const itemId in ppeSummary) {
-        const stats = await ppeRepository.getManagerPPEStats(managerId, itemId);
-        console.log(`[DEBUG] getManagerPPEStats for item ${itemId}:`, JSON.stringify(stats, null, 2));
-        
-        ppeSummary[itemId].total_received = stats.total_received || 0;  // ✅ Lấy từ DB để chính xác
-        ppeSummary[itemId].total_returned = stats.total_returned || 0;
-        ppeSummary[itemId].remaining_in_hand = stats.remaining_in_hand || 0;  // ✅ Số còn giữ sau khi trả Admin
-        ppeSummary[itemId].total_issued_to_employees = stats.total_issued_to_employees || 0;  // ✅ TỔNG số đã phát (kể cả đã trả)
-        ppeSummary[itemId].total_returned_by_employees = stats.total_returned_by_employees || 0;  // ✅ Tổng số employees đã trả lại
-        // ✅ Số còn lại = remaining_in_hand - (số đang giữ bởi employees)
-        // Số đang giữ bởi employees = total_issued_to_employees - total_returned_by_employees
-        const currentlyHeldByEmployees = (stats.total_issued_to_employees || 0) - (stats.total_returned_by_employees || 0);
-        ppeSummary[itemId].remaining = Math.max(0, (stats.remaining_in_hand || 0) - currentlyHeldByEmployees);
-        
-        // Transform issuances IDs from _id to id
+        const a = adminMap.get(itemId) || {};
+        const e = empMap.get(itemId) || {};
+
+        ppeSummary[itemId].total_received = a.total_received || ppeSummary[itemId].total_received || 0;
+        ppeSummary[itemId].total_returned = a.total_returned || 0;
+        ppeSummary[itemId].remaining_in_hand = a.remaining_in_hand || 0;
+
+        ppeSummary[itemId].total_issued_to_employees = e.total_issued_to_employees || 0;
+        ppeSummary[itemId].total_returned_by_employees = e.total_returned_by_employees || 0;
+
+        const currentlyHeldByEmployees = (ppeSummary[itemId].total_issued_to_employees || 0) - (ppeSummary[itemId].total_returned_by_employees || 0);
+        ppeSummary[itemId].remaining = Math.max(0, (ppeSummary[itemId].remaining_in_hand || 0) - currentlyHeldByEmployees);
+        ppeSummary[itemId].currentlyHeldByEmployees = currentlyHeldByEmployees;
+        ppeSummary[itemId].availableToReturn = Math.max(0, (ppeSummary[itemId].remaining_in_hand || 0) - currentlyHeldByEmployees);
+
+        const employeeIssuancesForItem = employeeIssuancesByItem[itemId] || [];
+        const empPending = (e.pending_count !== undefined) ? e.pending_count : employeeIssuancesForItem.filter(i => i.status === 'pending_confirmation' || i.status === 'pending_manager_return').length;
+        const empIssued = (e.issued_count !== undefined) ? e.issued_count : employeeIssuancesForItem.filter(i => i.status === 'issued').length;
+        const empReturned = (e.returned_count !== undefined) ? e.returned_count : employeeIssuancesForItem.filter(i => i.status === 'returned').length;
+
         ppeSummary[itemId].issuances = transformDocumentsId(ppeSummary[itemId].issuances, POPULATED_FIELDS.PPE_ISSUANCE);
-        
+        ppeSummary[itemId].employee_issuances = transformDocumentsId(employeeIssuancesForItem, POPULATED_FIELDS.PPE_ISSUANCE);
+        ppeSummary[itemId].employee_issuances_counts = {
+          pending: empPending,
+          issued: empIssued,
+          returned: empReturned,
+          total: (e.total_count !== undefined) ? e.total_count : employeeIssuancesForItem.length
+        };
+
         console.log(`[DEBUG] ppeSummary[${itemId}] after calculation:`, JSON.stringify(ppeSummary[itemId], null, 2));
       }
 
@@ -897,8 +1290,19 @@ class PPEService {
         status: { $in: ['issued', 'overdue', 'damaged', 'replacement_needed', 'pending_manager_return'] }
       });
 
+      // Filter out assigned_serial_numbers for returned issuances
+      const processedIssuances = issuances.map(issuance => {
+        // Handle both Mongoose documents and plain objects (lean())
+        const processed = (issuance && typeof issuance.toObject === 'function') ? issuance.toObject() : { ...issuance };
+        // Only hide assigned_serial_numbers for returned issuances
+        if (processed.status === 'returned') {
+          processed.assigned_serial_numbers = [];
+        }
+        return processed;
+      });
+
       return createResponse(200, 'Lấy danh sách PPE của Employee thành công', {
-        issuances: transformDocumentsId(issuances, POPULATED_FIELDS.PPE_ISSUANCE),
+        issuances: transformDocumentsId(processedIssuances, POPULATED_FIELDS.PPE_ISSUANCE),
         total_items: issuances.length
       });
     } catch (error) {
@@ -1053,9 +1457,54 @@ class PPEService {
       const issuer = await User.findById(issuanceData.issued_by);
       const recipient = await User.findById(issuanceData.user_id);
 
-      // Initialize remaining_quantity for admin_to_manager issuances
+      // Assign serial numbers for admin_to_manager issuances (optional if item has no serials)
+      let assignedSerialNumbers = [];
       if (issuanceData.issuance_level === 'admin_to_manager') {
         issuanceData.remaining_quantity = issuanceData.quantity;
+
+        // Check if item has serial numbers
+        const item = await PPEItem.findById(issuanceData.item_id).select('serial_numbers').lean();
+        const hasSerialNumbers = item && item.serial_numbers && item.serial_numbers.length > 0;
+
+        if (hasSerialNumbers) {
+          // Item has serial numbers - require serial number assignment
+          // Validate assigned_serial_numbers if provided
+          if (issuanceData.assigned_serial_numbers && issuanceData.assigned_serial_numbers.length > 0) {
+            if (issuanceData.assigned_serial_numbers.length !== issuanceData.quantity) {
+              throw new Error(`Số lượng serial numbers (${issuanceData.assigned_serial_numbers.length}) phải bằng số lượng phát (${issuanceData.quantity})`);
+            }
+          }
+
+          // Get available serial numbers for this item
+          const availableSerialNumbers = await this.getAvailableSerialNumbersForAdmin(issuanceData.item_id);
+
+          if (issuanceData.assigned_serial_numbers && issuanceData.assigned_serial_numbers.length > 0) {
+            // Validate that all assigned serial numbers are available
+            const unavailableSerials = issuanceData.assigned_serial_numbers.filter(
+              serial => !availableSerialNumbers.includes(serial)
+            );
+
+            if (unavailableSerials.length > 0) {
+              throw new Error(`Serial numbers không khả dụng: ${unavailableSerials.join(', ')}`);
+            }
+
+            assignedSerialNumbers = [...issuanceData.assigned_serial_numbers];
+          } else {
+            // Auto-assign serial numbers if not provided
+            if (availableSerialNumbers.length < issuanceData.quantity) {
+              throw new Error(`Không đủ serial numbers khả dụng. Cần: ${issuanceData.quantity}, có: ${availableSerialNumbers.length}`);
+            }
+
+            // Take the first N available serial numbers
+            assignedSerialNumbers = availableSerialNumbers.slice(0, issuanceData.quantity);
+          }
+
+          issuanceData.assigned_serial_numbers = assignedSerialNumbers;
+        } else {
+          // Item has no serial numbers - allow issuance without serial tracking
+          console.log(`ℹ️ Item ${issuanceData.item_id} has no serial numbers - proceeding without serial tracking`);
+          // assigned_serial_numbers remains empty array
+        }
       }
 
       // Create issuance (stock was already updated atomically above)
@@ -1341,9 +1790,10 @@ class PPEService {
   }
 
   // Get PPE issuances for a specific user
-  async getIssuancesByUser(userId) {
+  async getIssuancesByUser(userId, tenantId = null) {
     try {
-      const issuances = await ppeRepository.getAllIssuances({ user_id: userId });
+      // Prefer repository method that returns populated item_id with image_url
+      const issuances = await ppeRepository.getIssuancesByUser(userId, {}, tenantId);
       return createResponse(200, 'Lấy PPE của nhân viên thành công',
         transformDocumentsId(issuances, POPULATED_FIELDS.PPE_ISSUANCE));
     } catch (error) {
@@ -1637,14 +2087,16 @@ class PPEService {
         totalIssuances,
         lowStockItems,
         overdueIssuances,
-        activeIssuances
+        activeIssuances,
+        pendingEmployeeConfirmations
       ] = await Promise.all([
         ppeRepository.getAllCategories(tenantId),
         ppeRepository.getAllItems({}, tenantId),
         ppeRepository.getAllIssuances({}, tenantId),
         ppeRepository.getLowStockItems(tenantId),
         ppeRepository.getOverdueIssuances(tenantId),
-        ppeRepository.getAllIssuances({ status: 'issued' }, tenantId)
+        ppeRepository.getAllIssuances({ status: 'issued' }, tenantId),
+        ppeRepository.countPendingEmployeeConfirmations(tenantId)
       ]);
 
       const stats = {
@@ -1654,6 +2106,7 @@ class PPEService {
         low_stock_items: lowStockItems.length,
         overdue_issuances: overdueIssuances.length,
         active_issuances: activeIssuances.length,
+        pendingConfirmationCount: pendingEmployeeConfirmations || 0,
         total_quantity: totalItems.reduce((sum, item) => sum + (item.quantity_available + item.quantity_allocated), 0),
         available_quantity: totalItems.reduce((sum, item) => sum + item.quantity_available, 0),
         allocated_quantity: totalItems.reduce((sum, item) => sum + item.quantity_allocated, 0)
@@ -1921,6 +2374,78 @@ class PPEService {
     } catch (error) {
       console.error('Error getting item stats:', error);
       return createResponse(500, 'Lỗi khi lấy thống kê thiết bị', null, error.message);
+    }
+  }
+
+  // Get available serial numbers for manager to assign to employees
+  async getAvailableSerialNumbersForManager(managerId, itemId) {
+    try {
+      // Get all serial numbers that manager has received from admin
+      const managerIssuances = await PPEIssuance.find({
+        user_id: managerId,
+        item_id: itemId,
+        issuance_level: 'admin_to_manager',
+        status: { $in: ['issued', 'pending_confirmation'] }
+      }).select('assigned_serial_numbers remaining_quantity').lean();
+
+      let availableSerials = [];
+
+      // Collect all serial numbers manager has
+      for (const issuance of managerIssuances) {
+        if (issuance.assigned_serial_numbers && issuance.assigned_serial_numbers.length > 0) {
+          availableSerials.push(...issuance.assigned_serial_numbers);
+        }
+      }
+
+      // Remove serial numbers that have been assigned to employees
+      const employeeIssuances = await PPEIssuance.find({
+        manager_id: managerId,
+        item_id: itemId,
+        issuance_level: 'manager_to_employee',
+        status: { $in: ['pending_confirmation', 'issued'] }
+      }).select('assigned_serial_numbers').lean();
+
+      const assignedToEmployees = new Set();
+      for (const issuance of employeeIssuances) {
+        if (issuance.assigned_serial_numbers && issuance.assigned_serial_numbers.length > 0) {
+          issuance.assigned_serial_numbers.forEach(serial => assignedToEmployees.add(serial));
+        }
+      }
+
+      // Filter out serials already assigned to employees
+      return availableSerials.filter(serial => !assignedToEmployees.has(serial));
+    } catch (error) {
+      console.error('Error getting available serial numbers for manager:', error);
+      return [];
+    }
+  }
+
+  // Get available serial numbers for admin to assign to managers
+  async getAvailableSerialNumbersForAdmin(itemId) {
+    try {
+      const item = await PPEItem.findById(itemId).select('serial_numbers quantity_available').lean();
+      if (!item || !item.serial_numbers) {
+        return [];
+      }
+
+      // Get all serial numbers already assigned in active issuances
+      const activeIssuances = await PPEIssuance.find({
+        item_id: itemId,
+        status: { $in: ['pending_confirmation', 'issued'] }
+      }).select('assigned_serial_numbers').lean();
+
+      const assignedSerials = new Set();
+      for (const issuance of activeIssuances) {
+        if (issuance.assigned_serial_numbers && issuance.assigned_serial_numbers.length > 0) {
+          issuance.assigned_serial_numbers.forEach(serial => assignedSerials.add(serial));
+        }
+      }
+
+      // Return serials that are not yet assigned
+      return item.serial_numbers.filter(serial => !assignedSerials.has(serial));
+    } catch (error) {
+      console.error('Error getting available serial numbers for admin:', error);
+      return [];
     }
   }
 }

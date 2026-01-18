@@ -4,6 +4,18 @@ const WeatherService = require('../services/weatherService');
 
 class WeatherController {
   static getCurrent = ErrorMiddleware.asyncHandler(async (req, res) => {
+    // Prevent duplicate responses
+    if (res.headersSent) {
+      console.warn('⚠️ Response already sent for weather/current, skipping duplicate request');
+      return;
+    }
+
+    const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`[${requestId}] GET /integrations/weather/current - IP: ${req.ip}`, {
+      query: req.query,
+      timestamp: new Date().toISOString()
+    });
+
     const { latitude, longitude, timezone } = req.query;
     const tenantId = req.user?.tenant_id;
 
@@ -27,6 +39,14 @@ class WeatherController {
       longitude: lon,
       timezone: timezone || undefined,
     });
+
+    console.log(`[${requestId}] Weather fetched successfully`);
+    
+    // Double-check response hasn't been sent
+    if (res.headersSent) {
+      console.warn(`[${requestId}] Response already sent, skipping`);
+      return;
+    }
 
     return await EnhancedApiResponse.success(res, weather, 'Current weather retrieved');
   });

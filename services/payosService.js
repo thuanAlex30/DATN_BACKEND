@@ -40,16 +40,72 @@ class PayOSService {
       );     
     }
     
-    if (process.env.PAYOS_RETURN_URL && process.env.PAYOS_CANCEL_URL) {
-      // Normalize URLs (remove double slashes)
-      this.returnUrl = process.env.PAYOS_RETURN_URL.replace(/([^:]\/)\/+/g, '$1');
-      this.cancelUrl = process.env.PAYOS_CANCEL_URL.replace(/([^:]\/)\/+/g, '$1');
-    } else {
-      // Mặc định: trỏ trực tiếp về frontend (localhost được chấp nhận)
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    // Xác định returnUrl và cancelUrl
+    // Ưu tiên: FRONTEND_URL > Production URL > PAYOS_RETURN_URL/CANCEL_URL > localhost
+    // Production Frontend URL
+    const PRODUCTION_FRONTEND_URL = 'https://datn-fontend-sigma.vercel.app';
+    
+    // Kiểm tra nếu có FRONTEND_URL env var (ưu tiên cao nhất)
+    if (process.env.FRONTEND_URL && !process.env.FRONTEND_URL.includes('datnfrontend-c0qa73axv')) {
+      // Dùng FRONTEND_URL nếu không phải URL cũ
+      const frontendUrl = process.env.FRONTEND_URL.trim();
       this.returnUrl = `${frontendUrl}/pricing/payment-success`;
       this.cancelUrl = `${frontendUrl}/pricing/payment-cancelled`;
+    } else if (process.env.PAYOS_RETURN_URL && process.env.PAYOS_CANCEL_URL) {
+      // Kiểm tra nếu URL có chứa ngrok hoặc URL cũ (cần thay thế)
+      const returnUrl = process.env.PAYOS_RETURN_URL;
+      const cancelUrl = process.env.PAYOS_CANCEL_URL;
+      
+      if (returnUrl.includes('ngrok') || 
+          cancelUrl.includes('ngrok') ||
+          returnUrl.includes('datnfrontend-c0qa73axv') ||
+          cancelUrl.includes('datnfrontend-c0qa73axv')) {
+        console.warn('⚠️ PayOS URLs đang trỏ đến ngrok hoặc URL cũ (có thể đã offline). Sẽ sử dụng Production URL thay thế.');
+        // Fallback về Production URL
+        this.returnUrl = `${PRODUCTION_FRONTEND_URL}/pricing/payment-success`;
+        this.cancelUrl = `${PRODUCTION_FRONTEND_URL}/pricing/payment-cancelled`;
+      } else {
+        // Normalize URLs (remove double slashes)
+        this.returnUrl = returnUrl.replace(/([^:]\/)\/+/g, '$1');
+        this.cancelUrl = cancelUrl.replace(/([^:]\/)\/+/g, '$1');
+      }
+    } else {
+      // Dùng default URLs (sẽ detect production và dùng PRODUCTION_FRONTEND_URL)
+      this._setDefaultUrls();
     }
+    
+    console.log('📋 PayOS Callback URLs:', {
+      returnUrl: this.returnUrl,
+      cancelUrl: this.cancelUrl
+    });
+  }
+
+  /**
+   * Helper: Set default return/cancel URLs
+   * Ưu tiên: FRONTEND_URL > Production Vercel URL > Render Backend URL > localhost
+   */
+  _setDefaultUrls() {
+    // Production Frontend URL
+    const PRODUCTION_FRONTEND_URL = 'https://datn-fontend-sigma.vercel.app';
+    
+    // Xác định frontend URL - ưu tiên production URLs
+    let frontendUrl = process.env.FRONTEND_URL;
+    
+    // Nếu không có FRONTEND_URL, dùng production Vercel URL
+    if (!frontendUrl) {
+      // Kiểm tra nếu đang chạy trên production (Render/Vercel)
+      const isProduction = process.env.NODE_ENV === 'production' || 
+                          process.env.RENDER_EXTERNAL_URL || 
+                          process.env.RENDER_URL ||
+                          process.env.VERCEL;
+      
+      // Luôn dùng production URL khi deploy, chỉ dùng localhost khi development local
+      frontendUrl = isProduction ? PRODUCTION_FRONTEND_URL : 'http://localhost:5173';
+    }
+    
+    // Luôn dùng frontend URL cho return/cancel (frontend sẽ xử lý redirect)
+    this.returnUrl = `${frontendUrl}/pricing/payment-success`;
+    this.cancelUrl = `${frontendUrl}/pricing/payment-cancelled`;
   }
 
   /**

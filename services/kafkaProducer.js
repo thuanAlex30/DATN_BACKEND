@@ -1,4 +1,8 @@
-const { kafka, topics, eventTypes, producerConfig } = require('../config/kafkaConfig');
+const KAFKA_ENABLED = process.env.ENABLE_KAFKA === 'true';
+
+// Don't destructure kafka - lazy load it only when needed
+const kafkaConfig = require('../config/kafkaConfig');
+const { topics, eventTypes, producerConfig } = kafkaConfig;
 const { v4: uuidv4 } = require('uuid');
 
 class KafkaProducer {
@@ -12,12 +16,24 @@ class KafkaProducer {
    * Initialize Kafka Producer
    */
   async initialize() {
+    // Guard: Kafka must be enabled
+    if (!KAFKA_ENABLED) {
+      return; // Silent return, no connection attempt
+    }
+
     try {
+      // Respect runtime flag to skip Kafka entirely
+      if (process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0') {
+        console.log('ℹ️ Kafka Producer initialization skipped because KAFKA_ENABLED is false');
+        return;
+      }
       if (this.isInitialized) {
         console.log('📤 Kafka Producer already initialized');
         return;
       }
 
+      // Lazy load kafka only when needed
+      const kafka = kafkaConfig.kafka;
       this.producer = kafka.producer(producerConfig);
       
       console.log('📤 Initializing Kafka Producer...');
@@ -62,6 +78,11 @@ class KafkaProducer {
    * @param {string} key - Optional partition key
    */
   async sendEvent(topic, eventData, key = null) {
+    // Guard: Kafka must be enabled - fail silent, don't throw
+    if (!KAFKA_ENABLED) {
+      return { success: false, error: 'Kafka is disabled' };
+    }
+
     try {
       if (!this.isConnected) {
         await this.initialize();
@@ -81,9 +102,10 @@ class KafkaProducer {
         version: eventData.version || '1.0'
       };
 
-      // Send to Kafka
+      // Send to Kafka with bounded timeout to avoid blocking caller
       const startTime = Date.now();
-      const result = await this.producer.send({
+      const timeoutMs = parseInt(process.env.KAFKA_SEND_TIMEOUT_MS || '3000', 10);
+      const sendPromise = this.producer.send({
         topic,
         messages: [{
           key: key || event.eventId,
@@ -91,6 +113,10 @@ class KafkaProducer {
           timestamp: Date.now()
         }]
       });
+      const result = await Promise.race([
+        sendPromise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Kafka send timeout')), timeoutMs))
+      ]);
 
       const latency = Date.now() - startTime;
       
@@ -345,6 +371,11 @@ class KafkaProducer {
    * @param {Object} metadata - Event metadata
    */
   async sendSystemEvent(eventType, systemData, metadata = {}) {
+    // Guard: Kafka must be enabled - fail silent, don't throw
+    if (!KAFKA_ENABLED) {
+      return { success: false, error: 'Kafka is disabled' };
+    }
+
     const event = {
       eventType,
       data: {
@@ -521,9 +552,19 @@ class KafkaProducer {
    * Get connection status
    */
   getStatus() {
+    // Guard: Kafka must be enabled
+    if (!KAFKA_ENABLED) {
+      return {
+        isConnected: false,
+        isInitialized: false,
+        enabled: false
+      };
+    }
+
     return {
       isConnected: this.isConnected,
-      isInitialized: this.isInitialized
+      isInitialized: this.isInitialized,
+      enabled: true
     };
   }
 }

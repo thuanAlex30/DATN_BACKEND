@@ -27,10 +27,9 @@ const connectDB = require('./config/database');
 const routes = require('./routes');
 const ErrorMiddleware = require('./middlewares/ErrorMiddleware');
 const LoggingMiddleware = require('./middlewares/LoggingMiddleware');
+const { preventDuplicateRequests } = require('./middlewares/DuplicateRequestMiddleware');
 const websocketService = require('./services/websocketService');
-const kafkaProducer = require('./services/kafkaProducer');
-const kafkaConsumer = require('./services/kafkaConsumer');
-const kafkaMonitor = require('./services/kafkaMonitor');
+// Lazy load Kafka modules to avoid connection attempts when disabled
 const expiryCheckJob = require('./jobs/expiryCheckJob');
 const ppeOverdueJob = require('./jobs/ppeOverdueJob');
 const weatherAlertJob = require('./jobs/weatherAlertJob');
@@ -53,7 +52,10 @@ const parseAllowedOrigins = () => {
     'http://127.0.0.1:3000',
     'http://127.0.0.1:3001',
     'http://127.0.0.1:5173',
-    'https://safe-n814.onrender.com'
+    'https://safe-n814.onrender.com',
+    // Vercel frontend URLs
+    'https://datnfrontend-c0qa73axv-lam-danh-mais-projects.vercel.app',
+    'https://*.vercel.app' // Support all Vercel preview deployments
   ];
 
   if (process.env.FRONTEND_URL) base.push(process.env.FRONTEND_URL);
@@ -75,7 +77,15 @@ const allowedOrigins = parseAllowedOrigins();
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true); // Postman / server-side
+    
+    // Check exact match
     if (allowedOrigins.includes(origin)) return callback(null, true);
+    
+    // Check Vercel pattern (*.vercel.app)
+    if (origin.includes('.vercel.app') && allowedOrigins.includes('https://*.vercel.app')) {
+      return callback(null, true);
+    }
+    
     return callback(null, false); // ❗ NEVER throw error
   },
   credentials: true,
@@ -97,12 +107,33 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // =====================
 // Rate limit
 // =====================
+// Per-path rate limit for PPE API (higher allowance to avoid throttling during dashboard refreshes)
+const ppeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'production' ? 1000 : 10000,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Global fallback limiter for all other routes
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: process.env.NODE_ENV === 'production' ? 200 : 10000,
   standardHeaders: true,
   legacyHeaders: false,
+  message: 'Too many requests from this IP, please try again later.',
+  handler: (req, res) => {
+    res.status(429).json({
+      success: false,
+      message: 'Too many requests from this IP, please try again later.',
+      errors: null,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
+
+// Apply PPE-specific limiter before the global limiter so PPE routes get higher allowance
+app.use('/api/ppe', ppeLimiter);
 app.use(limiter);
 
 // =====================
@@ -134,14 +165,15 @@ const uploadsDir = resolveUploadsDir();
 app.use('/uploads', express.static(uploadsDir));
 
 // =====================
+// Duplicate Request Prevention
+// =====================
+// Prevent duplicate requests within a short time window (helps with rate limiting)
+app.use(preventDuplicateRequests);
+
+// =====================
 // Logging
 // =====================
-app.use((req, res, next) => {
-  console.log(
-    `${new Date().toISOString()} - ${req.method} ${req.originalUrl} - IP: ${req.ip}`
-  );
-  next();
-});
+// Only use LoggingMiddleware.logAllRequests to avoid duplicate logging
 app.use(LoggingMiddleware.logAllRequests);
 
 // =====================
@@ -194,10 +226,15 @@ const io = new Server(server, {
     ppeOverdueJob.start();
     weatherAlertJob.start();
 
-    // Kafka (optional) - can be disabled with env KAFKA_ENABLED=false
-    const isKafkaEnabled = !(process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0');
+    // Kafka (optional) - can be disabled with env ENABLE_KAFKA=false or not set
+    const isKafkaEnabled = process.env.ENABLE_KAFKA === 'true';
     if (isKafkaEnabled) {
       try {
+        // Lazy load Kafka modules only when enabled to avoid connection attempts
+        const kafkaProducer = require('./services/kafkaProducer');
+        const kafkaConsumer = require('./services/kafkaConsumer');
+        const kafkaMonitor = require('./services/kafkaMonitor');
+        
         await kafkaProducer.initialize();
         await kafkaConsumer.initialize();
         await kafkaMonitor.startMonitoring();
@@ -205,9 +242,14 @@ const io = new Server(server, {
         console.log('✅ Kafka initialized');
       } catch (e) {
         console.log('⚠️ Kafka disabled (init failed):', e.message);
+        // If init fails, ensure references remain null to avoid later usage
+        kafkaProducer = null;
+        kafkaConsumer = null;
+        kafkaMonitor = null;
       }
     } else {
-      console.log('ℹ️ Kafka initialization skipped (KAFKA_ENABLED is false)');
+      // Silent skip to reduce log noise in deployment environments
+      // Don't even require Kafka modules when disabled
     }
 
     const shutdown = () => {
@@ -216,8 +258,16 @@ const io = new Server(server, {
       expiryCheckJob.stop();
       ppeOverdueJob.stop();
       weatherAlertJob.stop();
-      if (isKafkaEnabled && kafkaMonitor && typeof kafkaMonitor.stopMonitoring === 'function') {
-        try { kafkaMonitor.stopMonitoring(); } catch (err) { console.warn('Error stopping kafkaMonitor:', err.message); }
+      const isKafkaEnabled = process.env.ENABLE_KAFKA === 'true';
+      if (isKafkaEnabled) {
+        try {
+          const kafkaMonitor = require('./services/kafkaMonitor');
+          if (kafkaMonitor && typeof kafkaMonitor.stopMonitoring === 'function') {
+            kafkaMonitor.stopMonitoring();
+          }
+        } catch (err) {
+          // Ignore if Kafka modules not loaded
+        }
       }
       server.close(() => process.exit(0));
     };

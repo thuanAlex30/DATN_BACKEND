@@ -19,7 +19,7 @@ const ppeItemSchema = new mongoose.Schema({
     unique: true,
     maxlength: 50,
     uppercase: true,
-    match: /^[A-Z0-9-]+$/
+    match: /^[A-Z0-9-_]+$/
   },
   item_name: {
     type: String,

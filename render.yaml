@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: safety-management-backend
+    env: node
+    nodeVersion: 20.18.0
+    buildCommand: rm -rf node_modules package-lock.json && npm cache clean --force && npm install --no-audit --legacy-peer-deps
+    startCommand: npm start
+    envVars:
+      # Disable Kafka to reduce deployment logs noise on Render
+      # Kafka is disabled by default (not set = disabled)
+      # To enable: set ENABLE_KAFKA=true
+      
+      # Frontend URL for PayOS callbacks and redirects
+      - key: FRONTEND_URL
+        value: "https://datn-fontend-sigma.vercel.app"
+      
+      # Weather API optimization - disable alert job to reduce API calls
+      # Weather Alert Job runs hourly and calls weather API for each tenant
+      # This can cause 429 rate limit errors from Open-Meteo API
+      - key: WEATHER_ALERT_ENABLED
+        value: "false"
+      
+      # Weather cache TTL - 30 minutes (1800 seconds)
+      # Increase if still getting 429 errors
+      - key: OPEN_METEO_CACHE_TTL_SECONDS
+        value: "1800"
+
