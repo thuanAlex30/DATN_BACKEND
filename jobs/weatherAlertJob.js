@@ -23,10 +23,18 @@ class WeatherAlertJob {
       return;
     }
 
-    // Run every 30 minutes
+    // Run every 1 hour (reduced from 30 minutes to avoid rate limits)
     // Format: minute hour day month dayOfWeek
-    // '*/30 * * * *' means every 30 minutes
-    const schedule = process.env.WEATHER_ALERT_CHECK_SCHEDULE || '*/30 * * * *';
+    // '0 * * * *' means every hour at minute 0 (e.g., 00:00, 01:00, 02:00)
+    // Can be overridden via WEATHER_ALERT_CHECK_SCHEDULE env var
+    // To disable: set WEATHER_ALERT_ENABLED=false
+    const isAlertEnabled = process.env.WEATHER_ALERT_ENABLED !== 'false';
+    if (!isAlertEnabled) {
+      logger.info('Weather alert job is disabled (WEATHER_ALERT_ENABLED=false)');
+      return;
+    }
+    
+    const schedule = process.env.WEATHER_ALERT_CHECK_SCHEDULE || '0 * * * *'; // Every hour
     
     this.job = cron.schedule(schedule, async () => {
       await this.runWeatherCheck();

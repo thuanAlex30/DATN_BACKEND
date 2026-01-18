@@ -655,7 +655,13 @@ class PPEController {
   // PPE Dashboard
   static getDashboardStats = ErrorMiddleware.asyncHandler(async (req, res) => {
     try {
-      const result = await ppeService.getDashboardStats();
+      // Get tenantId from authenticated user
+      const tenantId = req.user?.tenant_id || null;
+      if (!tenantId) {
+        return ApiResponse.error(res, 'Tenant ID not found. Please ensure you are authenticated.', 401);
+      }
+      
+      const result = await ppeService.getDashboardStats(tenantId);
       
       if (result.success) {
         return ApiResponse.success(res, result.data, result.message, result.statusCode);

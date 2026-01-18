@@ -13,4 +13,15 @@ services:
       # Frontend URL for PayOS callbacks and redirects
       - key: FRONTEND_URL
         value: "https://datn-fontend-sigma.vercel.app"
+      
+      # Weather API optimization - disable alert job to reduce API calls
+      # Weather Alert Job runs hourly and calls weather API for each tenant
+      # This can cause 429 rate limit errors from Open-Meteo API
+      - key: WEATHER_ALERT_ENABLED
+        value: "false"
+      
+      # Weather cache TTL - 30 minutes (1800 seconds)
+      # Increase if still getting 429 errors
+      - key: OPEN_METEO_CACHE_TTL_SECONDS
+        value: "1800"
 

@@ -1,7 +1,12 @@
 const { Kafka, Partitioners, logLevel } = require('kafkajs');
 
 // Don't create Kafka instance if disabled
-const isKafkaEnabled = !(process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0');
+// Check both ENABLE_KAFKA and KAFKA_ENABLED for compatibility
+const isKafkaEnabled = 
+  (process.env.ENABLE_KAFKA === 'true' || process.env.KAFKA_ENABLED === 'true') &&
+  process.env.ENABLE_KAFKA !== 'false' && 
+  process.env.KAFKA_ENABLED !== 'false' &&
+  process.env.KAFKA_ENABLED !== '0';
 
 // Kafka Configuration
 const kafkaConfig = {

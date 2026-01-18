@@ -1,6 +1,8 @@
 const KAFKA_ENABLED = process.env.ENABLE_KAFKA === 'true';
 
-const { kafka, topics, eventTypes, consumerConfig } = require('../config/kafkaConfig');
+// Don't destructure kafka - lazy load it only when needed
+const kafkaConfig = require('../config/kafkaConfig');
+const { topics, eventTypes, consumerConfig } = kafkaConfig;
 const websocketService = require('./websocketService');
 const kafkaMonitor = require('./kafkaMonitor');
 
@@ -33,6 +35,8 @@ class KafkaConsumer {
         return;
       }
 
+      // Lazy load kafka only when needed
+      const kafka = kafkaConfig.kafka;
       this.consumer = kafka.consumer(consumerConfig);
       
       console.log('📥 Initializing Kafka Consumer...');
