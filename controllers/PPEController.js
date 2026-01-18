@@ -6,10 +6,20 @@ const websocketService = require('../services/websocketService');
 const PPEEvents = require('../events/ppeEvents');
 const { uploadImageBuffer } = require('../utils/cloudinaryHelper');
 
+// Helper function to safely get tenantId
+const getTenantId = (req, res) => {
+  const tenantId = req.user?.tenant_id;
+  if (!tenantId) {
+    ApiResponse.error(res, 'Thiếu thông tin tenant. Vui lòng đăng nhập lại.', 401);
+    return null;
+  }
+  return tenantId;
+};
+
 class PPEController {
   // PPE Categories
   static getAllCategories = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const tenantId = req.user.tenant_id;
+    const tenantId = req.user?.tenant_id;
     const result = await ppeService.getAllCategories(tenantId);
     
     if (result.success) {
@@ -21,7 +31,7 @@ class PPEController {
 
   static getCategoryById = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const tenantId = req.user.tenant_id;
+    const tenantId = req.user?.tenant_id;
     const result = await ppeService.getCategoryById(id, tenantId);
     
     if (result.success) {
@@ -33,16 +43,26 @@ class PPEController {
 
   static createCategory = ErrorMiddleware.asyncHandler(async (req, res) => {
     const categoryData = req.body;
+    console.log('[createCategory] Request file:', req.file ? 'exists' : 'missing');
     if (req.file) {
       try {
         const folder = process.env.CLOUDINARY_PPE_FOLDER || 'ppe';
         const uploadRes = await uploadImageBuffer(req.file.buffer, req.file.originalname, folder);
         categoryData.image_url = uploadRes.secureUrl;
+        console.log('[createCategory] Image uploaded successfully:', uploadRes.secureUrl);
       } catch (err) {
+        console.error('[createCategory] Image upload failed:', err);
         return ApiResponse.error(res, `Upload ảnh lên Cloudinary thất bại: ${err.message}`, 500);
       }
+    } else {
+      console.log('[createCategory] No image file provided');
     }
-    const tenantId = req.user.tenant_id;
+    console.log('[createCategory] Category data before save:', { 
+      category_name: categoryData.category_name,
+      image_url: categoryData.image_url ? 'present' : 'missing' 
+    });
+    const tenantId = getTenantId(req, res);
+    if (!tenantId) return; // Error already sent by getTenantId
     const result = await ppeService.createCategory(categoryData, tenantId);
     
     if (result.success) {
@@ -58,7 +78,8 @@ class PPEController {
     }
 
     console.log(`📁 Processing file: ${req.file.originalname}, size: ${req.file.size} bytes`);
-    const tenantId = req.user.tenant_id;
+    const tenantId = getTenantId(req, res);
+    if (!tenantId) return;
     const result = await ppeService.importCategoriesFromExcel(req.file, tenantId);
     console.log(`✅ Import completed: ${result.success.length} success, ${result.errors.length} errors`);
     
@@ -72,16 +93,25 @@ class PPEController {
   static updateCategory = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
     const categoryData = req.body;
+    console.log('[updateCategory] Request file:', req.file ? 'exists' : 'missing');
     if (req.file) {
       try {
         const folder = process.env.CLOUDINARY_PPE_FOLDER || 'ppe';
         const uploadRes = await uploadImageBuffer(req.file.buffer, req.file.originalname, folder);
         categoryData.image_url = uploadRes.secureUrl;
+        console.log('[updateCategory] Image uploaded successfully:', uploadRes.secureUrl);
       } catch (err) {
+        console.error('[updateCategory] Image upload failed:', err);
         return ApiResponse.error(res, `Upload ảnh lên Cloudinary thất bại: ${err.message}`, 500);
       }
     }
-    const tenantId = req.user.tenant_id;
+    const tenantId = getTenantId(req, res);
+    if (!tenantId) return; // Error already sent by getTenantId
+    console.log('[updateCategory] Category data before update:', { 
+      id,
+      category_name: categoryData.category_name,
+      image_url: categoryData.image_url ? 'present' : 'missing' 
+    });
     const result = await ppeService.updateCategory(id, categoryData, tenantId);
     
     if (result.success) {
@@ -93,7 +123,8 @@ class PPEController {
 
   static deleteCategory = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const tenantId = req.user.tenant_id;
+    const tenantId = getTenantId(req, res);
+    if (!tenantId) return; // Error already sent by getTenantId
     const result = await ppeService.deleteCategory(id, tenantId);
     
     if (result.success) {
@@ -128,7 +159,8 @@ class PPEController {
         include_inactive: req.query.include_inactive === 'true' || req.query.include_inactive === true
       };
       
-      const tenantId = req.user.tenant_id;
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return; // Error already sent by getTenantId
       console.log('getAllItems - filters:', filters, 'tenantId:', tenantId);
       const result = await ppeService.getAllItems(filters, tenantId);
       console.log('getAllItems - result:', result.success, 'items count:', result.data?.length || 0);
@@ -150,30 +182,38 @@ class PPEController {
   });
 
   static getItemById = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.getItemById(id, tenantId);
+    try {
+      const { id } = req.params;
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.getItemById(id, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 404, result.data);
     }
+    } catch (error) {
+      console.error('Error in getItemById:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
+    }
   });
 
   static createItem = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const itemData = req.body;
-    if (req.file) {
-      try {
-        const folder = process.env.CLOUDINARY_PPE_FOLDER || 'ppe';
-        const uploadRes = await uploadImageBuffer(req.file.buffer, req.file.originalname, folder);
-        itemData.image_url = uploadRes.secureUrl;
-      } catch (err) {
-        return ApiResponse.error(res, `Upload ảnh lên Cloudinary thất bại: ${err.message}`, 500);
+    try {
+      const itemData = req.body;
+      if (req.file) {
+        try {
+          const folder = process.env.CLOUDINARY_PPE_FOLDER || 'ppe';
+          const uploadRes = await uploadImageBuffer(req.file.buffer, req.file.originalname, folder);
+          itemData.image_url = uploadRes.secureUrl;
+        } catch (err) {
+          return ApiResponse.error(res, `Upload ảnh lên Cloudinary thất bại: ${err.message}`, 500);
+        }
       }
-    }
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.createItem(itemData, tenantId);
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.createItem(itemData, tenantId);
     
     // Emit Kafka event for PPE item created (non-blocking with timeout)
     if (result.success && result.data) {
@@ -201,35 +241,47 @@ class PPEController {
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
     }
+    } catch (error) {
+      console.error('Error in createItem:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
+    }
   });
 
   static generateSerialsForItem = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const { count } = req.body;
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.generateSerialsForItem(id, count, tenantId);
+    try {
+      const { id } = req.params;
+      const { count } = req.body;
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.generateSerialsForItem(id, count, tenantId);
 
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
     }
+    } catch (error) {
+      console.error('Error in generateSerialsForItem:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
+    }
   });
 
   static updateItem = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const itemData = req.body;
-    if (req.file) {
-      try {
-        const folder = process.env.CLOUDINARY_PPE_FOLDER || 'ppe';
-        const uploadRes = await uploadImageBuffer(req.file.buffer, req.file.originalname, folder);
-        itemData.image_url = uploadRes.secureUrl;
-      } catch (err) {
-        return ApiResponse.error(res, `Upload ảnh lên Cloudinary thất bại: ${err.message}`, 500);
+    try {
+      const { id } = req.params;
+      const itemData = req.body;
+      if (req.file) {
+        try {
+          const folder = process.env.CLOUDINARY_PPE_FOLDER || 'ppe';
+          const uploadRes = await uploadImageBuffer(req.file.buffer, req.file.originalname, folder);
+          itemData.image_url = uploadRes.secureUrl;
+        } catch (err) {
+          return ApiResponse.error(res, `Upload ảnh lên Cloudinary thất bại: ${err.message}`, 500);
+        }
       }
-    }
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.updateItem(id, itemData, tenantId);
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.updateItem(id, itemData, tenantId);
     
     // Emit Kafka event for PPE item updated (non-blocking with timeout)
     if (result.success && result.data) {
@@ -261,13 +313,19 @@ class PPEController {
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
     }
+    } catch (error) {
+      console.error('Error in updateItem:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
+    }
   });
 
   static updateItemQuantity = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const quantityData = req.body; // { quantity_available, quantity_allocated }
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.updateItemQuantity(id, quantityData, tenantId);
+    try {
+      const { id } = req.params;
+      const quantityData = req.body; // { quantity_available, quantity_allocated }
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.updateItemQuantity(id, quantityData, tenantId);
     
     // Emit Kafka event for PPE item stock updated
     if (result.success && result.data) {
@@ -290,14 +348,20 @@ class PPEController {
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
     }
+    } catch (error) {
+      console.error('Error in updateItemQuantity:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
+    }
   });
 
   static deleteItem = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
     
-    // Get item data before deletion for event
-    const tenantId = req.user.tenant_id;
-    const itemData = await ppeService.getItemById(id, tenantId);
+    try {
+      // Get item data before deletion for event
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const itemData = await ppeService.getItemById(id, tenantId);
     
     const result = await ppeService.deleteItem(id, tenantId);
     
@@ -314,6 +378,10 @@ class PPEController {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+    }
+    } catch (error) {
+      console.error('Error in deleteItem:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
     }
   });
 
@@ -404,12 +472,20 @@ class PPEController {
   });
 
   static getInventoryStats = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const result = await ppeService.getInventoryStats();
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    try {
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return; // Error already sent by getTenantId
+      
+      const result = await ppeService.getInventoryStats(tenantId);
+      
+      if (result.success) {
+        return ApiResponse.success(res, result.data, result.message, result.statusCode);
+      } else {
+        return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+      }
+    } catch (error) {
+      console.error('Error in getInventoryStats:', error);
+      return ApiResponse.error(res, 'Internal server error while fetching inventory stats', 500, { error: error.message });
     }
   });
 
@@ -601,7 +677,9 @@ class PPEController {
         end_date: req.query.end_date
       };
       
-      const result = await ppeService.getInventoryReport(filters);
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return; // Error already sent by getTenantId
+      const result = await ppeService.getInventoryReport(filters, tenantId);
       
       if (result.success) {
         // Use enhanced response handler with BSON error recovery
@@ -676,87 +754,125 @@ class PPEController {
 
   // PPE Issuances
   static getAllIssuances = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const filters = req.query;
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.getAllIssuances(filters, tenantId);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    try {
+      const filters = req.query;
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.getAllIssuances(filters, tenantId);
+      
+      if (result.success) {
+        return ApiResponse.success(res, result.data, result.message, result.statusCode);
+      } else {
+        return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+      }
+    } catch (error) {
+      console.error('Error in getAllIssuances:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
     }
   });
 
   static getMyIssuances = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const userId = req.user.id;
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.getIssuancesByUser(userId, tenantId);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    try {
+      const userId = req.user.id;
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.getIssuancesByUser(userId, tenantId);
+      
+      if (result.success) {
+        return ApiResponse.success(res, result.data, result.message, result.statusCode);
+      } else {
+        return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+      }
+    } catch (error) {
+      console.error('Error in getMyIssuances:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
     }
   });
 
   static getIssuanceById = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.getIssuanceById(id, tenantId);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 404, result.data);
+    try {
+      const { id } = req.params;
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.getIssuanceById(id, tenantId);
+      
+      if (result.success) {
+        return ApiResponse.success(res, result.data, result.message, result.statusCode);
+      } else {
+        return ApiResponse.error(res, result.message, result.statusCode || 404, result.data);
+      }
+    } catch (error) {
+      console.error('Error in getIssuanceById:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
     }
   });
 
   static getIssuancesByUser = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { userId } = req.params;
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.getIssuancesByUser(userId, tenantId);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    try {
+      const { userId } = req.params;
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.getIssuancesByUser(userId, tenantId);
+      
+      if (result.success) {
+        return ApiResponse.success(res, result.data, result.message, result.statusCode);
+      } else {
+        return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+      }
+    } catch (error) {
+      console.error('Error in getIssuancesByUser:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
     }
   });
 
   static getActiveIssuances = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.getActiveIssuances(tenantId);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    try {
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.getActiveIssuances(tenantId);
+      
+      if (result.success) {
+        return ApiResponse.success(res, result.data, result.message, result.statusCode);
+      } else {
+        return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+      }
+    } catch (error) {
+      console.error('Error in getActiveIssuances:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
     }
   });
 
   static getExpiringIssuances = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.getExpiringIssuances(tenantId);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    try {
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.getExpiringIssuances(tenantId);
+      
+      if (result.success) {
+        return ApiResponse.success(res, result.data, result.message, result.statusCode);
+      } else {
+        return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+      }
+    } catch (error) {
+      console.error('Error in getExpiringIssuances:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
     }
   });
 
   // Admin phát PPE cho Manager
   static issueToManager = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const issuanceData = {
-      ...req.body,
-      issuance_level: 'admin_to_manager',
-      issued_by: req.user.id
-    };
-    
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.createIssuance({ ...issuanceData, tenant_id: tenantId });
-    
-    if (result.success) {
+    try {
+      const issuanceData = {
+        ...req.body,
+        issuance_level: 'admin_to_manager',
+        issued_by: req.user.id
+      };
+      
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.createIssuance({ ...issuanceData, tenant_id: tenantId });
+      
+      if (result.success) {
       // Send realtime notification (WebSocket + Database) for PPE issued to manager
       try {
         const { issuance, issuer, recipient } = result.data;
@@ -785,6 +901,10 @@ class PPEController {
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
     }
+    } catch (error) {
+      console.error('Error in issueToManager:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
+    }
   });
 
   // Manager phát PPE cho Employee
@@ -803,7 +923,8 @@ class PPEController {
     console.log('🔍 issueToEmployee - issuanceData:', issuanceData);
     
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
       const result = await ppeService.createIssuanceToEmployee(issuanceData, tenantId);
       console.log('🔍 issueToEmployee - result:', result);
       
@@ -845,7 +966,8 @@ class PPEController {
     console.log('🔍 confirmReceivedPPE - confirmationData:', confirmationData);
     
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
       const result = await ppeService.confirmReceivedPPE(id, confirmationData, tenantId);
       console.log('🔍 confirmReceivedPPE - result:', result);
       
@@ -877,14 +999,16 @@ class PPEController {
 
   // Employee trả PPE cho Manager
   static returnToManager = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const returnData = {
-      ...req.body,
-      returned_by: req.user.id
-    };
-    
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.returnIssuanceToManager(id, returnData, tenantId);
+    try {
+      const { id } = req.params;
+      const returnData = {
+        ...req.body,
+        returned_by: req.user.id
+      };
+      
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.returnIssuanceToManager(id, returnData, tenantId);
     
     if (result.success) {
       // Send realtime notification (WebSocket + Database) for PPE returned to manager
@@ -906,18 +1030,24 @@ class PPEController {
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
     }
+    } catch (error) {
+      console.error('Error in returnToManager:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
+    }
   });
 
   // Manager trả PPE cho Admin
   static returnToAdmin = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const returnData = {
-      ...req.body,
-      returned_by: req.user.id
-    };
-    
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.returnIssuanceToAdmin(id, returnData, tenantId);
+    try {
+      const { id } = req.params;
+      const returnData = {
+        ...req.body,
+        returned_by: req.user.id
+      };
+      
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.returnIssuanceToAdmin(id, returnData, tenantId);
     
     if (result.success) {
       // Send realtime notification (WebSocket + Database) for PPE returned to admin
@@ -938,15 +1068,21 @@ class PPEController {
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
     }
+    } catch (error) {
+      console.error('Error in returnToAdmin:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
+    }
   });
 
   // Manager xác nhận nhận PPE từ Employee
   static confirmEmployeeReturn = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const managerId = req.user.id;
-    
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.confirmEmployeeReturn(id, managerId, tenantId);
+    try {
+      const { id } = req.params;
+      const managerId = req.user.id;
+      
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.confirmEmployeeReturn(id, managerId, tenantId);
     
     if (result.success) {
       // Send realtime notification (WebSocket + Database) for PPE return confirmed
@@ -968,52 +1104,74 @@ class PPEController {
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
     }
+    } catch (error) {
+      console.error('Error in confirmEmployeeReturn:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
+    }
   });
 
   // Lấy danh sách PPE của Manager
   static getManagerPPE = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const managerId = req.user.id;
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.getManagerPPE(managerId, tenantId);
+    try {
+      const managerId = req.user.id;
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.getManagerPPE(managerId, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+    } catch (error) {
+      console.error('Error in getManagerPPE:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
     }
   });
 
   // Lấy danh sách PPE của Employee
   static getEmployeePPE = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const employeeId = req.user.id;
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.getEmployeePPE(employeeId, tenantId);
+    try {
+      const employeeId = req.user.id;
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.getEmployeePPE(employeeId, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
     }
+    } catch (error) {
+      console.error('Error in getEmployeePPE:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
+    }
   });
 
   // Lấy danh sách PPE của Employees trong department (dành cho manager)
   static getDepartmentEmployeesPPE = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const managerId = req.user.id;
-    console.log('🔍 PPE Controller Debug:', {
-      managerId,
-      user: req.user ? {
-        id: req.user.id,
-        username: req.user.username,
-        department_id: req.user.department_id
-      } : null
-    });
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.getDepartmentEmployeesPPE(managerId, tenantId);
+    try {
+      const managerId = req.user.id;
+      console.log('🔍 PPE Controller Debug:', {
+        managerId,
+        user: req.user ? {
+          id: req.user.id,
+          username: req.user.username,
+          department_id: req.user.department_id
+        } : null
+      });
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.getDepartmentEmployeesPPE(managerId, tenantId);
 
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+    } catch (error) {
+      console.error('Error in getDepartmentEmployeesPPE:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
     }
   });
 
@@ -1054,22 +1212,30 @@ class PPEController {
 
   // Lấy lịch sử PPE của Manager
   static getManagerPPEHistory = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const managerId = req.user.id;
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.getManagerPPEHistory(managerId, tenantId);
+    try {
+      const managerId = req.user.id;
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.getManagerPPEHistory(managerId, tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
     }
+    } catch (error) {
+      console.error('Error in getManagerPPEHistory:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
+    }
   });
 
   // Legacy method - giữ lại để tương thích
   static createIssuance = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const issuanceData = req.body;
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.createIssuance({ ...issuanceData, tenant_id: tenantId });
+    try {
+      const issuanceData = req.body;
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.createIssuance({ ...issuanceData, tenant_id: tenantId });
     
     if (result.success) {
       // Send realtime notification (WebSocket + Database) for PPE issued
@@ -1100,6 +1266,10 @@ class PPEController {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 400, result.data);
+    }
+    } catch (error) {
+      console.error('Error in createIssuance:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
     }
   });
 
@@ -1218,57 +1388,89 @@ class PPEController {
 
   // Statistics and Reports
   static getStockStatus = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.getInventoryStats(tenantId);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    try {
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return; // Error already sent by getTenantId
+      
+      const result = await ppeService.getInventoryStats(tenantId);
+      
+      if (result.success) {
+        return ApiResponse.success(res, result.data, result.message, result.statusCode);
+      } else {
+        return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+      }
+    } catch (error) {
+      console.error('Error in getStockStatus:', error);
+      return ApiResponse.error(res, 'Internal server error while fetching stock status', 500, { error: error.message });
     }
   });
 
   static getOverdueIssuances = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.getOverdueIssuances(tenantId);
+    try {
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.getOverdueIssuances(tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+    } catch (error) {
+      console.error('Error in getOverdueIssuances:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
     }
   });
 
   static getLowStockItems = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.getLowStockItems(tenantId);
+    try {
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.getLowStockItems(tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    }
+    } catch (error) {
+      console.error('Error in getLowStockItems:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
     }
   });
 
   static getIssuanceStatistics = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.getIssuanceStatistics(tenantId);
+    try {
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return;
+      const result = await ppeService.getIssuanceStatistics(tenantId);
     
     if (result.success) {
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
     } else {
       return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
     }
+    } catch (error) {
+      console.error('Error in getIssuanceStatistics:', error);
+      return ApiResponse.error(res, 'Internal server error', 500, { error: error.message });
+    }
   });
 
   static getQuantityStatistics = ErrorMiddleware.asyncHandler(async (req, res) => {
-    const tenantId = req.user.tenant_id;
-    const result = await ppeService.getQuantityStatistics(tenantId);
-    
-    if (result.success) {
-      return ApiResponse.success(res, result.data, result.message, result.statusCode);
-    } else {
-      return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+    try {
+      const tenantId = getTenantId(req, res);
+      if (!tenantId) return; // Error already sent by getTenantId
+      
+      const result = await ppeService.getQuantityStatistics(tenantId);
+      
+      if (result.success) {
+        return ApiResponse.success(res, result.data, result.message, result.statusCode);
+      } else {
+        return ApiResponse.error(res, result.message, result.statusCode || 500, result.data);
+      }
+    } catch (error) {
+      console.error('Error in getQuantityStatistics:', error);
+      return ApiResponse.error(res, 'Internal server error while fetching quantity statistics', 500, { error: error.message });
     }
   });
 

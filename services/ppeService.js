@@ -15,8 +15,31 @@ class PPEService {
   async getAllCategories(tenantId = null) {
     try {
       const categories = await ppeRepository.getAllCategories(tenantId);
-      return createResponse(200, 'Lấy danh sách danh mục PPE thành công',
-        transformDocumentsId(categories, POPULATED_FIELDS.PPE_CATEGORY));
+      const transformed = transformDocumentsId(categories, POPULATED_FIELDS.PPE_CATEGORY);
+      // Log first category to check image_url
+      if (transformed.length > 0) {
+        console.log('[PPEService.getAllCategories] First category sample:', {
+          id: transformed[0].id,
+          category_name: transformed[0].category_name,
+          image_url: transformed[0].image_url ? 'present' : 'missing',
+          image_url_value: transformed[0].image_url,
+          image_url_type: typeof transformed[0].image_url,
+          image_url_length: transformed[0].image_url ? transformed[0].image_url.length : 0,
+          image_url_trimmed: transformed[0].image_url ? transformed[0].image_url.trim() : '',
+          image_url_trimmed_length: transformed[0].image_url ? transformed[0].image_url.trim().length : 0,
+          all_keys: Object.keys(transformed[0])
+        });
+        
+        // Log all categories for debugging
+        transformed.forEach((cat, idx) => {
+          console.log(`[PPEService.getAllCategories] Category ${idx + 1}:`, {
+            category_name: cat.category_name,
+            image_url: cat.image_url,
+            has_image: !!(cat.image_url && cat.image_url.trim && cat.image_url.trim().length > 0)
+          });
+        });
+      }
+      return createResponse(200, 'Lấy danh sách danh mục PPE thành công', transformed);
     } catch (error) {
       console.error('Error getting PPE categories:', error);
       return createResponse(500, 'Lỗi khi lấy danh sách danh mục PPE', null, error.message);
@@ -44,9 +67,11 @@ class PPEService {
         return createResponse(400, 'Tên danh mục là bắt buộc');
       }
 
+      console.log('[PPEService.createCategory] Saving category with image_url:', categoryData.image_url ? 'present' : 'missing');
       const category = await ppeRepository.createCategory(categoryData, tenantId);
-      return createResponse(201, 'Tạo danh mục PPE thành công',
-        transformDocumentId(category, POPULATED_FIELDS.PPE_CATEGORY));
+      const transformed = transformDocumentId(category, POPULATED_FIELDS.PPE_CATEGORY);
+      console.log('[PPEService.createCategory] Category created, image_url in response:', transformed.image_url ? 'present' : 'missing');
+      return createResponse(201, 'Tạo danh mục PPE thành công', transformed);
     } catch (error) {
       console.error('Error creating PPE category:', error);
       return createResponse(500, 'Lỗi khi tạo danh mục PPE', null, error.message);
@@ -169,8 +194,8 @@ class PPEService {
 
   async deleteCategory(id, tenantId = null) {
     try {
-      // Validate ObjectId format
-      if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
+      // Validate ObjectId format using mongoose
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
         return createResponse(400, 'ID danh mục không hợp lệ');
       }
 
@@ -181,14 +206,20 @@ class PPEService {
       }
 
       // Check if there are any PPE items using this category
-      const itemsUsingCategory = await ppeRepository.getAllItems({ category_id: id }, tenantId);
-      if (itemsUsingCategory && itemsUsingCategory.length > 0) {
-        return createResponse(400, `Không thể xóa danh mục này vì còn ${itemsUsingCategory.length} thiết bị PPE đang sử dụng. Vui lòng xóa hoặc chuyển các thiết bị này sang danh mục khác trước.`);
+      try {
+        const itemsUsingCategory = await ppeRepository.getAllItems({ category_id: id }, tenantId);
+        if (itemsUsingCategory && itemsUsingCategory.length > 0) {
+          return createResponse(400, `Không thể xóa danh mục này vì còn ${itemsUsingCategory.length} thiết bị PPE đang sử dụng. Vui lòng xóa hoặc chuyển các thiết bị này sang danh mục khác trước.`);
+        }
+      } catch (itemsError) {
+        console.error('Error checking items for category:', itemsError);
+        // Don't block deletion if we can't check items - just log the error
       }
 
       const deleted = await ppeRepository.deleteCategory(id, tenantId);
       if (!deleted) {
-        return createResponse(400, 'Không thể xóa danh mục PPE');
+        console.error(`Failed to delete category ${id} - findOneAndDelete returned null`);
+        return createResponse(400, 'Không thể xóa danh mục PPE. Có thể danh mục không tồn tại hoặc đã bị xóa trước đó.');
       }
       return createResponse(200, 'Xóa danh mục PPE thành công');
     } catch (error) {
@@ -210,11 +241,15 @@ class PPEService {
   // PPE Items
   async getAllItems(filters = {}, tenantId = null) {
     try {
+      console.log('[PPEService.getAllItems] Starting with filters:', JSON.stringify(filters), 'tenantId:', tenantId);
       const items = await ppeRepository.getAllItems(filters, tenantId);
-      return createResponse(200, 'Lấy danh sách thiết bị PPE thành công',
-        transformDocumentsId(items, POPULATED_FIELDS.PPE_ITEM));
+      console.log('[PPEService.getAllItems] Items fetched:', items?.length || 0);
+      const transformed = transformDocumentsId(items || [], POPULATED_FIELDS.PPE_ITEM);
+      console.log('[PPEService.getAllItems] Items transformed:', transformed?.length || 0);
+      return createResponse(200, 'Lấy danh sách thiết bị PPE thành công', transformed);
     } catch (error) {
-      console.error('Error getting PPE items:', error);
+      console.error('[PPEService.getAllItems] Error:', error);
+      console.error('[PPEService.getAllItems] Error stack:', error.stack);
       return createResponse(500, 'Lỗi khi lấy danh sách thiết bị PPE', null, error.message);
     }
   }
@@ -1884,10 +1919,19 @@ class PPEService {
   // Get comprehensive quantity statistics (scoped theo tenant)
   async getQuantityStatistics(tenantId) {
     try {
+      console.log('[PPEService.getQuantityStatistics] Starting with tenantId:', tenantId);
+      
+      if (!tenantId) {
+        console.error('[PPEService.getQuantityStatistics] tenantId is null or undefined');
+        return createResponse(400, 'Thiếu thông tin tenant', null, 'tenantId is required');
+      }
+      
       const stats = await ppeRepository.getQuantityStatistics(tenantId);
+      console.log('[PPEService.getQuantityStatistics] Stats fetched:', stats ? 'success' : 'null');
       return createResponse(200, 'Lấy thống kê số lượng thành công', stats);
     } catch (error) {
-      console.error('Error getting quantity statistics:', error);
+      console.error('[PPEService.getQuantityStatistics] Error:', error);
+      console.error('[PPEService.getQuantityStatistics] Error stack:', error.stack);
       return createResponse(500, 'Lỗi khi lấy thống kê số lượng', null, error.message);
     }
   }
@@ -2220,12 +2264,21 @@ class PPEService {
     }
   }
 
-  async getInventoryStats() {
+  async getInventoryStats(tenantId = null) {
     try {
-      const stats = await ppeRepository.getQuantityStatistics();
+      console.log('[PPEService.getInventoryStats] Starting with tenantId:', tenantId);
+      
+      if (!tenantId) {
+        console.error('[PPEService.getInventoryStats] tenantId is null or undefined');
+        return createResponse(400, 'Thiếu thông tin tenant', null, 'tenantId is required');
+      }
+      
+      const stats = await ppeRepository.getQuantityStatistics(tenantId);
+      console.log('[PPEService.getInventoryStats] Stats fetched:', stats ? 'success' : 'null');
       return createResponse(200, 'Lấy thống kê tồn kho thành công', stats);
     } catch (error) {
-      console.error('Error getting inventory stats:', error);
+      console.error('[PPEService.getInventoryStats] Error:', error);
+      console.error('[PPEService.getInventoryStats] Error stack:', error.stack);
       return createResponse(500, 'Lỗi khi lấy thống kê tồn kho', null, error.message);
     }
   }
@@ -2298,21 +2351,33 @@ class PPEService {
   }
 
   // Reports
-  async getInventoryReport(filters = {}) {
+  async getInventoryReport(filters = {}, tenantId = null) {
     try {
-      const items = await ppeRepository.getAllItems(filters);
-      const stats = await ppeRepository.getQuantityStatistics();
+      console.log('[PPEService.getInventoryReport] Starting with filters:', JSON.stringify(filters), 'tenantId:', tenantId);
+      
+      if (!tenantId) {
+        console.error('[PPEService.getInventoryReport] tenantId is null or undefined');
+        return createResponse(400, 'Thiếu thông tin tenant', null, 'tenantId is required');
+      }
+      
+      const items = await ppeRepository.getAllItems(filters, tenantId);
+      console.log('[PPEService.getInventoryReport] Items fetched:', items?.length || 0);
+      
+      const stats = await ppeRepository.getQuantityStatistics(tenantId);
+      console.log('[PPEService.getInventoryReport] Statistics fetched:', stats ? 'success' : 'null');
       
       const report = {
-        items: transformDocumentsId(items, POPULATED_FIELDS.PPE_ITEM),
-        statistics: stats,
+        items: transformDocumentsId(items || [], POPULATED_FIELDS.PPE_ITEM),
+        statistics: stats || { items: [], overall: {} },
         generated_at: new Date(),
         filters: filters
       };
 
+      console.log('[PPEService.getInventoryReport] Report generated successfully');
       return createResponse(200, 'Lấy báo cáo tồn kho thành công', report);
     } catch (error) {
-      console.error('Error getting inventory report:', error);
+      console.error('[PPEService.getInventoryReport] Error:', error);
+      console.error('[PPEService.getInventoryReport] Error stack:', error.stack);
       return createResponse(500, 'Lỗi khi lấy báo cáo tồn kho', null, error.message);
     }
   }

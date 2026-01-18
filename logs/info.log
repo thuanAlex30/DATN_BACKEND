@@ -137,3 +137,82 @@
 {"timestamp":"2026-01-18T09:40:06.010Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":23488,"hostname":"MSI"}
 {"timestamp":"2026-01-18T09:40:06.011Z","level":"INFO","message":"PPE overdue check job stopped","metadata":{},"pid":23488,"hostname":"MSI"}
 {"timestamp":"2026-01-18T09:40:06.012Z","level":"INFO","message":"Weather alert check job stopped","metadata":{},"pid":23488,"hostname":"MSI"}
+{"timestamp":"2026-01-18T09:53:41.291Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":18252,"hostname":"MSI"}
+{"timestamp":"2026-01-18T09:53:41.308Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":18252,"hostname":"MSI"}
+{"timestamp":"2026-01-18T09:53:41.309Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":18252,"hostname":"MSI"}
+{"timestamp":"2026-01-18T09:53:41.310Z","level":"INFO","message":"Weather alert check job started - runs every 0 * * * *","metadata":{},"pid":18252,"hostname":"MSI"}
+{"timestamp":"2026-01-18T09:56:48.280Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":18252,"hostname":"MSI"}
+{"timestamp":"2026-01-18T09:56:48.281Z","level":"INFO","message":"PPE overdue check job stopped","metadata":{},"pid":18252,"hostname":"MSI"}
+{"timestamp":"2026-01-18T09:56:48.281Z","level":"INFO","message":"Weather alert check job stopped","metadata":{},"pid":18252,"hostname":"MSI"}
+{"timestamp":"2026-01-18T09:57:12.906Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":21668,"hostname":"MSI"}
+{"timestamp":"2026-01-18T09:57:12.922Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":21668,"hostname":"MSI"}
+{"timestamp":"2026-01-18T09:57:12.923Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":21668,"hostname":"MSI"}
+{"timestamp":"2026-01-18T09:57:12.924Z","level":"INFO","message":"Weather alert check job started - runs every 0 * * * *","metadata":{},"pid":21668,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:00:00.319Z","level":"INFO","message":"Starting weather alert check","metadata":{"startTime":"2026-01-18T10:00:00.318Z"},"pid":21668,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:00:00.403Z","level":"INFO","message":"No active tenants found for weather check","metadata":{},"pid":21668,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:00:17.603Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":21668,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:00:17.604Z","level":"INFO","message":"PPE overdue check job stopped","metadata":{},"pid":21668,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:00:17.605Z","level":"INFO","message":"Weather alert check job stopped","metadata":{},"pid":21668,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:00:21.705Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":6748,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:00:21.722Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":6748,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:00:21.723Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":6748,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:00:21.724Z","level":"INFO","message":"Weather alert check job started - runs every 0 * * * *","metadata":{},"pid":6748,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:02:27.624Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":6748,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:02:27.624Z","level":"INFO","message":"PPE overdue check job stopped","metadata":{},"pid":6748,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:02:27.625Z","level":"INFO","message":"Weather alert check job stopped","metadata":{},"pid":6748,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:02:31.307Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":16260,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:02:31.323Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":16260,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:02:31.325Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":16260,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:02:31.326Z","level":"INFO","message":"Weather alert check job started - runs every 0 * * * *","metadata":{},"pid":16260,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:09:26.326Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":16260,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:09:26.327Z","level":"INFO","message":"PPE overdue check job stopped","metadata":{},"pid":16260,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:09:26.328Z","level":"INFO","message":"Weather alert check job stopped","metadata":{},"pid":16260,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:09:29.545Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":8484,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:09:29.561Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":8484,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:09:29.562Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":8484,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:09:29.563Z","level":"INFO","message":"Weather alert check job started - runs every 0 * * * *","metadata":{},"pid":8484,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:20:56.696Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":8484,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:20:56.697Z","level":"INFO","message":"PPE overdue check job stopped","metadata":{},"pid":8484,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:20:56.698Z","level":"INFO","message":"Weather alert check job stopped","metadata":{},"pid":8484,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:21:00.360Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":16848,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:21:00.376Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":16848,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:21:00.378Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":16848,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:21:00.379Z","level":"INFO","message":"Weather alert check job started - runs every 0 * * * *","metadata":{},"pid":16848,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:25:07.667Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":16848,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:25:07.668Z","level":"INFO","message":"PPE overdue check job stopped","metadata":{},"pid":16848,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:25:07.669Z","level":"INFO","message":"Weather alert check job stopped","metadata":{},"pid":16848,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:25:11.105Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":24628,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:25:11.121Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":24628,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:25:11.122Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":24628,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:25:11.123Z","level":"INFO","message":"Weather alert check job started - runs every 0 * * * *","metadata":{},"pid":24628,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:29:34.606Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":24628,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:29:34.607Z","level":"INFO","message":"PPE overdue check job stopped","metadata":{},"pid":24628,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:29:34.608Z","level":"INFO","message":"Weather alert check job stopped","metadata":{},"pid":24628,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:29:38.425Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":25584,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:29:38.443Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":25584,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:29:38.444Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":25584,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:29:38.445Z","level":"INFO","message":"Weather alert check job started - runs every 0 * * * *","metadata":{},"pid":25584,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:35:15.371Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":25584,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:35:15.373Z","level":"INFO","message":"PPE overdue check job stopped","metadata":{},"pid":25584,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:35:15.373Z","level":"INFO","message":"Weather alert check job stopped","metadata":{},"pid":25584,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:35:19.115Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":23476,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:35:19.131Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":23476,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:35:19.132Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":23476,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:35:19.134Z","level":"INFO","message":"Weather alert check job started - runs every 0 * * * *","metadata":{},"pid":23476,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:37:51.378Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":23476,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:37:51.379Z","level":"INFO","message":"PPE overdue check job stopped","metadata":{},"pid":23476,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:37:51.380Z","level":"INFO","message":"Weather alert check job stopped","metadata":{},"pid":23476,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:37:54.960Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":11088,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:37:54.977Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":11088,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:37:54.979Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":11088,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:37:54.980Z","level":"INFO","message":"Weather alert check job started - runs every 0 * * * *","metadata":{},"pid":11088,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:41:18.340Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":11088,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:41:18.340Z","level":"INFO","message":"PPE overdue check job stopped","metadata":{},"pid":11088,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:41:18.341Z","level":"INFO","message":"Weather alert check job stopped","metadata":{},"pid":11088,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:41:21.925Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":23940,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:41:21.943Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":23940,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:41:21.944Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":23940,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:41:21.945Z","level":"INFO","message":"Weather alert check job started - runs every 0 * * * *","metadata":{},"pid":23940,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:44:43.920Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":23940,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:44:43.921Z","level":"INFO","message":"PPE overdue check job stopped","metadata":{},"pid":23940,"hostname":"MSI"}
+{"timestamp":"2026-01-18T10:44:43.922Z","level":"INFO","message":"Weather alert check job stopped","metadata":{},"pid":23940,"hostname":"MSI"}

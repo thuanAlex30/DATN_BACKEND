@@ -42,12 +42,17 @@ class PPERepository {
   }
 
   async deleteCategory(id, tenantId = null) {
-    const filter = { _id: id };
-    if (tenantId) {
-      filter.tenant_id = tenantId;
+    try {
+      const filter = { _id: id };
+      if (tenantId) {
+        filter.tenant_id = tenantId;
+      }
+      const result = await PPECategory.findOneAndDelete(filter);
+      return !!result;
+    } catch (error) {
+      console.error('Error in repository deleteCategory:', error);
+      throw error;
     }
-    const result = await PPECategory.findOneAndDelete(filter);
-    return !!result;
   }
 
   async importItems(file) {
@@ -159,10 +164,14 @@ class PPERepository {
   // PPE Items
   async getAllItems(filters = {}, tenantId = null) {
     try {
+      console.log('[PPERepository.getAllItems] Starting with filters:', JSON.stringify(filters), 'tenantId:', tenantId);
       const query = {};
 
       if (tenantId) {
-        query.tenant_id = tenantId;
+        // Ensure tenantId is ObjectId for query
+        query.tenant_id = mongoose.Types.ObjectId.isValid(tenantId) 
+          ? mongoose.Types.ObjectId(tenantId) 
+          : tenantId;
       }
       
       if (filters.category_id) {
@@ -180,6 +189,24 @@ class PPERepository {
       // By default only active items, unless explicitly requested
       if (!filters.include_inactive) {
         query.status = 'active';
+      }
+
+      // Prepare lookup let variables
+      const lookupLet = { itemId: '$_id' };
+      if (tenantId) {
+        lookupLet.tenantId = mongoose.Types.ObjectId.isValid(tenantId) 
+          ? mongoose.Types.ObjectId(tenantId) 
+          : tenantId;
+      }
+      
+      // Build match conditions for lookup pipeline
+      const lookupMatchConditions = [
+        { $eq: ['$item_id', '$$itemId'] },
+        { $eq: ['$issuance_level', 'admin_to_manager'] },
+        { $ne: ['$status', 'returned'] }
+      ];
+      if (tenantId) {
+        lookupMatchConditions.push({ $eq: ['$tenant_id', '$$tenantId'] });
       }
 
       // Use aggregation pipeline for better performance
@@ -202,16 +229,12 @@ class PPERepository {
         {
           $lookup: {
             from: 'ppeissuances',
-            let: { itemId: '$_id' },
+            let: lookupLet,
             pipeline: [
               {
                 $match: {
                   $expr: {
-                    $and: [
-                      { $eq: ['$item_id', '$$itemId'] },
-                      { $eq: ['$issuance_level', 'admin_to_manager'] },
-                      { $ne: ['$status', 'returned'] }
-                    ]
+                    $and: lookupMatchConditions
                   }
                 }
               },
@@ -263,13 +286,15 @@ class PPERepository {
       ];
 
       // Run aggregation with disk use allowed and reasonable timeout
+      console.log('[PPERepository.getAllItems] Running aggregation pipeline');
       const result = await PPEItem.aggregate(pipeline, {
         allowDiskUse: true,
         maxTimeMS: 10000
       });
+      console.log('[PPERepository.getAllItems] Aggregation result count:', result?.length || 0);
       
       // Filter out any documents with invalid ObjectIds
-      return result.filter(doc => {
+      const filtered = result.filter(doc => {
         try {
           // Test if _id can be converted to string
           if (doc._id) {
@@ -281,8 +306,11 @@ class PPERepository {
           return false;
         }
       });
+      console.log('[PPERepository.getAllItems] Filtered result count:', filtered?.length || 0);
+      return filtered;
     } catch (error) {
-      console.error('Error in getAllItems:', error);
+      console.error('[PPERepository.getAllItems] Error:', error);
+      console.error('[PPERepository.getAllItems] Error stack:', error.stack);
       throw error;
     }
   }
@@ -874,64 +902,112 @@ class PPERepository {
 
   // Get comprehensive quantity statistics (optionally scoped by tenant)
   async getQuantityStatistics(tenantId = null) {
-    const itemFilter = {};
-    if (tenantId) {
-      itemFilter.tenant_id = tenantId;
-    }
-    // Fetch items minimal fields and process in batches to avoid large parallel aggregation load
-    const items = await PPEItem.find(itemFilter)
-      .select('item_name item_code category_id quantity_available quantity_allocated reorder_level image_url')
-      .populate('category_id', 'category_name description')
-      .lean();
+    try {
+      console.log('[PPERepository.getQuantityStatistics] Starting with tenantId:', tenantId);
+      const itemFilter = {};
+      if (tenantId) {
+        // Ensure tenantId is ObjectId
+        itemFilter.tenant_id = mongoose.Types.ObjectId.isValid(tenantId) 
+          ? mongoose.Types.ObjectId(tenantId) 
+          : tenantId;
+      }
+      // Fetch items minimal fields and process in batches to avoid large parallel aggregation load
+      const items = await PPEItem.find(itemFilter)
+        .select('item_name item_code category_id quantity_available quantity_allocated reorder_level image_url')
+        .populate('category_id', 'category_name description')
+        .lean();
+      console.log('[PPERepository.getQuantityStatistics] Items found:', items?.length || 0);
 
     const batchSize = 10;
     const statistics = [];
     for (let i = 0; i < items.length; i += batchSize) {
       const batch = items.slice(i, i + batchSize);
       const batchStats = await Promise.all(batch.map(async (item) => {
-        const total_quantity = (item.quantity_available || 0) + (item.quantity_allocated || 0);
-        const issuanceMatch = { item_id: item._id, status: 'issued' };
-        if (tenantId) issuanceMatch.tenant_id = tenantId;
+        try {
+          const total_quantity = (item.quantity_available || 0) + (item.quantity_allocated || 0);
+          
+          // Ensure item_id is ObjectId
+          const itemId = mongoose.Types.ObjectId.isValid(item._id) 
+            ? mongoose.Types.ObjectId(item._id) 
+            : item._id;
+          
+          const issuanceMatch = { 
+            item_id: itemId, 
+            status: 'issued' 
+          };
+          
+          if (tenantId) {
+            // Ensure tenantId is ObjectId for aggregation
+            issuanceMatch.tenant_id = mongoose.Types.ObjectId.isValid(tenantId) 
+              ? mongoose.Types.ObjectId(tenantId) 
+              : tenantId;
+          }
 
-        const actualAllocated = await PPEIssuance.aggregate([
-          { $match: issuanceMatch },
-          { $group: { _id: null, total_allocated: { $sum: '$quantity' } } }
-        ], { maxTimeMS: 5000 });
+          const actualAllocated = await PPEIssuance.aggregate([
+            { $match: issuanceMatch },
+            { $group: { _id: null, total_allocated: { $sum: '$quantity' } } }
+          ], { maxTimeMS: 5000, allowDiskUse: true });
 
-        const actual_allocated_quantity = actualAllocated.length > 0 ? actualAllocated[0].total_allocated : 0;
-        const remaining_quantity = total_quantity - actual_allocated_quantity;
+          const actual_allocated_quantity = actualAllocated.length > 0 ? (actualAllocated[0].total_allocated || 0) : 0;
+          const remaining_quantity = total_quantity - actual_allocated_quantity;
 
-        return {
-          item_id: item._id,
-          item_name: item.item_name,
-          item_code: item.item_code,
-          category_name: item.category_id?.category_name || 'Không xác định',
-          total_quantity,
-          remaining_quantity,
-          actual_allocated_quantity,
-          quantity_available: item.quantity_available,
-          quantity_allocated: item.quantity_allocated,
-          reorder_level: item.reorder_level,
-          stock_status: remaining_quantity <= item.reorder_level ? 'low' : 'good'
-        };
+          return {
+            item_id: item._id?.toString ? item._id.toString() : item._id,
+            item_name: item.item_name,
+            item_code: item.item_code,
+            category_name: item.category_id?.category_name || 'Không xác định',
+            total_quantity,
+            remaining_quantity,
+            actual_allocated_quantity,
+            quantity_available: item.quantity_available || 0,
+            quantity_allocated: item.quantity_allocated || 0,
+            reorder_level: item.reorder_level || 0,
+            stock_status: remaining_quantity <= (item.reorder_level || 0) ? 'low' : 'good'
+          };
+        } catch (itemError) {
+          console.error(`[PPERepository.getQuantityStatistics] Error processing item ${item._id}:`, itemError);
+          // Return default stats for this item if processing fails
+          return {
+            item_id: item._id?.toString ? item._id.toString() : item._id,
+            item_name: item.item_name || 'Unknown',
+            item_code: item.item_code || '',
+            category_name: item.category_id?.category_name || 'Không xác định',
+            total_quantity: (item.quantity_available || 0) + (item.quantity_allocated || 0),
+            remaining_quantity: item.quantity_available || 0,
+            actual_allocated_quantity: 0,
+            quantity_available: item.quantity_available || 0,
+            quantity_allocated: item.quantity_allocated || 0,
+            reorder_level: item.reorder_level || 0,
+            stock_status: 'unknown'
+          };
+        }
       }));
       statistics.push(...batchStats);
     }
 
+    console.log('[PPERepository.getQuantityStatistics] Statistics calculated:', statistics.length);
+
     // Calculate overall statistics
     const overallStats = {
       total_items: statistics.length,
-      total_quantity: statistics.reduce((sum, item) => sum + item.total_quantity, 0),
-      total_remaining: statistics.reduce((sum, item) => sum + item.remaining_quantity, 0),
-      total_allocated: statistics.reduce((sum, item) => sum + item.actual_allocated_quantity, 0),
+      total_quantity: statistics.reduce((sum, item) => sum + (item.total_quantity || 0), 0),
+      total_remaining: statistics.reduce((sum, item) => sum + (item.remaining_quantity || 0), 0),
+      total_allocated: statistics.reduce((sum, item) => sum + (item.actual_allocated_quantity || 0), 0),
       low_stock_items: statistics.filter(item => item.stock_status === 'low').length,
-      out_of_stock_items: statistics.filter(item => item.remaining_quantity === 0).length
+      out_of_stock_items: statistics.filter(item => (item.remaining_quantity || 0) === 0).length
     };
+
+    console.log('[PPERepository.getQuantityStatistics] Overall stats:', overallStats);
 
     return {
       items: statistics,
       overall: overallStats
     };
+    } catch (error) {
+      console.error('[PPERepository.getQuantityStatistics] Error:', error);
+      console.error('[PPERepository.getQuantityStatistics] Error stack:', error.stack);
+      throw error;
+    }
   }
 
   // PPE Assignments

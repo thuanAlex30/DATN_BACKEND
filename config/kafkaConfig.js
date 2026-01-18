@@ -1,6 +1,4 @@
-const { Kafka, Partitioners, logLevel } = require('kafkajs');
-
-// Don't create Kafka instance if disabled
+// Don't require kafkajs at top-level - lazy load it only when Kafka is enabled
 // Check both ENABLE_KAFKA and KAFKA_ENABLED for compatibility
 const isKafkaEnabled = 
   (process.env.ENABLE_KAFKA === 'true' || process.env.KAFKA_ENABLED === 'true') &&
@@ -8,38 +6,46 @@ const isKafkaEnabled =
   process.env.KAFKA_ENABLED !== 'false' &&
   process.env.KAFKA_ENABLED !== '0';
 
-// Kafka Configuration
-const kafkaConfig = {
-  clientId: process.env.KAFKA_CLIENT_ID || 'safety-management-system',
-  brokers: (process.env.KAFKA_BROKERS || 'localhost:9092').split(','),
-  groupId: process.env.KAFKA_GROUP_ID || 'safety-management-group',
-  
-  // Connection settings
-  connectionTimeout: 3000,
-  requestTimeout: 25000,
-  retry: {
-    initialRetryTime: 100,
-    retries: 8
-  },
-  
-  // Disable logging when Kafka is disabled to reduce log noise
-  logLevel: isKafkaEnabled ? logLevel.INFO : logLevel.NOTHING,
+// Helper function to lazy-load kafkajs
+const getKafkaJS = () => {
+  if (!isKafkaEnabled) {
+    throw new Error('Kafka is disabled. Cannot load kafkajs module.');
+  }
+  try {
+    return require('kafkajs');
+  } catch (error) {
+    if (error.code === 'MODULE_NOT_FOUND') {
+      throw new Error('kafkajs module not found. Please install it with: npm install kafkajs');
+    }
+    throw error;
+  }
 };
 
-// Security settings (SSL/SASL) - enable if env provided
-if (process.env.KAFKA_SSL === 'true' || process.env.KAFKA_SASL_MECHANISM) {
-  kafkaConfig.ssl = {
-    rejectUnauthorized: process.env.KAFKA_SSL_REJECT_UNAUTHORIZED !== 'false'
+// Kafka Configuration - lazy-load logLevel when needed
+const getKafkaConfig = () => {
+  const { logLevel } = getKafkaJS();
+  return {
+    clientId: process.env.KAFKA_CLIENT_ID || 'safety-management-system',
+    brokers: (process.env.KAFKA_BROKERS || 'localhost:9092').split(','),
+    groupId: process.env.KAFKA_GROUP_ID || 'safety-management-group',
+    
+    // Connection settings
+    connectionTimeout: 3000,
+    requestTimeout: 25000,
+    retry: {
+      initialRetryTime: 100,
+      retries: 8
+    },
+    
+    // Disable logging when Kafka is disabled to reduce log noise
+    logLevel: isKafkaEnabled ? logLevel.INFO : logLevel.NOTHING,
   };
-}
+};
 
-if (process.env.KAFKA_SASL_MECHANISM) {
-  kafkaConfig.sasl = {
-    mechanism: process.env.KAFKA_SASL_MECHANISM,
-    username: process.env.KAFKA_SASL_USERNAME,
-    password: process.env.KAFKA_SASL_PASSWORD
-  };
-}
+// Create kafkaConfig object (will be used in getKafka())
+let kafkaConfig = null;
+
+// Security settings (SSL/SASL) - will be applied in getKafkaConfig() when needed
 
 // Kafka Topics Configuration
 const topics = {
@@ -195,54 +201,127 @@ let kafkaInstance = null;
 const getKafka = () => {
   // Don't create Kafka instance if disabled
   if (!isKafkaEnabled) {
-    throw new Error('Kafka is disabled (KAFKA_ENABLED=false). Cannot create Kafka instance.');
+    throw new Error('Kafka is disabled (ENABLE_KAFKA=false). Cannot create Kafka instance.');
   }
   // Only create Kafka instance when actually needed
   if (!kafkaInstance) {
+    // Lazy-load kafkajs and create config
+    const { Kafka } = getKafkaJS();
+    if (!kafkaConfig) {
+      kafkaConfig = getKafkaConfig();
+      
+      // Apply security settings (SSL/SASL) if env provided
+      if (process.env.KAFKA_SSL === 'true' || process.env.KAFKA_SASL_MECHANISM) {
+        kafkaConfig.ssl = {
+          rejectUnauthorized: process.env.KAFKA_SSL_REJECT_UNAUTHORIZED !== 'false'
+        };
+      }
+      
+      if (process.env.KAFKA_SASL_MECHANISM) {
+        kafkaConfig.sasl = {
+          mechanism: process.env.KAFKA_SASL_MECHANISM,
+          username: process.env.KAFKA_SASL_USERNAME,
+          password: process.env.KAFKA_SASL_PASSWORD
+        };
+      }
+    }
     kafkaInstance = new Kafka(kafkaConfig);
   }
   return kafkaInstance;
 };
 
-// Producer configuration
-const producerConfig = {
-  maxInFlightRequests: 5, // ✅ Tăng từ 1 lên 5 để cải thiện performance
-  idempotent: true,
-  transactionTimeout: 30000,
-  retry: {
-    initialRetryTime: 100,
-    retries: 10 // ✅ Tăng retries để tránh warning về EoS guarantees
-  },
-  // Thêm compression để giảm bandwidth
-  compression: 'gzip',
-  // Batch settings để tối ưu throughput
-  batchSize: 16384,
-  lingerMs: 5,
-  // ✅ Fix partitioner warning
-  createPartitioner: Partitioners.LegacyPartitioner
+// Producer configuration - lazy-load Partitioners when needed
+const getProducerConfig = () => {
+  const { Partitioners } = getKafkaJS();
+  return {
+    maxInFlightRequests: 5, // ✅ Tăng từ 1 lên 5 để cải thiện performance
+    idempotent: true,
+    transactionTimeout: 30000,
+    retry: {
+      initialRetryTime: 100,
+      retries: 10 // ✅ Tăng retries để tránh warning về EoS guarantees
+    },
+    // Thêm compression để giảm bandwidth
+    compression: 'gzip',
+    // Batch settings để tối ưu throughput
+    batchSize: 16384,
+    lingerMs: 5,
+    // ✅ Fix partitioner warning
+    createPartitioner: Partitioners.LegacyPartitioner
+  };
 };
 
-// Consumer configuration
-const consumerConfig = {
-  groupId: kafkaConfig.groupId,
-  sessionTimeout: 30000,
-  heartbeatInterval: 3000,
-  maxWaitTimeInMs: 5000,
-  retry: {
-    initialRetryTime: 100,
-    retries: 8
+// Cache producerConfig to avoid recreating it
+let producerConfigCache = null;
+const producerConfig = new Proxy({}, {
+  get(target, prop) {
+    if (!producerConfigCache) {
+      producerConfigCache = getProducerConfig();
+    }
+    return producerConfigCache[prop];
   },
-  // Cải thiện performance
-  maxBytes: 1048576, // 1MB
-  maxBytesPerPartition: 1048576, // 1MB per partition
-  // Auto commit settings
-  autoCommit: true,
-  autoCommitInterval: 5000,
-  // Fetch settings
-  fetchMaxBytes: 1048576,
-  fetchMinBytes: 1,
-  fetchMaxWaitMs: 500
+  ownKeys() {
+    if (!producerConfigCache) {
+      producerConfigCache = getProducerConfig();
+    }
+    return Object.keys(producerConfigCache);
+  },
+  has(target, prop) {
+    if (!producerConfigCache) {
+      producerConfigCache = getProducerConfig();
+    }
+    return prop in producerConfigCache;
+  }
+});
+
+// Consumer configuration - lazy-load kafkaConfig.groupId when needed
+const getConsumerConfig = () => {
+  // Get groupId from kafkaConfig (lazy-load it if needed)
+  const config = kafkaConfig || getKafkaConfig();
+  return {
+    groupId: config.groupId,
+    sessionTimeout: 30000,
+    heartbeatInterval: 3000,
+    maxWaitTimeInMs: 5000,
+    retry: {
+      initialRetryTime: 100,
+      retries: 8
+    },
+    // Cải thiện performance
+    maxBytes: 1048576, // 1MB
+    maxBytesPerPartition: 1048576, // 1MB per partition
+    // Auto commit settings
+    autoCommit: true,
+    autoCommitInterval: 5000,
+    // Fetch settings
+    fetchMaxBytes: 1048576,
+    fetchMinBytes: 1,
+    fetchMaxWaitMs: 500
+  };
 };
+
+// Cache consumerConfig to avoid recreating it
+let consumerConfigCache = null;
+const consumerConfig = new Proxy({}, {
+  get(target, prop) {
+    if (!consumerConfigCache) {
+      consumerConfigCache = getConsumerConfig();
+    }
+    return consumerConfigCache[prop];
+  },
+  ownKeys() {
+    if (!consumerConfigCache) {
+      consumerConfigCache = getConsumerConfig();
+    }
+    return Object.keys(consumerConfigCache);
+  },
+  has(target, prop) {
+    if (!consumerConfigCache) {
+      consumerConfigCache = getConsumerConfig();
+    }
+    return prop in consumerConfigCache;
+  }
+});
 
 module.exports = {
   get kafka() {
