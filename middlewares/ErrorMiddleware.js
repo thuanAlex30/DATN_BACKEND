@@ -37,17 +37,50 @@ class ErrorMiddleware {
 
     // Custom API errors
     if (err.statusCode) {
-      // Ensure message is always a string
-      const errorMessage = typeof err.message === 'string' 
-        ? err.message 
-        : (err.message?.toString() || 'An error occurred');
+      // Ensure message is always a meaningful string
+      let errorMessage = 'An error occurred';
+      
+      // Special handling for 429 (rate limit)
+      if (err.statusCode === 429) {
+        // Check if message is meaningful
+        if (typeof err.message === 'string' && err.message.trim() && 
+            err.message !== 'true' && err.message !== 'false') {
+          errorMessage = err.message;
+        } else {
+          // Default rate limit message
+          errorMessage = 'Rate limit exceeded. Please try again later.';
+        }
+      } else {
+        // For other status codes
+        if (typeof err.message === 'string' && err.message.trim()) {
+          errorMessage = err.message;
+        } else if (typeof err.message === 'boolean') {
+          // Handle boolean messages
+          errorMessage = 'An error occurred';
+        } else if (err.message) {
+          // Try to convert to string, but fallback to default if not meaningful
+          const converted = String(err.message);
+          errorMessage = converted && converted !== 'true' && converted !== 'false' 
+            ? converted 
+            : 'An error occurred';
+        }
+      }
+      
       return ApiResponse.error(res, errorMessage, err.statusCode);
     }
 
     // Default server error
-    const errorMessage = typeof err.message === 'string' 
-      ? err.message 
-      : (err.message?.toString() || 'Internal server error');
+    let errorMessage = 'Internal server error';
+    if (typeof err.message === 'string' && err.message.trim()) {
+      errorMessage = err.message;
+    } else if (typeof err.message === 'boolean') {
+      errorMessage = 'Internal server error';
+    } else if (err.message) {
+      const converted = String(err.message);
+      errorMessage = converted && converted !== 'true' && converted !== 'false' 
+        ? converted 
+        : 'Internal server error';
+    }
     return ApiResponse.error(res, errorMessage, 500);
   }
 
