@@ -13,6 +13,12 @@ const trainingEnrollmentSchema = new mongoose.Schema({
         ref: 'Course',
         required: true
     },
+    // Optional for legacy session-based enrollments (backward compatibility)
+    session_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'TrainingSession',
+        required: false
+    },
     user_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -67,6 +73,7 @@ trainingEnrollmentSchema.index({ user_id: 1 });
 trainingEnrollmentSchema.index({ status: 1 });
 trainingEnrollmentSchema.index({ enrolled_at: 1 });
 trainingEnrollmentSchema.index({ tenant_id: 1, course_id: 1 });
+trainingEnrollmentSchema.index({ session_id: 1 });
 trainingEnrollmentSchema.index({ assigned_by: 1 });
 trainingEnrollmentSchema.index({ tenant_id: 1, user_id: 1 });
 

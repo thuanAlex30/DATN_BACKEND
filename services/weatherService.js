@@ -355,8 +355,8 @@ class WeatherService {
     const normalizedParams = {
       latitude,
       longitude,
-      // Default to only temperature_2m unless caller requests more fields
-      hourly: params.hourly ?? 'temperature_2m',
+      // Request all necessary fields for hourly forecast charts
+      hourly: params.hourly ?? 'temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day',
       // Default timezone to Asia/Ho_Chi_Minh per user request
       timezone: params.timezone ?? process.env.WEATHER_TIMEZONE ?? 'Asia/Ho_Chi_Minh',
       forecast_days: Math.ceil(hours / 24), // Calculate days needed
@@ -446,10 +446,27 @@ class WeatherService {
   }
 
   static async fetchAirQuality(params) {
-    const latitude =
-      params.latitude ?? Number(process.env.WEATHER_DEFAULT_LAT) ?? 16.0471;
-    const longitude =
-      params.longitude ?? Number(process.env.WEATHER_DEFAULT_LON) ?? 108.2068;
+    // Parse latitude safely - avoid NaN
+    let latitude = 16.0471; // Default
+    if (params.latitude != null && !isNaN(params.latitude) && isFinite(params.latitude)) {
+      latitude = Number(params.latitude);
+    } else if (process.env.WEATHER_DEFAULT_LAT) {
+      const envLat = Number(process.env.WEATHER_DEFAULT_LAT);
+      if (!isNaN(envLat) && isFinite(envLat)) {
+        latitude = envLat;
+      }
+    }
+    
+    // Parse longitude safely - avoid NaN
+    let longitude = 108.2068; // Default
+    if (params.longitude != null && !isNaN(params.longitude) && isFinite(params.longitude)) {
+      longitude = Number(params.longitude);
+    } else if (process.env.WEATHER_DEFAULT_LON) {
+      const envLon = Number(process.env.WEATHER_DEFAULT_LON);
+      if (!isNaN(envLon) && isFinite(envLon)) {
+        longitude = envLon;
+      }
+    }
 
     const normalizedParams = {
       latitude,

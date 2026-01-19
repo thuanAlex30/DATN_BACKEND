@@ -253,6 +253,42 @@ class IncidentUtils {
   }
 
   /**
+   * Validate evidence (minh chứng) data
+   */
+  static validateEvidence(evidenceImages) {
+    if (!Array.isArray(evidenceImages)) {
+      return {
+        isValid: false,
+        message: 'Minh chứng phải là mảng'
+      };
+    }
+
+    if (evidenceImages.length === 0) {
+      return {
+        isValid: true,
+        message: 'Minh chứng không bắt buộc'
+      };
+    }
+
+    // Validate từng ảnh
+    const errors = [];
+    evidenceImages.forEach((image, index) => {
+      if (typeof image !== 'string') {
+        errors.push(`Minh chứng ${index + 1} không hợp lệ`);
+      }
+      // Kiểm tra format: URL hoặc base64 data URI
+      if (typeof image === 'string' && !/^https?:\/\//i.test(image) && !image.startsWith('data:image/')) {
+        errors.push(`Minh chứng ${index + 1} phải là URL hoặc base64 data URI`);
+      }
+    });
+
+    return {
+      isValid: errors.length === 0,
+      message: errors.length > 0 ? errors.join(', ') : 'Minh chứng hợp lệ'
+    };
+  }
+
+  /**
    * Lấy next action có thể thực hiện
    */
   static getNextAvailableActions(incident) {

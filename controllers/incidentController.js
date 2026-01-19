@@ -2,8 +2,7 @@ const incidentService = require('../services/incidentService');
 const Incident = require('../models/incident');
 const User = require('../models/user');
 const { IncidentEscalation } = require('../models/incidentEscalation');
-const { sendSMS, sendNotification } = require('../utils/notifications'); // sendEmail replaced with Resend-based service
-const emailService = require('../services/emailService');
+const { sendEmail, sendSMS, sendNotification } = require('../utils/notifications');
 const websocketService = require('../services/websocketService');
 const IncidentEvents = require('../events/incidentEvents');
 const { ApiResponse } = require('../utils/response');
@@ -17,41 +16,17 @@ class IncidentController {
     const tenantId = req.user.tenant_id;
     
     const result = await incidentService.createIncident(incidentData, userId, tenantId);
-    
+    ''
     if (result.success) {
-        // Send realtime notification (WebSocket + Database) for incident reported
+      // Emit WebSocket notification for incident reported
       try {
-        const IncidentNotificationService = require('../services/incidentNotificationService');
-        const reporter = await User.findById(userId).select('_id role full_name tenant_id').lean();
-        const incident = result.data;
-        
-        // Get stakeholders (managers and admins in tenant)
-        const Role = require('../models/role');
-        const managerRole = await Role.findOne({ role_code: 'manager' });
-        const adminRole = await Role.findOne({ role_code: 'admin' });
-        const stakeholders = await User.find({
-          tenant_id: tenantId,
-          is_active: true,
-          $or: [
-            { role_id: managerRole?._id },
-            { role_id: adminRole?._id }
-          ]
-        }).select('_id full_name').lean();
-        
-        await IncidentNotificationService.notifyIncidentReported({
-          incident,
-          reporter,
-          stakeholders,
-          tenantId
-        });
-        
-        // Also emit WebSocket for backward compatibility
+        const reporter = await User.findById(userId).select('_id role full_name');
         if (reporter) {
-          websocketService.emitIncidentReported(incident, reporter);
+          websocketService.emitIncidentReported(result.data, reporter);
+          console.log(`🚨 Incident reported WebSocket notification sent for user: ${reporter._id}`);
         }
-        console.log(`🚨 Incident reported notification sent (realtime + database) for user: ${reporter?._id}`);
-      } catch (notifError) {
-        console.error('Failed to send incident reported notification:', notifError);
+      } catch (wsError) {
+        console.error('Failed to emit incident reported WebSocket notification:', wsError);
       }
       
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -97,37 +72,15 @@ class IncidentController {
     const result = await incidentService.classifyIncident(id, severity, userId, tenantId);
     
     if (result.success) {
-      // Send realtime notification (WebSocket + Database) for incident classified
+      // Emit WebSocket notification for incident classified
       try {
-        const IncidentNotificationService = require('../services/incidentNotificationService');
-        const classifier = await User.findById(userId).select('_id role full_name tenant_id').lean();
-        const incident = result.data;
-        
-        // Get stakeholders (reporter, assignee, managers, admins)
-        const stakeholders = [];
-        if (incident.createdBy) {
-          const reporter = await User.findById(incident.createdBy).select('_id full_name').lean();
-          if (reporter) stakeholders.push(reporter);
-        }
-        if (incident.assignedTo) {
-          const assignee = await User.findById(incident.assignedTo).select('_id full_name').lean();
-          if (assignee) stakeholders.push(assignee);
-        }
-        
-        await IncidentNotificationService.notifyIncidentClassified({
-          incident,
-          classifier,
-          stakeholders,
-          tenantId
-        });
-        
-        // Also emit WebSocket for backward compatibility
+        const classifier = await User.findById(userId).select('_id role full_name');
         if (classifier) {
-          websocketService.emitIncidentClassified(incident, classifier);
+          websocketService.emitIncidentClassified(result.data, classifier);
+          console.log(`🚨 Incident classified WebSocket notification sent for user: ${classifier._id}`);
         }
-        console.log(`🚨 Incident classified notification sent (realtime + database) for user: ${classifier?._id}`);
-      } catch (notifError) {
-        console.error('Failed to send incident classified notification:', notifError);
+      } catch (wsError) {
+        console.error('Failed to emit incident classified WebSocket notification:', wsError);
       }
       
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -139,34 +92,23 @@ class IncidentController {
   // 5. Phân công xử lý
   static assignIncident = ErrorMiddleware.asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { assignedTo } = req.body;
+    const assignData = req.body; // Có thể là { assignedTo, estimatedCompletionTime } hoặc chỉ assignedTo (string)
     const userId = req.user._id;
     const tenantId = req.user.tenant_id;
     
-    const result = await incidentService.assignIncident(id, assignedTo, userId, tenantId);
+    const result = await incidentService.assignIncident(id, assignData, userId, tenantId);
     
     if (result.success) {
-      // Send realtime notification (WebSocket + Database) for incident assigned
+      // Emit WebSocket notification for incident assigned
       try {
-        const IncidentNotificationService = require('../services/incidentNotificationService');
-        const assigner = await User.findById(userId).select('_id role full_name tenant_id').lean();
-        const assignee = await User.findById(assignedTo).select('_id role full_name tenant_id').lean();
-        const incident = result.data;
-        
+        const assigner = await User.findById(userId).select('_id role full_name');
+        const assignee = await User.findById(assignedTo).select('_id role full_name');
         if (assigner && assignee) {
-          await IncidentNotificationService.notifyIncidentAssigned({
-            incident,
-            assignee,
-            assigner,
-            tenantId
-          });
-          
-          // Also emit WebSocket for backward compatibility
-          websocketService.emitIncidentAssigned(incident, assignee, assigner);
-          console.log(`🚨 Incident assigned notification sent (realtime + database) for user: ${assignee._id}`);
+          websocketService.emitIncidentAssigned(result.data, assignee, assigner);
+          console.log(`🚨 Incident assigned WebSocket notification sent for user: ${assignee._id}`);
         }
-      } catch (notifError) {
-        console.error('Failed to send incident assigned notification:', notifError);
+      } catch (wsError) {
+        console.error('Failed to emit incident assigned WebSocket notification:', wsError);
       }
       
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -201,37 +143,15 @@ class IncidentController {
     const result = await incidentService.updateIncidentProgress(id, progressData, userId, tenantId);
     
     if (result.success) {
-      // Send realtime notification (WebSocket + Database) for incident progress updated
+      // Emit WebSocket notification for incident progress updated
       try {
-        const IncidentNotificationService = require('../services/incidentNotificationService');
-        const updater = await User.findById(userId).select('_id role full_name tenant_id').lean();
-        const incident = result.data;
-        
-        // Get stakeholders (reporter, assignee, managers, admins)
-        const stakeholders = [];
-        if (incident.createdBy) {
-          const reporter = await User.findById(incident.createdBy).select('_id full_name').lean();
-          if (reporter) stakeholders.push(reporter);
-        }
-        if (incident.assignedTo) {
-          const assignee = await User.findById(incident.assignedTo).select('_id full_name').lean();
-          if (assignee) stakeholders.push(assignee);
-        }
-        
-        await IncidentNotificationService.notifyIncidentProgressUpdated({
-          incident,
-          updater,
-          stakeholders,
-          tenantId
-        });
-        
-        // Also emit WebSocket for backward compatibility
+        const updater = await User.findById(userId).select('_id role full_name');
         if (updater) {
-          websocketService.emitIncidentProgressUpdated(incident, updater);
+          websocketService.emitIncidentProgressUpdated(result.data, updater);
+          console.log(`🚨 Incident progress updated WebSocket notification sent for user: ${updater._id}`);
         }
-        console.log(`🚨 Incident progress updated notification sent (realtime + database) for user: ${updater?._id}`);
-      } catch (notifError) {
-        console.error('Failed to send incident progress updated notification:', notifError);
+      } catch (wsError) {
+        console.error('Failed to emit incident progress updated WebSocket notification:', wsError);
       }
       
       return ApiResponse.success(res, result.data, result.message, result.statusCode);
@@ -250,37 +170,15 @@ class IncidentController {
     const result = await incidentService.closeIncident(id, closeData, userId, tenantId);
     
     if (result.success) {
-      // Send realtime notification (WebSocket + Database) for incident closed
+      // Emit WebSocket notification for incident closed
       try {
-        const IncidentNotificationService = require('../services/incidentNotificationService');
-        const closer = await User.findById(userId).select('_id role full_name tenant_id').lean();
-        const incident = result.data;
-        
-        // Get stakeholders (reporter, assignee, managers, admins)
-        const stakeholders = [];
-        if (incident.createdBy) {
-          const reporter = await User.findById(incident.createdBy).select('_id full_name').lean();
-          if (reporter) stakeholders.push(reporter);
-        }
-        if (incident.assignedTo) {
-          const assignee = await User.findById(incident.assignedTo).select('_id full_name').lean();
-          if (assignee) stakeholders.push(assignee);
-        }
-        
-        await IncidentNotificationService.notifyIncidentClosed({
-          incident,
-          closer,
-          stakeholders,
-          tenantId
-        });
-        
-        // Also emit WebSocket for backward compatibility
+        const closer = await User.findById(userId).select('_id role full_name');
         if (closer) {
-          websocketService.emitIncidentClosed(incident, closer);
+          websocketService.emitIncidentClosed(result.data, closer);
+          console.log(`🚨 Incident closed WebSocket notification sent for user: ${closer._id}`);
         }
-        console.log(`🚨 Incident closed notification sent (realtime + database) for user: ${closer?._id}`);
-      } catch (notifError) {
-        console.error('Failed to send incident closed notification:', notifError);
+      } catch (wsError) {
+        console.error('Failed to emit incident closed WebSocket notification:', wsError);
       }
       
       return ApiResponse.success(res, result.data, result.message, result.statusCode);

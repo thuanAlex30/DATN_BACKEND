@@ -696,29 +696,6 @@ class TrainingService {
      * Returns array like: [{ _id: 'completed', count: 10 }, ...]
      */
     async getEnrollmentStats(tenantId = null) {
-        try {
-            const { TrainingSession } = require('../models/trainingSession');
-            const TrainingEnrollment = require('../models/trainingEnrollment');
-            const mongoose = require('mongoose');
-
-            const sessionIds = tenantId
-                ? await TrainingSession.find({ tenant_id: tenantId }).distinct('_id')
-                : await TrainingSession.find({}).distinct('_id');
-
-            if (!sessionIds || sessionIds.length === 0) {
-                return createResponse(200, 'Enrollment stats retrieved successfully', []);
-            }
-
-            const stats = await TrainingEnrollment.aggregate([
-                { $match: { session_id: { $in: sessionIds.map(id => new mongoose.Types.ObjectId(id)) } } },
-                { $group: { _id: '$status', count: { $sum: 1 } } },
-                { $sort: { count: -1 } }
-            ]);
-
-            return createResponse(200, 'Enrollment stats retrieved successfully', stats);
-        } catch (error) {
-            throw error;
-        }
     }
 
     /**
@@ -726,20 +703,6 @@ class TrainingService {
      * Returns array like: [{ _id: 'SCHEDULED', count: 3 }, ...]
      */
     async getSessionStats(tenantId = null) {
-        try {
-            const { TrainingSession } = require('../models/trainingSession');
-
-            const match = tenantId ? { tenant_id: tenantId } : {};
-            const stats = await TrainingSession.aggregate([
-                { $match: match },
-                { $group: { _id: '$status_code', count: { $sum: 1 } } },
-                { $sort: { count: -1 } }
-            ]);
-
-            return createResponse(200, 'Session stats retrieved successfully', stats);
-        } catch (error) {
-            throw error;
-        }
     }
 
     // ========== Session Status Management ==========

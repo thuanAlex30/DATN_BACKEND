@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "postinstall": "npm rebuild sharp || true && node scripts/verify-deps.js",
     "dev": "nodemon server.js",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -41,7 +42,7 @@
     "@pdf-lib/fontkit": "^1.1.1",
     "antd": "^6.1.3",
     "axios": "^1.5.0",
-    "bcryptjs": "^2.4.3",
+    "bcryptjs": "^3.0.3",
     "bull": "^4.11.3",
     "cloudinary": "^2.8.0",
     "compression": "^1.7.4",
@@ -51,7 +52,7 @@
     "exceljs": "^4.3.0",
     "express": "^4.18.2",
     "express-rate-limit": "^6.10.0",
-    "express-validator": "^7.0.1",
+    "express-validator": "^7.3.1",
     "fontkit": "^2.0.4",
     "helmet": "^7.0.0",
     "html2canvas": "^1.4.1",
@@ -73,11 +74,12 @@
     "prom-client": "^14.2.0",
     "react-redux": "^9.2.0",
     "resend": "^4.8.0",
-    "sharp": "^0.32.5",
+    "sharp": "^0.33.5",
     "socket.io": "^4.7.2",
     "socket.io-client": "^4.8.1",
     "twilio": "^4.15.0",
     "uuid": "^9.0.0",
+    "validator": "^13.15.26",
     "winston": "^3.10.0",
     "xlsx": "^0.18.5"
   },
@@ -117,7 +119,7 @@
     ]
   },
   "engines": {
-    "node": ">=20.18.0",
+    "node": "20.18.0",
     "npm": ">=10.0.0"
   },
   "keywords": [

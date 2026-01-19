@@ -1,0 +1,10 @@
+{
+  "typescript.validate.enable": true,
+  "javascript.validate.enable": true,
+  "files.exclude": {
+    "**/node_modules": true
+  },
+  "typescript.preferences.includePackageJsonAutoImports": "off",
+  "javascript.preferences.includePackageJsonAutoImports": "off"
+}
+

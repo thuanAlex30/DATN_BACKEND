@@ -1,17 +1,4 @@
-// If Kafka disabled, export a simple stub that tracks nothing
-if (process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0') {
-  console.log('ℹ️ KafkaMonitor stub active (KAFKA_ENABLED=false)');
-  module.exports = {
-    startMonitoring: async () => {},
-    stopMonitoring: () => {},
-    incrementProducerMetrics: () => {},
-    incrementConsumerMetrics: () => {},
-    setProducerError: () => {},
-    setConsumerError: () => {},
-    getMetrics: () => ({ producer: {}, consumer: {}, topics: {}, dlq: {} })
-  };
-  return;
-}
+const KAFKA_ENABLED = process.env.ENABLE_KAFKA === 'true';
 
 const { kafka, topics } = require('../config/kafkaConfig');
 
@@ -47,6 +34,11 @@ class KafkaMonitor {
    * Start monitoring Kafka health
    */
   async startMonitoring() {
+    // Guard: Kafka must be enabled - no monitoring if disabled
+    if (!KAFKA_ENABLED) {
+      return; // Silent return, no monitoring, no spam log
+    }
+
     if (this.isMonitoring) {
       console.log('📊 Kafka monitoring already started');
       return;
@@ -90,6 +82,11 @@ class KafkaMonitor {
    * Collect metrics from Kafka
    */
   async collectMetrics() {
+    // Guard: Kafka must be enabled - no ping producer/consumer if disabled
+    if (!KAFKA_ENABLED) {
+      return; // Silent return, no ping, no spam log
+    }
+
     try {
       // Dynamic require to avoid circular dependency
       let kafkaProducer, kafkaConsumer;
@@ -272,6 +269,11 @@ class KafkaMonitor {
    * Check Kafka health and send alerts
    */
   async checkHealth() {
+    // Guard: Kafka must be enabled - no health check if disabled
+    if (!KAFKA_ENABLED) {
+      return; // Silent return, no health check, no spam log
+    }
+
     const healthStatus = {
       overall: 'healthy',
       issues: [],
@@ -326,6 +328,11 @@ class KafkaMonitor {
    * Send health check event to system events topic
    */
   async sendHealthCheckEvent(healthStatus) {
+    // Guard: Kafka must be enabled - no system_event if disabled
+    if (!KAFKA_ENABLED) {
+      return; // Silent return, no system_event
+    }
+
     try {
       // Dynamic require to avoid circular dependency
       let kafkaProducer;

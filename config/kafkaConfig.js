@@ -1,15 +1,7 @@
-// Kafka enable flag
-const isKafkaEnabled = (process.env.KAFKA_ENABLED === 'true' || process.env.KAFKA_ENABLED === '1');
+const { Kafka, Partitioners, logLevel } = require('kafkajs');
 
-let Kafka;
-let Partitioners;
-if (isKafkaEnabled) {
-  ({ Kafka, Partitioners } = require('kafkajs'));
-} else {
-  // Provide safe fallbacks so this module can be required even when kafkajs is not installed
-  Kafka = null;
-  Partitioners = { LegacyPartitioner: () => () => 0 };
-}
+// Don't create Kafka instance if disabled
+const isKafkaEnabled = !(process.env.KAFKA_ENABLED === 'false' || process.env.KAFKA_ENABLED === '0');
 
 // Kafka Configuration
 const kafkaConfig = {
@@ -24,6 +16,9 @@ const kafkaConfig = {
     initialRetryTime: 100,
     retries: 8
   },
+  
+  // Disable logging when Kafka is disabled to reduce log noise
+  logLevel: isKafkaEnabled ? logLevel.INFO : logLevel.NOTHING,
 };
 
 // Security settings (SSL/SASL) - enable if env provided
@@ -190,8 +185,19 @@ const eventTypes = {
   CERTIFICATE_BULK_OPERATION: 'certificate_bulk_operation'
 };
 
-// Create Kafka instance only when enabled
-const kafka = isKafkaEnabled ? new Kafka(kafkaConfig) : null;
+// Lazy create Kafka instance to avoid connection attempts when disabled
+let kafkaInstance = null;
+const getKafka = () => {
+  // Don't create Kafka instance if disabled
+  if (!isKafkaEnabled) {
+    throw new Error('Kafka is disabled (KAFKA_ENABLED=false). Cannot create Kafka instance.');
+  }
+  // Only create Kafka instance when actually needed
+  if (!kafkaInstance) {
+    kafkaInstance = new Kafka(kafkaConfig);
+  }
+  return kafkaInstance;
+};
 
 // Producer configuration
 const producerConfig = {
@@ -234,7 +240,10 @@ const consumerConfig = {
 };
 
 module.exports = {
-  kafka,
+  get kafka() {
+    // Lazy getter - only create Kafka instance when accessed
+    return getKafka();
+  },
   kafkaConfig,
   topics,
   eventTypes,
