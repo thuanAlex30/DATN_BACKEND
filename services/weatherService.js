@@ -61,7 +61,7 @@ class WeatherService {
       latitude,
       longitude,
       current_weather: true,
-      hourly: 'temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day',
+      hourly: 'temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day,dewpoint_2m',
       daily: 'uv_index_max,sunrise,sunset',
       timezone: params.timezone ?? 'auto',
     };
@@ -430,7 +430,7 @@ class WeatherService {
       latitude,
       longitude,
       // Request all necessary fields for hourly forecast charts
-      hourly: params.hourly ?? 'temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day',
+      hourly: params.hourly ?? 'temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day,dewpoint_2m',
       // Default timezone to Asia/Ho_Chi_Minh per user request
       timezone: params.timezone ?? process.env.WEATHER_TIMEZONE ?? 'Asia/Ho_Chi_Minh',
       forecast_days: Math.ceil(hours / 24), // Calculate days needed
@@ -470,6 +470,7 @@ class WeatherService {
             uv_index: data.hourly.uv_index?.[i] ?? null,
             visibility: data.hourly.visibility?.[i] ?? null,
             is_day: data.hourly.is_day?.[i] ?? 1,
+            dewpoint_2m: data.hourly.dewpoint_2m?.[i] ?? null, // Điểm sương (°C)
           });
         }
       }
