@@ -169,8 +169,8 @@ class PPERepository {
 
       if (tenantId) {
         // Ensure tenantId is ObjectId for query
-        query.tenant_id = mongoose.Types.ObjectId.isValid(tenantId) 
-          ? mongoose.Types.ObjectId(tenantId) 
+        query.tenant_id = mongoose.Types.ObjectId.isValid(tenantId)
+          ? new mongoose.Types.ObjectId(tenantId)
           : tenantId;
       }
       
@@ -194,8 +194,8 @@ class PPERepository {
       // Prepare lookup let variables
       const lookupLet = { itemId: '$_id' };
       if (tenantId) {
-        lookupLet.tenantId = mongoose.Types.ObjectId.isValid(tenantId) 
-          ? mongoose.Types.ObjectId(tenantId) 
+        lookupLet.tenantId = mongoose.Types.ObjectId.isValid(tenantId)
+          ? new mongoose.Types.ObjectId(tenantId)
           : tenantId;
       }
       
@@ -907,8 +907,8 @@ class PPERepository {
       const itemFilter = {};
       if (tenantId) {
         // Ensure tenantId is ObjectId
-        itemFilter.tenant_id = mongoose.Types.ObjectId.isValid(tenantId) 
-          ? mongoose.Types.ObjectId(tenantId) 
+        itemFilter.tenant_id = mongoose.Types.ObjectId.isValid(tenantId)
+          ? new mongoose.Types.ObjectId(tenantId)
           : tenantId;
       }
       // Fetch items minimal fields and process in batches to avoid large parallel aggregation load
@@ -927,8 +927,8 @@ class PPERepository {
           const total_quantity = (item.quantity_available || 0) + (item.quantity_allocated || 0);
           
           // Ensure item_id is ObjectId
-          const itemId = mongoose.Types.ObjectId.isValid(item._id) 
-            ? mongoose.Types.ObjectId(item._id) 
+          const itemId = mongoose.Types.ObjectId.isValid(item._id)
+            ? new mongoose.Types.ObjectId(item._id)
             : item._id;
           
           const issuanceMatch = { 
@@ -938,8 +938,8 @@ class PPERepository {
           
           if (tenantId) {
             // Ensure tenantId is ObjectId for aggregation
-            issuanceMatch.tenant_id = mongoose.Types.ObjectId.isValid(tenantId) 
-              ? mongoose.Types.ObjectId(tenantId) 
+            issuanceMatch.tenant_id = mongoose.Types.ObjectId.isValid(tenantId)
+              ? new mongoose.Types.ObjectId(tenantId)
               : tenantId;
           }
 
