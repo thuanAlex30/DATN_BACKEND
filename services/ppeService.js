@@ -1285,10 +1285,18 @@ class PPEService {
         ppeSummary[itemId].total_issued_to_employees = e.total_issued_to_employees || 0;
         ppeSummary[itemId].total_returned_by_employees = e.total_returned_by_employees || 0;
 
+        // Số PPE đang nằm ở nhân viên (manager đã phát ra nhưng chưa nhận lại)
         const currentlyHeldByEmployees = (ppeSummary[itemId].total_issued_to_employees || 0) - (ppeSummary[itemId].total_returned_by_employees || 0);
-        ppeSummary[itemId].remaining = Math.max(0, (ppeSummary[itemId].remaining_in_hand || 0) - currentlyHeldByEmployees);
         ppeSummary[itemId].currentlyHeldByEmployees = currentlyHeldByEmployees;
-        ppeSummary[itemId].availableToReturn = Math.max(0, (ppeSummary[itemId].remaining_in_hand || 0) - currentlyHeldByEmployees);
+
+        // remaining_in_hand đã phản ánh số PPE Manager còn giữ sau khi trừ phát cho employee
+        // → CÓ THỂ trả về Header Department ngay mà không cần thu hồi thêm
+        const remainingInHand = ppeSummary[itemId].remaining_in_hand || 0;
+
+        // Giữ `remaining` đồng nghĩa với "Còn lại ở Manager" để UI hiển thị trực tiếp
+        ppeSummary[itemId].remaining = remainingInHand;
+        // availableToReturn dùng cùng giá trị để tránh nhầm lẫn và không trừ trùng
+        ppeSummary[itemId].availableToReturn = remainingInHand;
 
         const employeeIssuancesForItem = employeeIssuancesByItem[itemId] || [];
         const empPending = (e.pending_count !== undefined) ? e.pending_count : employeeIssuancesForItem.filter(i => i.status === 'pending_confirmation' || i.status === 'pending_manager_return').length;
