@@ -3,13 +3,16 @@ const NodeCache = require('node-cache');
 const logger = require('../utils/logger');
 
 // Increase cache TTL to reduce API calls and avoid 429 rate limits
-// Default: 30 minutes (1800 seconds), can be overridden via OPEN_METEO_CACHE_TTL_SECONDS
-// Weather data doesn't change frequently, so 30 minutes is reasonable
+// Default: 1 hour (3600 seconds) - weather data doesn't change frequently
 const cache = new NodeCache({
-  stdTTL: Number(process.env.OPEN_METEO_CACHE_TTL_SECONDS) || 1800, // 30 minutes default (increased from 15)
+  stdTTL: Number(process.env.OPEN_METEO_CACHE_TTL_SECONDS) || 3600, // 1 hour default (increased from 30 min)
   checkperiod: 120,
   useClones: false, // Better performance for large objects
 });
+
+// Request throttling - prevent duplicate concurrent requests for same cache key
+// This avoids multiple API calls when multiple users request same data simultaneously
+const pendingRequests = new Map();
 
 // Helper to safely parse latitude/longitude with fallbacks
 function parseCoordinate(value, envVar, defaultValue) {
@@ -67,11 +70,31 @@ class WeatherService {
     };
 
     const cacheKey = WeatherService.buildCacheKey(normalizedParams);
+    
+    // Check cache first
     const cached = cache.get(cacheKey);
     if (cached) {
       return cached;
     }
 
+    // Request throttling: if same request is already in progress, wait for it
+    if (pendingRequests.has(cacheKey)) {
+      logger.debug('Waiting for pending request', { cacheKey });
+      return pendingRequests.get(cacheKey);
+    }
+
+    // Create and track the request promise
+    const requestPromise = this._doFetchCurrentWeather(normalizedParams, cacheKey);
+    pendingRequests.set(cacheKey, requestPromise);
+    
+    try {
+      return await requestPromise;
+    } finally {
+      pendingRequests.delete(cacheKey);
+    }
+  }
+
+  static async _doFetchCurrentWeather(normalizedParams, cacheKey) {
     const startedAt = Date.now();
     try {
       const { data } = await axios.get(`${OPEN_METEO_BASE_URL}/forecast`, { 
@@ -259,11 +282,31 @@ class WeatherService {
     };
 
     const cacheKey = `forecast:${latitude}:${longitude}:7days`;
+    
+    // Check cache first
     const cached = cache.get(cacheKey);
     if (cached) {
       return cached;
     }
 
+    // Request throttling
+    if (pendingRequests.has(cacheKey)) {
+      logger.debug('Waiting for pending forecast request', { cacheKey });
+      return pendingRequests.get(cacheKey);
+    }
+
+    const requestPromise = this._doFetchForecast(normalizedParams, cacheKey);
+    pendingRequests.set(cacheKey, requestPromise);
+    
+    try {
+      return await requestPromise;
+    } finally {
+      pendingRequests.delete(cacheKey);
+    }
+  }
+
+  static async _doFetchForecast(normalizedParams, cacheKey) {
+    const { latitude, longitude } = normalizedParams;
     const startedAt = Date.now();
     try {
       const { data } = await axios.get(`${OPEN_METEO_BASE_URL}/forecast`, {
@@ -437,11 +480,30 @@ class WeatherService {
     };
 
     const cacheKey = `hourly:${latitude}:${longitude}:${hours}h`;
+    
+    // Check cache first
     const cached = cache.get(cacheKey);
     if (cached) {
       return cached;
     }
 
+    // Request throttling
+    if (pendingRequests.has(cacheKey)) {
+      logger.debug('Waiting for pending hourly forecast request', { cacheKey });
+      return pendingRequests.get(cacheKey);
+    }
+
+    const requestPromise = this._doFetchHourlyForecast(normalizedParams, cacheKey, hours);
+    pendingRequests.set(cacheKey, requestPromise);
+    
+    try {
+      return await requestPromise;
+    } finally {
+      pendingRequests.delete(cacheKey);
+    }
+  }
+
+  static async _doFetchHourlyForecast(normalizedParams, cacheKey, hours) {
     const startedAt = Date.now();
     try {
       const { data } = await axios.get(`${OPEN_METEO_BASE_URL}/forecast`, {
@@ -581,11 +643,31 @@ class WeatherService {
     };
 
     const cacheKey = `airquality:${latitude}:${longitude}`;
+    
+    // Check cache first
     const cached = cache.get(cacheKey);
     if (cached) {
       return cached;
     }
 
+    // Request throttling
+    if (pendingRequests.has(cacheKey)) {
+      logger.debug('Waiting for pending air quality request', { cacheKey });
+      return pendingRequests.get(cacheKey);
+    }
+
+    const requestPromise = this._doFetchAirQuality(normalizedParams, cacheKey);
+    pendingRequests.set(cacheKey, requestPromise);
+    
+    try {
+      return await requestPromise;
+    } finally {
+      pendingRequests.delete(cacheKey);
+    }
+  }
+
+  static async _doFetchAirQuality(normalizedParams, cacheKey) {
+    const { latitude, longitude } = normalizedParams;
     const startedAt = Date.now();
     try {
       const { data } = await axios.get(`${AIR_QUALITY_BASE_URL}/air-quality`, {
@@ -689,6 +771,57 @@ class WeatherService {
         error: error.message,
       };
     }
+  }
+
+  /**
+   * Pre-warm cache on server startup
+   * Fetches weather data for default location to avoid 429 on first user requests
+   * Call this after server starts, with a delay to not block startup
+   */
+  static async warmupCache() {
+    const latitude = parseCoordinate(null, 'WEATHER_DEFAULT_LAT', 16.0471);
+    const longitude = parseCoordinate(null, 'WEATHER_DEFAULT_LON', 108.2068);
+    
+    logger.info('Warming up weather cache...', { latitude, longitude });
+    
+    try {
+      // Fetch all types of weather data sequentially with delays to avoid rate limit
+      await this.fetchCurrentWeather({ latitude, longitude });
+      logger.info('Cache warmed: current weather');
+      
+      // Wait 2 seconds between requests to be safe
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      await this.fetchForecast({ latitude, longitude });
+      logger.info('Cache warmed: 7-day forecast');
+      
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      await this.fetchHourlyForecast({ latitude, longitude, hours: 24 });
+      logger.info('Cache warmed: 24-hour forecast');
+      
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      await this.fetchAirQuality({ latitude, longitude });
+      logger.info('Cache warmed: air quality');
+      
+      logger.info('Weather cache warmup complete');
+    } catch (error) {
+      logger.warn('Cache warmup partially failed (will retry on demand)', { 
+        error: error.message 
+      });
+    }
+  }
+
+  /**
+   * Get cache statistics for monitoring
+   */
+  static getCacheStats() {
+    return {
+      keys: cache.keys(),
+      stats: cache.getStats(),
+      pendingRequests: pendingRequests.size,
+    };
   }
 }
 

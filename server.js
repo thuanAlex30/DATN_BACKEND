@@ -115,6 +115,24 @@ const ppeLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Weather API rate limiter - more restrictive to protect Open-Meteo API
+// Open-Meteo free tier has ~10,000 requests/day limit
+const weatherLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute window
+  max: process.env.NODE_ENV === 'production' ? 30 : 100, // 30 requests/min in production
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many weather requests. Please wait a moment.',
+  handler: (req, res) => {
+    res.status(429).json({
+      success: false,
+      message: 'Too many weather requests. Data is cached for 1 hour, please wait.',
+      errors: null,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Global fallback limiter for all other routes
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -132,8 +150,9 @@ const limiter = rateLimit({
   }
 });
 
-// Apply PPE-specific limiter before the global limiter so PPE routes get higher allowance
-app.use('/api/ppe', ppeLimiter);
+// Apply route-specific limiters before the global limiter
+app.use('/api/ppe', ppeLimiter);       // PPE routes get higher allowance
+app.use('/api/weather', weatherLimiter); // Weather routes get stricter limit to protect Open-Meteo
 app.use(limiter);
 
 // =====================
@@ -225,6 +244,17 @@ const io = new Server(server, {
     expiryCheckJob.start();
     ppeOverdueJob.start();
     weatherAlertJob.start();
+
+    // Pre-warm weather cache after server start (avoid 429 on first user requests)
+    // Delay 5 seconds to not block startup and allow other services to initialize
+    setTimeout(async () => {
+      try {
+        const WeatherService = require('./services/weatherService');
+        await WeatherService.warmupCache();
+      } catch (err) {
+        console.warn('⚠️ Weather cache warmup failed:', err.message);
+      }
+    }, 5000);
 
     // Kafka (optional) - can be disabled with env ENABLE_KAFKA=false or not set
     const isKafkaEnabled = process.env.ENABLE_KAFKA === 'true';
