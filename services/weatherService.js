@@ -228,18 +228,12 @@ class WeatherService {
           });
           return { ...cachedFallback, stale: true, staleAt: new Date().toISOString() };
         }
-        // If no cache, return error with helpful message
-        logger.error('Weather API rate limited (429) and no cache available', {
+        // No cache available - return fallback data instead of throwing error
+        logger.warn('Weather API rate limited (429), returning fallback data', {
           latencyMs,
           cacheKey,
-          message: error.message,
         });
-        throw {
-          statusCode: 429,
-          message: 'Weather API rate limit exceeded. Please try again later.',
-          feature: 'weather',
-          retryAfter: error.response?.headers?.['retry-after'] || 60
-        };
+        return this._createFallbackCurrentWeather(normalizedParams, latencyMs, '429 - Rate limit exceeded');
       }
 
       // For other errors, try to serve stale cache
@@ -254,19 +248,52 @@ class WeatherService {
         return { ...cachedFallback, stale: true, staleAt: new Date().toISOString() };
       }
 
-      logger.error('Weather API error', {
+      // No cache - return fallback data
+      logger.warn('Weather API error, returning fallback data', {
         latencyMs,
         cacheKey,
         message: error.message,
         status: statusCode,
       });
-
-      throw {
-        statusCode: statusCode || 500,
-        message: extractApiMessage(error.response?.data) || error.message || 'Failed to fetch weather data',
-        feature: 'weather'
-      };
+      return this._createFallbackCurrentWeather(normalizedParams, latencyMs, error.message);
     }
+  }
+
+  /**
+   * Create fallback current weather data when API is unavailable
+   */
+  static _createFallbackCurrentWeather(params, latencyMs, errorMessage) {
+    const fallback = {
+      provider: 'open-meteo',
+      fetchedAt: new Date().toISOString(),
+      location: {
+        latitude: params.latitude,
+        longitude: params.longitude,
+        timezone: params.timezone || 'Asia/Ho_Chi_Minh',
+      },
+      currentWeather: {
+        temperature: null,
+        windspeed: null,
+        winddirection: null,
+        weathercode: 0,
+        is_day: new Date().getHours() >= 6 && new Date().getHours() < 18 ? 1 : 0,
+        time: new Date().toISOString(),
+        precipitation: null,
+      },
+      hourlyForecast: [],
+      daily: { sunrise: [], sunset: [], uv_index_max: [] },
+      latencyMs,
+      stale: false,
+      unavailable: true,
+      unavailableReason: errorMessage,
+      message: 'Dữ liệu thời tiết tạm thời không khả dụng. Vui lòng thử lại sau.',
+    };
+    
+    // Cache fallback for 60 seconds to prevent repeated failed API calls
+    const cacheKey = this.buildCacheKey(params);
+    cache.set(cacheKey, fallback, 60);
+    
+    return fallback;
   }
 
   static async fetchForecast(params) {
@@ -422,17 +449,9 @@ class WeatherService {
           });
           return { ...cachedFallback, stale: true, staleAt: new Date().toISOString() };
         }
-        logger.error('Weather forecast API rate limited (429) and no cache available', {
-          latencyMs,
-          cacheKey,
-          message: error.message,
-        });
-        throw {
-          statusCode: 429,
-          message: 'Weather API rate limit exceeded. Please try again later.',
-          feature: 'weather-forecast',
-          retryAfter: error.response?.headers?.['retry-after'] || 60
-        };
+        // No cache - return fallback
+        logger.warn('Weather forecast API rate limited (429), returning fallback', { latencyMs, cacheKey });
+        return this._createFallbackForecast(latitude, longitude, latencyMs, '429 - Rate limit exceeded');
       }
 
       // For other errors, try to serve stale cache
@@ -447,19 +466,42 @@ class WeatherService {
         return { ...cachedFallback, stale: true, staleAt: new Date().toISOString() };
       }
 
-      logger.error('Weather forecast API error', {
+      // No cache - return fallback
+      logger.warn('Weather forecast API error, returning fallback', {
         latencyMs,
         cacheKey,
         message: error.message,
         status: statusCode,
       });
-
-      throw {
-        statusCode: statusCode || 500,
-        message: extractApiMessage(error.response?.data) || error.message || 'Failed to fetch weather forecast',
-        feature: 'weather-forecast'
-      };
+      return this._createFallbackForecast(latitude, longitude, latencyMs, error.message);
     }
+  }
+
+  /**
+   * Create fallback forecast data when API is unavailable
+   */
+  static _createFallbackForecast(latitude, longitude, latencyMs, errorMessage) {
+    const fallback = {
+      provider: 'open-meteo',
+      fetchedAt: new Date().toISOString(),
+      location: {
+        latitude,
+        longitude,
+        timezone: 'Asia/Ho_Chi_Minh',
+      },
+      daily: [],
+      latencyMs,
+      stale: false,
+      unavailable: true,
+      unavailableReason: errorMessage,
+      message: 'Dữ liệu dự báo tạm thời không khả dụng. Vui lòng thử lại sau.',
+    };
+    
+    // Cache for 60 seconds
+    const cacheKey = `forecast:${latitude}:${longitude}:7days`;
+    cache.set(cacheKey, fallback, 60);
+    
+    return fallback;
   }
 
   static async fetchHourlyForecast(params) {
@@ -558,6 +600,7 @@ class WeatherService {
     } catch (error) {
       const latencyMs = Date.now() - startedAt;
       const statusCode = error.response?.status;
+      const { latitude, longitude } = normalizedParams;
       
       // Handle 429 (Rate Limit) - serve stale cache immediately
       if (statusCode === 429) {
@@ -570,17 +613,9 @@ class WeatherService {
           });
           return { ...cachedFallback, stale: true, staleAt: new Date().toISOString() };
         }
-        logger.error('Hourly forecast API rate limited (429) and no cache available', {
-          latencyMs,
-          cacheKey,
-          message: error.message,
-        });
-        throw {
-          statusCode: 429,
-          message: 'Weather API rate limit exceeded. Please try again later.',
-          feature: 'hourly-forecast',
-          retryAfter: error.response?.headers?.['retry-after'] || 60
-        };
+        // No cache - return fallback
+        logger.warn('Hourly forecast API rate limited (429), returning fallback', { latencyMs, cacheKey });
+        return this._createFallbackHourlyForecast(latitude, longitude, hours, latencyMs, '429 - Rate limit exceeded');
       }
 
       // For other errors, try to serve stale cache
@@ -595,19 +630,42 @@ class WeatherService {
         return { ...cachedFallback, stale: true, staleAt: new Date().toISOString() };
       }
 
-      logger.error('Hourly forecast API error', {
+      // No cache - return fallback
+      logger.warn('Hourly forecast API error, returning fallback', {
         latencyMs,
         cacheKey,
         message: error.message,
         status: statusCode,
       });
-
-      throw {
-        statusCode: statusCode || 500,
-        message: extractApiMessage(error.response?.data) || error.message || 'Failed to fetch hourly forecast',
-        feature: 'hourly-forecast'
-      };
+      return this._createFallbackHourlyForecast(latitude, longitude, hours, latencyMs, error.message);
     }
+  }
+
+  /**
+   * Create fallback hourly forecast data when API is unavailable
+   */
+  static _createFallbackHourlyForecast(latitude, longitude, hours, latencyMs, errorMessage) {
+    const fallback = {
+      provider: 'open-meteo',
+      fetchedAt: new Date().toISOString(),
+      location: {
+        latitude,
+        longitude,
+        timezone: 'Asia/Ho_Chi_Minh',
+      },
+      hourly: [],
+      latencyMs,
+      stale: false,
+      unavailable: true,
+      unavailableReason: errorMessage,
+      message: 'Dữ liệu dự báo theo giờ tạm thời không khả dụng. Vui lòng thử lại sau.',
+    };
+    
+    // Cache for 60 seconds
+    const cacheKey = `hourly:${latitude}:${longitude}:${hours}h`;
+    cache.set(cacheKey, fallback, 60);
+    
+    return fallback;
   }
 
   static async fetchAirQuality(params) {
@@ -768,7 +826,9 @@ class WeatherService {
         hourly: null,
         latencyMs,
         stale: false,
-        error: error.message,
+        unavailable: true,
+        unavailableReason: error.message,
+        message: 'Dữ liệu chất lượng không khí tạm thời không khả dụng.',
       };
     }
   }

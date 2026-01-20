@@ -398,7 +398,7 @@ router.get('/user-certificates/list',
 // Get user certificates by department
 router.get('/user-certificates/department/:departmentId',
     AuthMiddleware.authenticate,
-    AuthMiddleware.authorizeRole(['department_header']),
+    AuthMiddleware.authorizeRole(['department_header', 'manager']),
     [
         param('departmentId')
             .isMongoId()

@@ -465,18 +465,9 @@ notificationSchema.statics.createNotification = async function(notificationData)
     try {
         console.log('createNotification called with data:', notificationData);
         
-        // Auto-generate notification_id if not provided
-        if (!notificationData.notification_id) {
-            // First, try to find the highest notification_id
-            const lastNotification = await this.findOne({ notification_id: { $exists: true } }, {}, { sort: { notification_id: -1 } });
-            
-            if (lastNotification && lastNotification.notification_id) {
-                notificationData.notification_id = lastNotification.notification_id + 1;
-            } else {
-                // If no notification_id exists, start from 1
-                notificationData.notification_id = 1;
-            }
-        }
+        // REMOVED: Auto-generation of notification_id to prevent race condition (duplicate key error)
+        // MongoDB's _id is already unique and sufficient for notification identification
+        // If notification_id is needed, it should be provided explicitly or use atomic counter
         
         // Validate required fields
         if (!notificationData.user_id || !notificationData.title || !notificationData.message) {

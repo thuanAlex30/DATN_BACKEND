@@ -550,7 +550,8 @@ class PPERepository {
       query.tenant_id = tenantId;
     }
     return await PPEIssuance.find(query)
-      .select('item_id user_id issued_by manager_id status issued_date remaining_quantity quantity')
+      // Include additional fields required by frontend (report, return details, dates, serials, notes, timestamps)
+      .select('item_id user_id issued_by manager_id status issued_date expected_return_date actual_return_date remaining_quantity manager_remaining_quantity quantity assigned_serial_numbers returned_serial_numbers report_description report_severity report_type reported_date confirmation_notes confirmed_date notes tenant_id createdAt updatedAt')
       .populate('item_id', 'item_name item_code brand model image_url')
       .populate('user_id', 'full_name email department_id')
       .populate('issued_by', 'full_name email')

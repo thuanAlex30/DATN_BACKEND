@@ -199,8 +199,6 @@ const userCertificateSchema = new mongoose.Schema({
 
 // Indexes for performance
 userCertificateSchema.index({ tenant_id: 1, user_id: 1 });
-// Indexes for performance
-userCertificateSchema.index({ tenant_id: 1, user_id: 1 });
 userCertificateSchema.index({ tenant_id: 1, certificate_id: 1 }); // Optional index for backward compatibility
 userCertificateSchema.index({ tenant_id: 1, user_id: 1, status: 1 });
 userCertificateSchema.index({ tenant_id: 1, user_id: 1, expiryDate: 1 });
