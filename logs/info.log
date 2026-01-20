@@ -1,0 +1,31 @@
+{"timestamp":"2026-01-20T12:24:34.034Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":23364,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:24:34.052Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":23364,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:24:34.053Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":23364,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:24:34.054Z","level":"INFO","message":"Weather alert check job started - runs every 0 * * * *","metadata":{},"pid":23364,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:25:17.903Z","level":"INFO","message":"Weather fetched","metadata":{"latencyMs":2858,"cacheKey":"weather:16.0471:108.2068:undefined:temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day"},"pid":23364,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:25:19.778Z","level":"INFO","message":"Air quality fetched","metadata":{"latencyMs":759,"cacheKey":"airquality:15.974263147195092:108.26152653435818"},"pid":23364,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:29:26.668Z","level":"INFO","message":"Air quality fetched","metadata":{"latencyMs":801,"cacheKey":"airquality:15.974207361047068:108.26134919018601"},"pid":23364,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:33:03.130Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":13460,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:33:03.148Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":13460,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:33:03.149Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":13460,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:33:03.150Z","level":"INFO","message":"Weather alert check job started - runs every 0 * * * *","metadata":{},"pid":13460,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:33:24.370Z","level":"INFO","message":"Weather fetched","metadata":{"latencyMs":1432,"cacheKey":"weather:16.0471:108.2068:undefined:temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day"},"pid":13460,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:33:26.893Z","level":"INFO","message":"Air quality fetched","metadata":{"latencyMs":791,"cacheKey":"airquality:15.974187906514716:108.26134372527949"},"pid":13460,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:34:34.757Z","level":"INFO","message":"Hourly forecast fetched","metadata":{"latencyMs":986,"cacheKey":"hourly:15.974187906514716:108.26134372527949:24h","hours":24},"pid":13460,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:36:27.274Z","level":"INFO","message":"PPE issued to manager notification sent","metadata":{"recipientId":"69394ede56cccae5f492c8e8","tenantId":"693762336890b8984d135585"},"pid":13460,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:36:58.246Z","level":"INFO","message":"Air quality fetched","metadata":{"latencyMs":801,"cacheKey":"airquality:15.97425890352562:108.26156177610656"},"pid":13460,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:37:19.590Z","level":"INFO","message":"PPE confirmed notification sent","metadata":{"managerId":"69394ede56cccae5f492c8e8","tenantId":"693762336890b8984d135585"},"pid":13460,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:39:03.922Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":24008,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:39:03.938Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":24008,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:39:03.940Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":24008,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:39:03.941Z","level":"INFO","message":"Weather alert check job started - runs every 0 * * * *","metadata":{},"pid":24008,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:39:11.454Z","level":"INFO","message":"Weather fetched","metadata":{"latencyMs":2620,"cacheKey":"weather:16.0471:108.2068:undefined:temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day"},"pid":24008,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:39:26.682Z","level":"INFO","message":"PPE issued to employee notifications sent","metadata":{"recipientId":"693ec68dedff20c11dad6646","issuerId":"69394ede56cccae5f492c8e8","tenantId":"693762336890b8984d135585"},"pid":24008,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:39:26.814Z","level":"INFO","message":"Notifications sent to multiple users","metadata":{"total":1,"success":1,"failed":0,"tenantId":"693762336890b8984d135585"},"pid":24008,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:39:26.844Z","level":"INFO","message":"Notifications sent to multiple users","metadata":{"total":8,"success":8,"failed":0,"tenantId":"693762336890b8984d135585"},"pid":24008,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:39:45.126Z","level":"INFO","message":"Air quality fetched","metadata":{"latencyMs":772,"cacheKey":"airquality:15.974365905053357:108.26146633166884"},"pid":24008,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:39:52.230Z","level":"INFO","message":"PPE confirmed notification sent","metadata":{"managerId":"69394ede56cccae5f492c8e8","tenantId":"693762336890b8984d135585"},"pid":24008,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:40:31.050Z","level":"INFO","message":"PPE return confirmed notification sent","metadata":{"managerId":"69394ede56cccae5f492c8e8","tenantId":"693762336890b8984d135585"},"pid":24008,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:45:27.334Z","level":"INFO","message":"PPE expiry check job stopped","metadata":{},"pid":24008,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:45:27.335Z","level":"INFO","message":"PPE overdue check job stopped","metadata":{},"pid":24008,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:45:27.336Z","level":"INFO","message":"Weather alert check job stopped","metadata":{},"pid":24008,"hostname":"MSI"}

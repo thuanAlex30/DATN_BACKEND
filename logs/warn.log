@@ -1,0 +1,2 @@
+{"timestamp":"2026-01-20T12:37:19.592Z","level":"WARN","message":"Non-blocking notification failed or timed out:","metadata":"Cannot read properties of null (reading 'full_name')","pid":13460,"hostname":"MSI"}
+{"timestamp":"2026-01-20T12:39:26.847Z","level":"WARN","message":"Non-blocking notification failed or timed out:","metadata":"E11000 duplicate key error collection: safety_system.notifications index: notification_id_1 dup key: { notification_id: 296 }","pid":24008,"hostname":"MSI"}
