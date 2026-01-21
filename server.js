@@ -55,7 +55,8 @@ const parseAllowedOrigins = () => {
     'https://safe-n814.onrender.com',
     // Vercel frontend URLs
     'https://datnfrontend-c0qa73axv-lam-danh-mais-projects.vercel.app',
-    'https://*.vercel.app' // Support all Vercel preview deployments
+    'https://*.vercel.app',
+    'https://safetymanagement.io.vn' // Support all Vercel preview deployments
   ];
 
   if (process.env.FRONTEND_URL) base.push(process.env.FRONTEND_URL);
