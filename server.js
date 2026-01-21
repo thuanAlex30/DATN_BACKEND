@@ -52,11 +52,11 @@ const parseAllowedOrigins = () => {
     'http://127.0.0.1:3000',
     'http://127.0.0.1:3001',
     'http://127.0.0.1:5173',
-    'https://safe-n814.onrender.com',
+    'https://*.onrender.com', // Support all Render deployments
     // Vercel frontend URLs
     'https://datnfrontend-c0qa73axv-lam-danh-mais-projects.vercel.app',
-    'https://*.vercel.app',
-    'https://safetymanagement.io.vn' // Support all Vercel preview deployments
+    'https://*.vercel.app', // Support all Vercel preview deployments
+    'https://safetymanagement.io.vn' 
   ];
 
   if (process.env.FRONTEND_URL) base.push(process.env.FRONTEND_URL);

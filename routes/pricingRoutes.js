@@ -52,20 +52,32 @@ const orderLookupLimiter = rateLimit({
   }
 });
 
-// Public routes - không cần authentication
-router.post('/contract-preview', pricingLimiter, PricingController.generateContractPreview);
-router.post('/orders', pricingLimiter, PricingController.createOrder);
-router.get('/orders/:orderId', orderLookupLimiter, PricingController.getOrder);
-router.post('/orders/:orderId/resend-email', pricingLimiter, PricingController.resendEmail);
-
-// PayOS webhook - không cần authentication
-router.post('/payment-webhook', webhookLimiter, PricingController.paymentWebhook);
+// PayOS webhook - PHẢI ĐẶT TRƯỚC các route khác để tránh conflict
+// Không cần authentication vì PayOS gọi từ server của họ
+// Thêm logging middleware để debug
+router.post('/payment-webhook', (req, res, next) => {
+  console.log('🔔 [Webhook Route] Received POST /payment-webhook', {
+    method: req.method,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    body: req.body ? 'has body' : 'no body',
+    contentType: req.headers['content-type'],
+    ip: req.ip
+  });
+  next();
+}, webhookLimiter, PricingController.paymentWebhook);
 
 // PayOS returnUrl và cancelUrl - xử lý redirect từ PayOS
 // PayOS sẽ redirect về các endpoint này sau khi thanh toán/hủy
 // Không cần rate limit vì đây là user-initiated redirects
 router.get('/payment-return', PricingController.paymentReturn);
 router.get('/payment-cancel', PricingController.paymentCancel);
+
+// Public routes - không cần authentication
+router.post('/contract-preview', pricingLimiter, PricingController.generateContractPreview);
+router.post('/orders', pricingLimiter, PricingController.createOrder);
+router.get('/orders/:orderId', orderLookupLimiter, PricingController.getOrder);
+router.post('/orders/:orderId/resend-email', pricingLimiter, PricingController.resendEmail);
 
 module.exports = router;
 

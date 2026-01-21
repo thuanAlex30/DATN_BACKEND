@@ -237,14 +237,9 @@ class UserCertificateService {
             createdAt: userCertificateData.createdAt
           });
 
-          // Create user certificate - each one is a separate document in the database
+          // Create user certificate - each one là một document độc lập trong database.
+          // Nếu có lỗi ghi DB, repository sẽ throw; không cần tự ném lỗi bổ sung ở đây.
           const userCertificate = await userCertificateRepository.create(userCertificateData);
-          
-          // CRITICAL: Verify each certificate is independent
-          if (!userCertificate || !userCertificate._id) {
-            console.error(`❌ ERROR: Certificate was not created properly for user ${user.full_name}`);
-            throw new Error(`Certificate creation failed for user ${user.full_name}`);
-          }
           
           // Verify the certificate was created with correct user_id
           if (userCertificate && userCertificate.user_id) {
