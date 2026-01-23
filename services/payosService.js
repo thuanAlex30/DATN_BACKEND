@@ -431,21 +431,85 @@ class PayOSService {
           };
         }
 
-        // ⚠️ Fallback cũ (ít ưu tiên, chỉ dùng nếu SDK không hỗ trợ)
-        const dataString = JSON.stringify(data);
-        const checksum = crypto
-          .createHmac('sha256', this.checksumKey)
-          .update(dataString)
-          .digest('hex');
+        // PayOS signature được tính từ object data
+        // Thử nhiều cách tính signature vì PayOS có thể dùng format khác nhau
+        try {
+          // Cách 1: Format key=value&key=value (sorted keys) - phổ biến nhất
+          const sortedKeys = Object.keys(data).sort();
+          const dataString1 = sortedKeys
+            .map(key => {
+              const value = data[key];
+              const valueStr = value === null || value === undefined ? '' : String(value);
+              return `${key}=${valueStr}`;
+            })
+            .join('&');
 
-        if (checksum !== signature) {
+          // Cách 2: JSON.stringify với sorted keys và compact format
+          const sortedData = {};
+          sortedKeys.forEach(key => {
+            sortedData[key] = data[key];
+          });
+          const dataString2 = JSON.stringify(sortedData);
+
+          // Cách 3: JSON.stringify data gốc (không sorted)
+          const dataString3 = JSON.stringify(data);
+
+          // Log để debug
+          console.log('🔍 PayOS webhook verify (manual HMAC):', {
+            dataKeys: sortedKeys,
+            method1Length: dataString1.length,
+            method2Length: dataString2.length,
+            method3Length: dataString3.length,
+            checksumKeyPrefix: this.checksumKey ? `${this.checksumKey.substring(0, 8)}...` : 'NOT SET',
+            receivedSignaturePrefix: signature ? `${signature.substring(0, 16)}...` : 'NOT SET'
+          });
+
+          // Thử từng cách
+          const methods = [
+            { name: 'key=value&format', data: dataString1 },
+            { name: 'JSON-sorted', data: dataString2 },
+            { name: 'JSON-original', data: dataString3 }
+          ];
+
+          let computedChecksum = null;
+          let matchedMethod = null;
+
+          for (const method of methods) {
+            const checksum = crypto
+              .createHmac('sha256', this.checksumKey)
+              .update(method.data)
+              .digest('hex');
+
+            if (checksum === signature) {
+              computedChecksum = checksum;
+              matchedMethod = method.name;
+              break;
+            }
+          }
+
+          // Log kết quả
+          if (matchedMethod) {
+            console.log(`✅ PayOS signature verified using method: ${matchedMethod}`);
+          } else {
+            // Log tất cả các checksum để debug
+            console.log('❌ PayOS signature verification failed. Tried methods:', methods.map(m => ({
+              method: m.name,
+              checksumPrefix: crypto.createHmac('sha256', this.checksumKey).update(m.data).digest('hex').substring(0, 16)
+            })));
+            return {
+              isValid: false,
+              message: `Invalid signature - tried 3 methods but none matched. Received: ${signature.substring(0, 16)}...`
+            };
+          }
+
+          verifiedPayload = data;
+        } catch (hmacError) {
+          console.error('❌ Error computing HMAC:', hmacError);
           return {
             isValid: false,
-            message: 'Invalid signature (fallback HMAC)'
+            message: `HMAC computation error: ${hmacError.message}`
           };
         }
-
-        verifiedPayload = data;
       }
 
       // Chuẩn hóa payload (có thể SDK trả về { data: {...} } hoặc trả thẳng object)
