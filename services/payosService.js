@@ -399,43 +399,78 @@ class PayOSService {
    */
   verifyWebhook(webhookData) {
     try {
-      const { data, signature } = webhookData;
-
-      if (!data || !signature) {
-        return {
-          isValid: false,
-          message: 'Thiếu dữ liệu webhook'
-        };
+      // Ưu tiên dùng SDK PayOS để verify cho đúng chuẩn
+      if (!this.payOS) {
+        throw new Error('PayOS SDK chưa được khởi tạo. Không thể verify webhook.');
       }
 
-      // Tạo checksum từ data
-      const dataString = JSON.stringify(data);
-      const checksum = crypto
-        .createHmac('sha256', this.checksumKey)
-        .update(dataString)
-        .digest('hex');
+      // Log sơ bộ để debug (không log full dữ liệu nhạy cảm)
+      console.log('🔍 PayOS webhook received for verification:', {
+        hasData: !!webhookData?.data,
+        hasSignature: !!webhookData?.signature,
+        topLevelKeys: webhookData ? Object.keys(webhookData) : []
+      });
 
-      // So sánh signature
-      if (checksum === signature) {
+      let verifiedPayload;
+
+      // SDK v2 hiện tại cung cấp verifyPaymentWebhookData (hoặc verifyPaymentWebhook tùy version)
+      if (typeof this.payOS.verifyPaymentWebhookData === 'function') {
+        // Hàm này sẽ tự throw nếu signature không hợp lệ
+        verifiedPayload = this.payOS.verifyPaymentWebhookData(webhookData);
+      } else if (typeof this.payOS.verifyPaymentWebhook === 'function') {
+        // Một số version SDK dùng tên khác
+        verifiedPayload = this.payOS.verifyPaymentWebhook(webhookData);
+      } else {
+        console.warn('⚠️ PayOS SDK không có verifyPaymentWebhook(Data). Fallback tạm sang kiểm tra thủ công.');
+        const { data, signature } = webhookData || {};
+
+        if (!data || !signature) {
+          return {
+            isValid: false,
+            message: 'Thiếu dữ liệu webhook'
+          };
+        }
+
+        // ⚠️ Fallback cũ (ít ưu tiên, chỉ dùng nếu SDK không hỗ trợ)
+        const dataString = JSON.stringify(data);
+        const checksum = crypto
+          .createHmac('sha256', this.checksumKey)
+          .update(dataString)
+          .digest('hex');
+
+        if (checksum !== signature) {
+          return {
+            isValid: false,
+            message: 'Invalid signature (fallback HMAC)'
+          };
+        }
+
+        verifiedPayload = data;
+      }
+
+      // Chuẩn hóa payload (có thể SDK trả về { data: {...} } hoặc trả thẳng object)
+      const payload = verifiedPayload?.data || verifiedPayload;
+
+      if (!payload) {
         return {
-          isValid: true,
-          orderCode: data.orderCode,
-          orderId: data.description || `ORDER-${data.orderCode}`, // Có thể lưu orderId trong description
-          amount: data.amount,
-          status: data.status, // 'PAID' hoặc 'CANCELLED'
-          transactionId: data.transactionDateTime || data.id
+          isValid: false,
+          message: 'Không lấy được payload từ webhook sau khi verify'
         };
       }
 
       return {
-        isValid: false,
-        message: 'Invalid signature'
+        isValid: true,
+        orderCode: payload.orderCode,
+        orderId: payload.description || `ORDER-${payload.orderCode}`,
+        amount: payload.amount,
+        status: payload.status, // 'PAID', 'CANCELLED', ...
+        transactionId: payload.transactionDateTime || payload.id
       };
     } catch (error) {
       console.error('PayOS verifyWebhook error:', error);
       return {
         isValid: false,
-        message: error.message
+        message: error.message || 'Invalid signature'
       };
     }
   }
