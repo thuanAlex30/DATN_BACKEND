@@ -522,12 +522,27 @@ class PayOSService {
         };
       }
 
+      // Map status từ payload của PayOS:
+      // - Một số bản trả về payload.status
+      // - Một số bản chỉ trả về code/desc (code === '00' là thanh toán thành công)
+      let mappedStatus = payload.status;
+      if (!mappedStatus) {
+        if (payload.code === '00') {
+          mappedStatus = 'PAID';
+        } else if (payload.code === '09') {
+          // 09 thường là trạng thái pending/processing
+          mappedStatus = 'PENDING';
+        } else {
+          mappedStatus = 'FAILED';
+        }
+      }
+
       return {
         isValid: true,
         orderCode: payload.orderCode,
         orderId: payload.description || `ORDER-${payload.orderCode}`,
         amount: payload.amount,
-        status: payload.status, // 'PAID', 'CANCELLED', ...
+        status: mappedStatus, // 'PAID', 'PENDING', 'FAILED', ...
         transactionId: payload.transactionDateTime || payload.id
       };
     } catch (error) {
