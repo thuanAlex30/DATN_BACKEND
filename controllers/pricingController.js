@@ -618,13 +618,15 @@ class PricingController {
         });
       }
 
-      // Tìm order theo orderCode hoặc orderId
-      let order;
-      if (verifyResult.orderId) {
-        order = await orderService.getOrderByOrderId(verifyResult.orderId);
-      } else {
-        // Tìm theo paymentOrderCode nếu có
+      // Tìm order: Ưu tiên theo paymentOrderCode (orderCode từ PayOS), sau đó fallback theo orderId nếu có
+      let order = null;
+
+      if (verifyResult.orderCode) {
         order = await orderService.getOrderByPaymentCode(verifyResult.orderCode.toString());
+      }
+
+      if (!order && verifyResult.orderId) {
+        order = await orderService.getOrderByOrderId(verifyResult.orderId);
       }
 
       if (!order) {

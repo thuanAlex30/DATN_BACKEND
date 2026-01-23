@@ -552,10 +552,16 @@ class PayOSService {
         console.log(`✅ Using payload.status directly: ${mappedStatus}`);
       }
 
+      // Chỉ set orderId nếu description thực sự là ORDER-xxx, còn lại để null
+      let extractedOrderId = null;
+      if (typeof payload.description === 'string' && payload.description.startsWith('ORDER-')) {
+        extractedOrderId = payload.description;
+      }
+
       return {
         isValid: true,
         orderCode: payload.orderCode,
-        orderId: payload.description || `ORDER-${payload.orderCode}`,
+        orderId: extractedOrderId,
         amount: payload.amount,
         status: mappedStatus, // 'PAID', 'PENDING', 'FAILED', ...
         transactionId: payload.transactionDateTime || payload.id
