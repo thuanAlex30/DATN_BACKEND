@@ -526,15 +526,30 @@ class PayOSService {
       // - Một số bản trả về payload.status
       // - Một số bản chỉ trả về code/desc (code === '00' là thanh toán thành công)
       let mappedStatus = payload.status;
+      
+      // Log để debug
+      console.log('🔍 PayOS payload status mapping:', {
+        hasPayloadStatus: !!payload.status,
+        payloadStatus: payload.status,
+        hasPayloadCode: !!payload.code,
+        payloadCode: payload.code,
+        payloadDesc: payload.desc
+      });
+      
       if (!mappedStatus) {
         if (payload.code === '00') {
           mappedStatus = 'PAID';
+          console.log('✅ Mapped status to PAID (code = 00)');
         } else if (payload.code === '09') {
           // 09 thường là trạng thái pending/processing
           mappedStatus = 'PENDING';
+          console.log('⚠️ Mapped status to PENDING (code = 09)');
         } else {
           mappedStatus = 'FAILED';
+          console.log(`❌ Mapped status to FAILED (code = ${payload.code})`);
         }
+      } else {
+        console.log(`✅ Using payload.status directly: ${mappedStatus}`);
       }
 
       return {

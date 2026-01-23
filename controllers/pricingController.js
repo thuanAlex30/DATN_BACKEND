@@ -599,6 +599,15 @@ class PricingController {
       // Verify payment
       const verifyResult = payosService.verifyWebhook(webhookData);
 
+      // Log chi tiết verifyResult để debug
+      console.log('🔍 PayOS verifyResult:', {
+        isValid: verifyResult.isValid,
+        status: verifyResult.status,
+        orderCode: verifyResult.orderCode,
+        orderId: verifyResult.orderId,
+        amount: verifyResult.amount
+      });
+
       if (!verifyResult.isValid) {
         // PayOS có thể test webhook với dữ liệu không hợp lệ
         // Trả về 200 để PayOS không báo lỗi, nhưng log để debug
@@ -619,14 +628,25 @@ class PricingController {
       }
 
       if (!order) {
+        console.error('❌ Order not found:', {
+          orderId: verifyResult.orderId,
+          orderCode: verifyResult.orderCode
+        });
         return res.status(404).json({
           code: '01',
           desc: 'Order not found'
         });
       }
 
+      console.log('📦 Order found:', {
+        orderId: order.orderId,
+        currentStatus: order.status,
+        verifyResultStatus: verifyResult.status
+      });
+
       // Kiểm tra nếu đã xử lý rồi
       if (order.status === 'paid') {
+        console.log('ℹ️ Order already processed (status = paid)');
         return res.json({
           code: '00',
           desc: 'Order already processed'
@@ -635,6 +655,10 @@ class PricingController {
 
       // Kiểm tra status
       if (verifyResult.status !== 'PAID') {
+        console.warn('⚠️ Payment status is not PAID:', {
+          verifyResultStatus: verifyResult.status,
+          orderId: order.orderId
+        });
         // Thanh toán thất bại hoặc bị hủy
         await orderService.markOrderAsFailed(order.orderId);
         return res.json({
