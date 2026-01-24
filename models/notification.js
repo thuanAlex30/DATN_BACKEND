@@ -3,9 +3,9 @@ const mongoose = require('mongoose');
 const notificationSchema = new mongoose.Schema({
     notification_id: {
         type: Number,
-        unique: true,
         required: false, // Make it optional
-        index: true
+        sparse: true, // Sparse index: only index documents that have this field
+        unique: true // Unique only for non-null values
     },
     user_id: {
         type: mongoose.Schema.Types.Mixed, // Allow both ObjectId and String

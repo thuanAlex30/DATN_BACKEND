@@ -622,19 +622,33 @@ class PricingController {
       let order = null;
 
       if (verifyResult.orderCode) {
+        console.log(`🔍 Searching order by paymentOrderCode: ${verifyResult.orderCode}`);
         order = await orderService.getOrderByPaymentCode(verifyResult.orderCode.toString());
+        if (order) {
+          console.log(`✅ Order found by paymentOrderCode: ${order.orderId}`);
+        } else {
+          console.log(`⚠️ Order not found by paymentOrderCode: ${verifyResult.orderCode}`);
+        }
       }
 
       if (!order && verifyResult.orderId) {
+        console.log(`🔍 Searching order by orderId: ${verifyResult.orderId}`);
         order = await orderService.getOrderByOrderId(verifyResult.orderId);
+        if (order) {
+          console.log(`✅ Order found by orderId: ${order.orderId}`);
+        } else {
+          console.log(`⚠️ Order not found by orderId: ${verifyResult.orderId}`);
+        }
       }
 
       if (!order) {
-        console.error('❌ Order not found:', {
+        console.error('❌ Order not found after all attempts:', {
           orderId: verifyResult.orderId,
-          orderCode: verifyResult.orderCode
+          orderCode: verifyResult.orderCode,
+          note: 'This might be a retry webhook for a deleted order, or orderCode mismatch'
         });
-        return res.status(404).json({
+        // Trả về 200 để PayOS không retry (vì order không tồn tại)
+        return res.json({
           code: '01',
           desc: 'Order not found'
         });

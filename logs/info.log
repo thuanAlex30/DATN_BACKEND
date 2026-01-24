@@ -1,0 +1,42 @@
+{"timestamp":"2026-01-23T11:00:00.978Z","level":"INFO","message":"Starting weather alert check","metadata":{"startTime":"2026-01-23T11:00:00.977Z"},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T11:00:01.064Z","level":"INFO","message":"No active tenants found for weather check","metadata":{},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T11:57:51.039Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69394ede56cccae5f492c8e8","socketId":"zl1NfqPSwlSXp9JTAAAF"},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T11:58:06.948Z","level":"INFO","message":"User connected","metadata":{"socketId":"JGCYrFtzhGWWbHxqAAAI"},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T11:58:06.949Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","tenantId":null,"socketId":"JGCYrFtzhGWWbHxqAAAI"},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T11:58:12.010Z","level":"INFO","message":"Air quality fetched","metadata":{"latencyMs":807,"cacheKey":"airquality:15.974277047445256:108.26141778304947"},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T11:58:12.709Z","level":"INFO","message":"User connected","metadata":{"socketId":"0lZAs7aT7NsSi35AAAAL"},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T11:58:12.712Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","tenantId":null,"socketId":"0lZAs7aT7NsSi35AAAAL"},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T11:58:12.713Z","level":"INFO","message":"User connected","metadata":{"socketId":"f2r841_McRTquUyHAAAM"},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T11:58:12.715Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","tenantId":null,"socketId":"f2r841_McRTquUyHAAAM"},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T11:58:37.292Z","level":"INFO","message":"PPE issued to manager notification sent","metadata":{"recipientId":"69394ede56cccae5f492c8e8","tenantId":"693762336890b8984d135585"},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T11:58:49.400Z","level":"INFO","message":"PPE issued to manager notification sent","metadata":{"recipientId":"69394ede56cccae5f492c8e8","tenantId":"693762336890b8984d135585"},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T12:00:00.078Z","level":"INFO","message":"Starting weather alert check","metadata":{"startTime":"2026-01-23T12:00:00.077Z"},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T12:00:00.169Z","level":"INFO","message":"No active tenants found for weather check","metadata":{},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T12:01:40.022Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","socketId":"f2r841_McRTquUyHAAAM"},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T12:01:40.024Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","socketId":"0lZAs7aT7NsSi35AAAAL"},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T12:01:40.026Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","socketId":"JGCYrFtzhGWWbHxqAAAI"},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T16:51:12.313Z","level":"INFO","message":"WebSocket service initialized","metadata":{},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T16:51:12.377Z","level":"INFO","message":"PPE expiry check job started - runs daily at 9:00 AM","metadata":{},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T16:51:12.378Z","level":"INFO","message":"PPE overdue check job started - runs daily at 08:30 AM","metadata":{},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T16:51:12.379Z","level":"INFO","message":"Weather alert check job started - runs every 0 * * * *","metadata":{},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T16:51:17.388Z","level":"INFO","message":"Warming up weather cache...","metadata":{"latitude":16.0471,"longitude":108.2068},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T16:51:19.598Z","level":"INFO","message":"Weather fetched","metadata":{"latencyMs":2207,"cacheKey":"weather:16.0471:108.2068:undefined:temperature_2m,relativehumidity_2m,apparent_temperature,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,uv_index,visibility,is_day,dewpoint_2m"},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T16:51:19.600Z","level":"INFO","message":"Cache warmed: current weather","metadata":{},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T16:51:21.838Z","level":"INFO","message":"Weather forecast fetched","metadata":{"latencyMs":229,"cacheKey":"forecast:16.0471:108.2068:7days"},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T16:51:21.839Z","level":"INFO","message":"Cache warmed: 7-day forecast","metadata":{},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T16:51:23.060Z","level":"INFO","message":"User connected","metadata":{"socketId":"_O2V7cnyuDLiGarfAAAE"},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T16:51:23.066Z","level":"INFO","message":"User authenticated via WebSocket","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","role":"Department Head","tenantId":null,"socketId":"_O2V7cnyuDLiGarfAAAE"},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T16:51:24.066Z","level":"INFO","message":"Hourly forecast fetched","metadata":{"latencyMs":218,"cacheKey":"hourly:16.0471:108.2068:24h","hours":24},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T16:51:24.121Z","level":"INFO","message":"Cache warmed: 24-hour forecast","metadata":{},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T16:51:27.492Z","level":"INFO","message":"Air quality fetched","metadata":{"latencyMs":1357,"cacheKey":"airquality:16.0471:108.2068"},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T16:51:27.493Z","level":"INFO","message":"Cache warmed: air quality","metadata":{},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T16:51:27.494Z","level":"INFO","message":"Weather cache warmup complete","metadata":{},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T16:51:41.982Z","level":"INFO","message":"User disconnected","metadata":{"userId":"69393cf4fe0fa8fc1de1387c","socketId":"_O2V7cnyuDLiGarfAAAE"},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T17:00:00.716Z","level":"INFO","message":"Starting weather alert check","metadata":{"startTime":"2026-01-23T17:00:00.716Z"},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T17:00:00.759Z","level":"INFO","message":"No active tenants found for weather check","metadata":{},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T18:00:00.909Z","level":"INFO","message":"Starting weather alert check","metadata":{"startTime":"2026-01-23T18:00:00.908Z"},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T18:00:00.956Z","level":"INFO","message":"No active tenants found for weather check","metadata":{},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T19:00:00.670Z","level":"INFO","message":"Starting weather alert check","metadata":{"startTime":"2026-01-23T19:00:00.670Z"},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T19:00:00.715Z","level":"INFO","message":"No active tenants found for weather check","metadata":{},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T20:00:00.346Z","level":"INFO","message":"Starting weather alert check","metadata":{"startTime":"2026-01-23T20:00:00.346Z"},"pid":18376,"hostname":"MSI"}
+{"timestamp":"2026-01-23T20:00:00.389Z","level":"INFO","message":"No active tenants found for weather check","metadata":{},"pid":18376,"hostname":"MSI"}

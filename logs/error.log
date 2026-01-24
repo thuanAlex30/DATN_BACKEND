@@ -1,0 +1,2 @@
+{"timestamp":"2026-01-23T11:58:37.388Z","level":"ERROR","message":"Error sending notification to user:","metadata":{"index":0,"code":11000,"keyPattern":{"notification_id":1},"keyValue":{"notification_id":null}},"pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T11:58:49.492Z","level":"ERROR","message":"Error sending notification to user:","metadata":{"index":0,"code":11000,"keyPattern":{"notification_id":1},"keyValue":{"notification_id":null}},"pid":18172,"hostname":"MSI"}

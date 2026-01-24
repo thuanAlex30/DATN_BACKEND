@@ -98,6 +98,12 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
 // =====================
+// Trust Proxy (for rate limiting behind reverse proxy)
+// =====================
+// Render và các hosting khác thường dùng reverse proxy, cần trust proxy để rate limiting hoạt động đúng
+app.set('trust proxy', 1); // Trust first proxy (Render, Vercel, etc.)
+
+// =====================
 // Security & parsers
 // =====================
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));

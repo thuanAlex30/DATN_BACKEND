@@ -1,0 +1,2 @@
+{"timestamp":"2026-01-23T11:58:37.389Z","level":"WARN","message":"Non-blocking notification failed or timed out:","metadata":"E11000 duplicate key error collection: safety_system.notifications index: notification_id_1 dup key: { notification_id: null }","pid":18172,"hostname":"MSI"}
+{"timestamp":"2026-01-23T11:58:49.493Z","level":"WARN","message":"Non-blocking notification failed or timed out:","metadata":"E11000 duplicate key error collection: safety_system.notifications index: notification_id_1 dup key: { notification_id: null }","pid":18172,"hostname":"MSI"}
